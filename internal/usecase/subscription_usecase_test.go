@@ -49,7 +49,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 		name      string
 		email     string
 		repoName  string
-		setup     func(f mockFields)
+		setup     func(f mockFields, wg *sync.WaitGroup)
 		wantErr   error
 		expectErr bool
 	}{
@@ -57,31 +57,29 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			name:     "success — pending subscription created and confirmation email sent",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields) {
+			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
-
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
 					Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-
 				f.repoRepo.On("GetOrCreate", mock.Anything, "golang/go", "v1.22.0").
 					Return(&model.Repository{ID: 10}, nil).Once()
-
 				f.userRepo.On("GetOrCreate", mock.Anything, "user@test.com").
 					Return(model.User{ID: 1}, nil).Once()
-
 				f.subsRepo.On("CreatePending", mock.Anything, int64(1), int64(10), mock.AnythingOfType("string")).
 					Return(int64(100), nil).Once()
 
+				wg.Add(1)
 				f.emailSender.On("SendConfirmation", mock.Anything, "user@test.com", "golang/go", mock.AnythingOfType("string")).
-					Return(nil).Maybe()
+					Run(func(args mock.Arguments) { wg.Done() }).
+					Return(nil).Once()
 			},
 		},
 		{
 			name:     "error — repository does not exist on GitHub",
 			email:    "user@test.com",
 			repoName: "unknown/repo",
-			setup: func(f mockFields) {
+			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "unknown/repo").
 					Return(false, nil).Once()
 			},
@@ -91,7 +89,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			name:     "error — GitHub RepoExists call fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields) {
+			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(false, errors.New("api connection error")).Once()
 			},
@@ -101,7 +99,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			name:     "error — GetLatestRelease fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields) {
+			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -114,7 +112,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			name:     "error — repoRepo.GetOrCreate fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields) {
+			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -130,7 +128,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			name:     "error — userRepo.GetOrCreate fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields) {
+			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -149,7 +147,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			name:     "error — CreatePending fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields) {
+			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -172,7 +170,8 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newMockFields(t)
-			tt.setup(f)
+			var wg sync.WaitGroup
+			tt.setup(f, &wg)
 
 			err := newUC(f).Subscribe(context.Background(), tt.email, tt.repoName)
 
@@ -184,10 +183,13 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 				assert.Error(t, err)
 			default:
 				require.NoError(t, err)
-				assert.Eventually(t, func() bool {
-					return f.emailSender.AssertCalled(t, "SendConfirmation",
-						mock.Anything, tt.email, tt.repoName, mock.AnythingOfType("string"))
-				}, 2*time.Second, 10*time.Millisecond)
+				done := make(chan struct{})
+				go func() { wg.Wait(); close(done) }()
+				select {
+				case <-done:
+				case <-time.After(2 * time.Second):
+					t.Fatal("timed out waiting for SendConfirmation goroutine")
+				}
 			}
 		})
 	}
