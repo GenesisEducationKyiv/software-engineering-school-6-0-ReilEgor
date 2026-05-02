@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	redis "github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/ReilEgor/RepoNotifier/internal/config"
 )
@@ -22,7 +22,14 @@ func NewRedisClient(
 	})
 
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
-		return nil, err
+		if closeErr := rdb.Close(); closeErr != nil {
+			return nil, fmt.Errorf(
+				"failed to connect to redis (%w); additionally, failed to close client: %v",
+				err,
+				closeErr,
+			)
+		}
+		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 
 	return rdb, nil

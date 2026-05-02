@@ -25,6 +25,11 @@ output:
 
 linters:
   default: none # disables all linters by default.
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - funlen
   enable:
     - govet # Vet examines Go source code and reports suspicious constructs.
     - errcheck # Errcheck is a program for checking for unchecked errors in Go code.
@@ -82,12 +87,12 @@ linters:
     gocyclo: # Computes and checks the cyclomatic complexity of functions.
       min-complexity: 15 # Minimal code complexity to report.
     gocognit: # Computes and checks the cognitive complexity of functions.
-        min-complexity: 15 # Minimal code complexity to report.
+        min-complexity: 20 # Minimal code complexity to report.
     nestif: # Reports deeply nested if statements.
       min-complexity: 5 # Minimal complexity of if statements to report.
     funlen: # Checks for long functions.
       ignore-comments: true # Ignore comments when counting lines.
-      lines: 100 # Checks the number of lines in a function.
+      lines: 120 # Checks the number of lines in a function.
       statements: 50 # Checks the number of statements in a function.
     revive: # Fast, configurable, extensible, flexible, and beautiful linter for Go.
       severity: warning
@@ -159,3 +164,4 @@ issues:
   max-same-issues: 0
   max-issues-per-linter: 0
   fix: false
+

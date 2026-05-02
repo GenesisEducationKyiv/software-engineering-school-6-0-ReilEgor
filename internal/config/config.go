@@ -14,7 +14,7 @@ type (
 	EmailFromType     string
 	EmailUserType     string
 
-	ApiKeyType string
+	APIKeyType string
 
 	GRPCPortType    string
 	AppBaseURLType  string
@@ -34,7 +34,7 @@ type Config struct {
 	EmailFrom     EmailFromType     `env:"EMAIL_FROM"     envDefault:"smtp.example.com"`
 	EmailUser     EmailUserType     `env:"EMAIL_USER"     envDefault:"smtp_user"`
 
-	ApiKey     ApiKeyType     `env:"APP_API_KEY"   envDefault:"smtp_api_key"`
+	APIKey     APIKeyType     `env:"APP_API_KEY"   envDefault:"smtp_api_key"`
 	AppBaseURL AppBaseURLType `env:"APP_BASE_URL"  envDefault:"https://smtp.example.com"`
 	GRPCPort   GRPCPortType   `env:"APP_GRPC_PORT" envDefault:"9090"`
 

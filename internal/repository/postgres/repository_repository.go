@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -15,7 +14,7 @@ const (
 
 // Sentinel errors.
 var (
-	ErrRepositoryNotFound = errors.New("repository not found")
+// ErrRepositoryNotFound = errors.New("repository not found").
 )
 
 type RepositoryRepository struct {

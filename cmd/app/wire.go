@@ -6,6 +6,10 @@ package main
 import (
 	"context"
 
+	"github.com/google/wire"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc"
+
 	"github.com/ReilEgor/RepoNotifier/internal/config"
 	repositoryInterface "github.com/ReilEgor/RepoNotifier/internal/domain/repository"
 	servicesInterface "github.com/ReilEgor/RepoNotifier/internal/domain/service"
@@ -19,9 +23,6 @@ import (
 	"github.com/ReilEgor/RepoNotifier/internal/transport/http"
 	"github.com/ReilEgor/RepoNotifier/internal/transport/http/handlers"
 	usecaseRealization "github.com/ReilEgor/RepoNotifier/internal/usecase"
-	"github.com/google/wire"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc"
 )
 
 var UseCaseSet = wire.NewSet(
@@ -50,10 +51,11 @@ var CacheSet = wire.NewSet(
 	cacheRealization.NewCache,
 	wire.Bind(new(servicesInterface.Cache), new(*cacheRealization.Cache)),
 )
+
 var ServicesSet = wire.NewSet(
 	servicesRealizationGitHub.NewGitHubClient,
-	servicesRealizationEmail.NewSmtpClient,
-	wire.Bind(new(servicesInterface.EmailSender), new(*servicesRealizationEmail.SmtpClient)),
+	servicesRealizationEmail.NewSMTPClient,
+	wire.Bind(new(servicesInterface.EmailSender), new(*servicesRealizationEmail.SMTPClient)),
 	wire.Bind(new(servicesInterface.GitHubClient), new(*servicesRealizationGitHub.GitHubClient)),
 )
 
@@ -80,7 +82,7 @@ func InitializeApp(
 	emailPassword config.EmailPasswordType,
 	emailFrom config.EmailFromType,
 	emailUser config.EmailUserType,
-	apiKey config.ApiKeyType,
+	apiKey config.APIKeyType,
 	githubToken config.GitHubTokenType,
 	baseURL config.AppBaseURLType,
 ) (*App, func(), error) {

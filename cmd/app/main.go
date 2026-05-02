@@ -43,7 +43,7 @@ func main() {
 
 	app, cleanup, err := InitializeApp(ctx, cfg.RedisHost, cfg.RedisPort, cfg.RedisPassword, 0, cfg.DSN,
 		cfg.EmailHost, cfg.EmailPort, cfg.EmailPassword, cfg.EmailFrom, cfg.EmailUser,
-		cfg.ApiKey, cfg.GitHubToken, cfg.AppBaseURL)
+		cfg.APIKey, cfg.GitHubToken, cfg.AppBaseURL)
 	if err != nil {
 		myLogger.Error("application initialization failed", slog.Any("error", err))
 		os.Exit(1)

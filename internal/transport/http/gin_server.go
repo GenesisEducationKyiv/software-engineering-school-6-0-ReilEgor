@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -25,7 +26,7 @@ type GinServer struct {
 func NewGinServer(
 	subscriptionUC usecase.SubscriptionUseCase,
 	redisClient *redis.Client,
-	apiKey config.ApiKeyType,
+	apiKey config.APIKeyType,
 ) *GinServer {
 	router := gin.New()
 	logger := slog.With(slog.String("component", "gin_server"))
@@ -56,7 +57,7 @@ func (s *GinServer) Run(ctx context.Context, port string) error {
 	}()
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+		return fmt.Errorf("http server run: %w", err)
 	}
 	return nil
 }

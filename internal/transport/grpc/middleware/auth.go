@@ -12,10 +12,10 @@ import (
 func AuthInterceptor(expectedKey string) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
-		req interface{},
-		info *grpc.UnaryServerInfo,
+		req any,
+		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			return nil, status.Errorf(codes.Unauthenticated, "metadata is not provided")

@@ -33,11 +33,11 @@ const (
 )
 
 var (
-	ErrInvalidEmailFormat   = errors.New("invalid email format")
-	ErrInvalidRepoFormat    = errors.New("invalid repository format (expected 'owner/repo')")
-	ErrEmailRequired        = errors.New("email is required")
-	ErrAlreadySubscribed    = errors.New("user is already subscribed to this repository")
-	ErrSubscriptionNotFound = errors.New("subscription not found")
+	ErrInvalidEmailFormat = errors.New("invalid email format")
+	ErrInvalidRepoFormat  = errors.New("invalid repository format (expected 'owner/repo')")
+	ErrEmailRequired      = errors.New("email is required")
+	ErrAlreadySubscribed  = errors.New("user is already subscribed to this repository")
+	// ErrSubscriptionNotFound = errors.New("subscription not found").
 )
 
 var repoRegex = regexp.MustCompile(`^[a-zA-Z0-9-._]{1,100}/[a-zA-Z0-9-._]{1,100}$`)
@@ -87,13 +87,13 @@ func (h *Handler) handleTokenAction(
 	}
 }
 
-// Subscribe godoc
+// Subscribe GoDoc
 //
 //	@Summary		Subscribe to a repository
 //	@Description	Create a pending subscription and send a confirmation email.
 //	@Tags			subscriptions
-//	@Accept			json
-//	@Produce		json
+//	@Accept			JSON
+//	@Produce		JSON
 //	@Param			request	body		dto.CreateSubscriptionRequest	true	"Subscription details"
 //	@Success		202		{object}	dto.CreateSubscriptionResponse
 //	@Failure		400		{object}	map[string]string	"Invalid request body or validation errors"
@@ -162,12 +162,12 @@ func (h *Handler) Subscribe(c *gin.Context) {
 	})
 }
 
-// UnsubscribeByToken godoc
+// UnsubscribeByToken GoDoc
 //
 //	@Summary		Unsubscribe via token
 //	@Description	Remove a subscription using the one-time token from the unsubscribe link.
 //	@Tags			subscriptions
-//	@Produce		json
+//	@Produce		JSON
 //	@Param			token	path		string	true	"Unsubscribe token"
 //	@Success		200		{object}	map[string]string
 //	@Failure		400		{object}	map[string]string	"Token is required"
@@ -187,12 +187,12 @@ func (h *Handler) UnsubscribeByToken(c *gin.Context) {
 	}
 }
 
-// ListSubscriptions godoc
+// ListSubscriptions GoDoc
 //
 //	@Summary		Get all subscriptions by email
 //	@Description	Retrieve a list of all subscriptions (confirmed and pending) for a given email.
 //	@Tags			subscriptions
-//	@Produce		json
+//	@Produce		JSON
 //	@Param			email	query		string	true	"User email address"
 //	@Success		200		{object}	dto.ListSubscriptionsResponse
 //	@Failure		400		{object}	map[string]string	"Email is required or invalid"
@@ -254,12 +254,12 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 	})
 }
 
-// Confirm godoc
+// Confirm GoDoc
 //
 //	@Summary		Confirm email subscription
 //	@Description	Confirm a pending subscription using the token sent via email.
 //	@Tags			subscriptions
-//	@Produce		json
+//	@Produce		JSON
 //	@Param			token	path		string				true	"Confirmation token"
 //	@Success		200		{object}	map[string]string	"subscription confirmed successfully"
 //	@Failure		400		{object}	map[string]string	"Token is required"

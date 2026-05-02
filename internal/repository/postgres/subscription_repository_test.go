@@ -10,6 +10,7 @@ import (
 
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 )
@@ -17,7 +18,7 @@ import (
 func newSubRepo(t *testing.T) (*SubscriptionRepository, pgxmock.PgxPoolIface) {
 	t.Helper()
 	mock, err := pgxmock.NewPool()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	repo := &SubscriptionRepository{
 		db:     mock,
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -45,7 +46,7 @@ func TestSubscriptionRepository_Confirm(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:  "invalid token — no rows affected",
+			name:  "invalid token - no rows affected",
 			token: "wrong-token",
 			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
 				mock.ExpectExec("UPDATE subscriptions").
@@ -88,17 +89,17 @@ func TestSubscriptionRepository_Confirm(t *testing.T) {
 			err := repo.Confirm(context.Background(), tt.token)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.expectErr != nil {
-					assert.ErrorIs(t, err, tt.expectErr)
+					require.ErrorIs(t, err, tt.expectErr)
 				}
 				if tt.checkErrMsg != "" {
 					assert.Contains(t, err.Error(), tt.checkErrMsg)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
-			assert.NoError(t, mock.ExpectationsWereMet())
+			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }
@@ -123,7 +124,7 @@ func TestSubscriptionRepository_UnsubscribeByToken(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:  "invalid token — no rows deleted",
+			name:  "invalid token - no rows deleted",
 			token: "fake",
 			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
 				mock.ExpectExec("DELETE FROM subscriptions").
@@ -166,17 +167,17 @@ func TestSubscriptionRepository_UnsubscribeByToken(t *testing.T) {
 			err := repo.UnsubscribeByToken(context.Background(), tt.token)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.expectErr != nil {
-					assert.ErrorIs(t, err, tt.expectErr)
+					require.ErrorIs(t, err, tt.expectErr)
 				}
 				if tt.checkErrMsg != "" {
 					assert.Contains(t, err.Error(), tt.checkErrMsg)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
-			assert.NoError(t, mock.ExpectationsWereMet())
+			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }
@@ -209,7 +210,7 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 			},
 		},
 		{
-			name: "empty result — no confirmed subscribers",
+			name: "empty result - no confirmed subscribers",
 			mockSetup: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectQuery("SELECT u.email, s.token FROM subscriptions s").
 					WithArgs(repoID).
@@ -230,7 +231,7 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 			checkErrMsg: "query:",
 		},
 		{
-			name: "row scan error — wrong email type",
+			name: "row scan error - wrong email type",
 			mockSetup: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectQuery("SELECT u.email, s.token FROM subscriptions s").
 					WithArgs(repoID).
@@ -264,11 +265,11 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 			subs, err := repo.GetSubscribersByRepoID(context.Background(), repoID)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.checkErrMsg)
 				assert.Nil(t, subs)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if tt.checkResult != nil {
 					tt.checkResult(t, subs)
 				}
@@ -309,7 +310,7 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 			},
 		},
 		{
-			name: "empty result — returns empty slice, not nil",
+			name: "empty result - returns empty slice, not nil",
 			mockSetup: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
 					WithArgs(email).
@@ -317,7 +318,7 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 			},
 			checkResult: func(t *testing.T, subs []model.Subscription) {
 				assert.NotNil(t, subs)
-				assert.Len(t, subs, 0)
+				assert.Empty(t, subs, 0)
 			},
 		},
 		{
@@ -330,7 +331,7 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "scan error — wrong id type",
+			name: "scan error - wrong id type",
 			mockSetup: func(mock pgxmock.PgxPoolIface) {
 				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
 					WithArgs(email).
@@ -379,13 +380,13 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 			result, err := repo.GetByEmail(context.Background(), email)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.checkErrMsg != "" {
 					assert.Contains(t, err.Error(), tt.checkErrMsg)
 				}
 				assert.Nil(t, result)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if tt.checkResult != nil {
 					tt.checkResult(t, result)
 				}
@@ -431,7 +432,7 @@ func TestSubscriptionRepository_Delete(t *testing.T) {
 			checkErrMsg: "exec:",
 		},
 		{
-			name:     "zero rows affected — subscription did not exist",
+			name:     "zero rows affected - subscription did not exist",
 			userID:   userID,
 			repoName: "nonexistent/repo",
 			mockSetup: func(mock pgxmock.PgxPoolIface, userID int64, repo string) {
@@ -464,12 +465,12 @@ func TestSubscriptionRepository_Delete(t *testing.T) {
 			err := repo.Delete(context.Background(), tt.userID, tt.repoName)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.checkErrMsg != "" {
 					assert.Contains(t, err.Error(), tt.checkErrMsg)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})

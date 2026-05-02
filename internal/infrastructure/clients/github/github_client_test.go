@@ -52,7 +52,7 @@ func TestGitHubClient_RepoExists(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKeyRepoExists+"golang/go").
 					Return("true", nil).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(_ http.ResponseWriter, _ *http.Request) {
 				t.Fatal("API should not be called when data is in cache")
 			},
 			expectedResult: true,
@@ -67,7 +67,7 @@ func TestGitHubClient_RepoExists(t *testing.T) {
 				m.On("Set", mock.Anything, cacheKeyRepoExists+"unknown/repo", "false", cacheTTL).
 					Return(nil).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
 			expectedResult: false,
@@ -80,21 +80,21 @@ func TestGitHubClient_RepoExists(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKeyRepoExists+"busy/repo").
 					Return("", service.ErrCacheMiss).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusForbidden)
 			},
 			expectedResult: false,
 			expectedErr:    service.ErrRateLimitExceeded,
 		},
 		{
-			name:     "success: api hit, cache set fails — result still returned",
+			name:     "success: api hit, cache set fails - result still returned",
 			repoName: "golang/go",
 			mockCache: func(m *mocks.Cache) {
 				m.On("Get", mock.Anything, mock.Anything).Return("", service.ErrCacheMiss).Once()
 				m.On("Set", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 					Return(errors.New("redis unavailable")).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			},
 			expectedResult: true,
@@ -109,7 +109,7 @@ func TestGitHubClient_RepoExists(t *testing.T) {
 				m.On("Set", mock.Anything, cacheKeyRepoExists+"golang/go", "true", cacheTTL).
 					Return(nil).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			},
 			expectedResult: true,
@@ -131,11 +131,11 @@ func TestGitHubClient_RepoExists(t *testing.T) {
 			result, err := client.RepoExists(context.Background(), tt.repoName)
 
 			if tt.expectedErr != nil {
-				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.expectedErr)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.expectedErr)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedResult, result)
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedResult, result)
 			}
 
 			cacheMock.AssertExpectations(t)
@@ -160,7 +160,7 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKey).Return("", service.ErrCacheMiss).Once()
 				m.On("Set", mock.Anything, cacheKey, mock.Anything, cacheTTL).Return(nil).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				resp := model.ReleaseInfo{
 					TagName:     "v1.22.0",
 					PublishedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -183,7 +183,7 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				cachedData := `{"tag_name":"v1.21.0","published_at":"2023-01-01T00:00:00Z"}`
 				m.On("Get", mock.Anything, cacheKey).Return(cachedData, nil).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(_ http.ResponseWriter, _ *http.Request) {
 				t.Fatal("API should not be called")
 			},
 			expectedResult: &model.ReleaseInfo{
@@ -198,7 +198,7 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKeyLatestRelease+"no-releases/repo").
 					Return("", service.ErrCacheMiss).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
 			expectedErr: service.ErrReleaseNotFound,
@@ -210,9 +210,13 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKeyLatestRelease+"error/repo").
 					Return("", service.ErrCacheMiss).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte(`{"message": "something went wrong on github"}`))
+				_, err := w.Write([]byte(`{"message": "something went wrong on github"}`))
+				if err != nil {
+					t.Errorf("failed to write response: %v", err)
+					return
+				}
 			},
 			expectedErr: ErrUnexpectedStatus,
 		},
@@ -224,16 +228,17 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKey).Return("{invalid-json}", nil).Once()
 				m.On("Set", mock.Anything, cacheKey, mock.Anything, cacheTTL).Return(nil).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				resp := model.ReleaseInfo{TagName: "v1.22.0"}
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(resp)
+				err := json.NewEncoder(w).Encode(resp)
+				assert.NoError(t, err)
 			},
 			expectedResult: &model.ReleaseInfo{TagName: "v1.22.0"},
 			expectedErr:    nil,
 		},
 		{
-			name:     "success: api hit, cache set fails — release still returned",
+			name:     "success: api hit, cache set fails - release still returned",
 			repoName: "golang/go",
 			mockCache: func(m *mocks.Cache) {
 				cacheKey := cacheKeyLatestRelease + "golang/go"
@@ -241,14 +246,15 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				m.On("Set", mock.Anything, cacheKey, mock.Anything, cacheTTL).
 					Return(errors.New("redis connection reset")).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				resp := model.ReleaseInfo{
 					TagName:     "v1.22.0",
 					PublishedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				}
 				w.WriteHeader(http.StatusOK)
 
-				_ = json.NewEncoder(w).Encode(resp)
+				err := json.NewEncoder(w).Encode(resp)
+				assert.NoError(t, err)
 			},
 			expectedResult: &model.ReleaseInfo{
 				TagName:     "v1.22.0",
@@ -263,7 +269,7 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKeyLatestRelease+"golang/go").
 					Return("", service.ErrCacheMiss).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusForbidden)
 			},
 			expectedErr: service.ErrRateLimitExceeded,
@@ -275,7 +281,7 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 				m.On("Get", mock.Anything, cacheKeyLatestRelease+"golang/go").
 					Return("", service.ErrCacheMiss).Once()
 			},
-			serverHandler: func(w http.ResponseWriter, r *http.Request) {
+			serverHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusBadGateway)
 			},
 			expectedErr: ErrUnexpectedStatus,
@@ -296,12 +302,12 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 			result, err := client.GetLatestRelease(context.Background(), tt.repoName)
 
 			if tt.expectedErr != nil {
-				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.expectedErr)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.expectedErr)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedResult.TagName, result.TagName)
-				assert.True(t, tt.expectedResult.PublishedAt.Equal(result.PublishedAt))
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedResult.TagName, result.TagName)
+				require.True(t, tt.expectedResult.PublishedAt.Equal(result.PublishedAt))
 			}
 			cacheMock.AssertExpectations(t)
 		})
@@ -310,7 +316,7 @@ func TestGitHubClient_GetLatestRelease(t *testing.T) {
 
 func TestGitHubClient_CircuitBreaker_Recovery(t *testing.T) {
 	var shouldFail atomic.Bool
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if shouldFail.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -331,7 +337,8 @@ func TestGitHubClient_CircuitBreaker_Recovery(t *testing.T) {
 
 	shouldFail.Store(true)
 	for i := 0; i < cbFailureThreshold; i++ {
-		_, _ = client.RepoExists(ctx, repo)
+		_, err := client.RepoExists(ctx, repo)
+		require.Error(t, err, "expected error on iteration %d", i)
 	}
 
 	_, err := client.RepoExists(ctx, repo)
@@ -344,9 +351,9 @@ func TestGitHubClient_CircuitBreaker_Recovery(t *testing.T) {
 
 	exists, err := client.RepoExists(ctx, repo)
 
-	assert.NoError(t, err, "CB should allow request in Half-Open state")
+	require.NoError(t, err, "CB should allow request in Half-Open state")
 	assert.True(t, exists)
 
 	_, err = client.RepoExists(ctx, repo)
-	assert.NoError(t, err, "CB should be CLOSED now")
+	require.NoError(t, err, "CB should be CLOSED now")
 }

@@ -55,7 +55,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			name:     "success — pending subscription created and confirmation email sent",
+			name:     "success - pending subscription created and confirmation email sent",
 			email:    "user@test.com",
 			repoName: "golang/go",
 			setup: func(f mockFields, wg *sync.WaitGroup) {
@@ -72,36 +72,36 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 
 				wg.Add(1)
 				f.emailSender.On("SendConfirmation", mock.Anything, "user@test.com", "golang/go", mock.AnythingOfType("string")).
-					Run(func(args mock.Arguments) { wg.Done() }).
+					Run(func(_ mock.Arguments) { wg.Done() }).
 					Return(nil).
 					Once()
 			},
 		},
 		{
-			name:     "error — repository does not exist on GitHub",
+			name:     "error - repository does not exist on GitHub",
 			email:    "user@test.com",
 			repoName: "unknown/repo",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "unknown/repo").
 					Return(false, nil).Once()
 			},
 			wantErr: service.ErrRepositoryNotFound,
 		},
 		{
-			name:     "error — GitHub RepoExists call fails",
+			name:     "error - GitHub RepoExists call fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(false, errors.New("api connection error")).Once()
 			},
 			expectErr: true,
 		},
 		{
-			name:     "error — GetLatestRelease fails",
+			name:     "error - GetLatestRelease fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -111,10 +111,10 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:     "error — repoRepo.GetOrCreate fails",
+			name:     "error - repoRepo.GetOrCreate fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -127,10 +127,10 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:     "error — userRepo.GetOrCreate fails",
+			name:     "error - userRepo.GetOrCreate fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -146,10 +146,10 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:     "error — CreatePending fails",
+			name:     "error - CreatePending fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 
@@ -180,9 +180,9 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				require.ErrorIs(t, err, tt.wantErr)
 			case tt.expectErr:
-				assert.Error(t, err)
+				require.Error(t, err)
 			default:
 				require.NoError(t, err)
 				done := make(chan struct{})
@@ -207,7 +207,7 @@ func TestSubscriptionUseCase_Unsubscribe(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			name:     "success — subscription deleted",
+			name:     "success - subscription deleted",
 			email:    "user@test.com",
 			repoName: "golang/go",
 			setup: func(f mockFields) {
@@ -219,7 +219,7 @@ func TestSubscriptionUseCase_Unsubscribe(t *testing.T) {
 			},
 		},
 		{
-			name:     "success — user not found, nothing to delete",
+			name:     "success - user not found, nothing to delete",
 			email:    "unknown@test.com",
 			repoName: "golang/go",
 			setup: func(f mockFields) {
@@ -228,7 +228,7 @@ func TestSubscriptionUseCase_Unsubscribe(t *testing.T) {
 			},
 		},
 		{
-			name:     "error — GetByEmail fails",
+			name:     "error - GetByEmail fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
 			setup: func(f mockFields) {
@@ -238,7 +238,7 @@ func TestSubscriptionUseCase_Unsubscribe(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:     "error — Delete fails",
+			name:     "error - Delete fails",
 			email:    "user@test.com",
 			repoName: "golang/go",
 			setup: func(f mockFields) {
@@ -262,9 +262,9 @@ func TestSubscriptionUseCase_Unsubscribe(t *testing.T) {
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				require.ErrorIs(t, err, tt.wantErr)
 			case tt.expectErr:
-				assert.Error(t, err)
+				require.Error(t, err)
 			default:
 				require.NoError(t, err)
 				if tt.email == "unknown@test.com" {
@@ -284,7 +284,7 @@ func TestSubscriptionUseCase_ListByEmail(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			name:  "success — returns list",
+			name:  "success - returns list",
 			email: "user@test.com",
 			setup: func(f mockFields) {
 				f.subsRepo.On("GetByEmail", mock.Anything, "user@test.com").
@@ -299,7 +299,7 @@ func TestSubscriptionUseCase_ListByEmail(t *testing.T) {
 			},
 		},
 		{
-			name:  "success — empty list",
+			name:  "success - empty list",
 			email: "new@test.com",
 			setup: func(f mockFields) {
 				f.subsRepo.On("GetByEmail", mock.Anything, "new@test.com").
@@ -308,7 +308,7 @@ func TestSubscriptionUseCase_ListByEmail(t *testing.T) {
 			expected: []model.Subscription{},
 		},
 		{
-			name:  "error — GetByEmail fails",
+			name:  "error - GetByEmail fails",
 			email: "user@test.com",
 			setup: func(f mockFields) {
 				f.subsRepo.On("GetByEmail", mock.Anything, "user@test.com").
@@ -326,7 +326,7 @@ func TestSubscriptionUseCase_ListByEmail(t *testing.T) {
 			subs, err := newUC(f).ListByEmail(context.Background(), tt.email)
 
 			if tt.expectErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, subs)
 				return
 			}
@@ -354,13 +354,13 @@ func TestSubscriptionUseCase_Confirm(t *testing.T) {
 			},
 		},
 		{
-			name:    "error — empty token, no repo call",
+			name:    "error - empty token, no repo call",
 			token:   "",
-			setup:   func(f mockFields) {},
+			setup:   func(_ mockFields) {},
 			wantErr: model.ErrInvalidToken,
 		},
 		{
-			name:  "error — invalid token from repo",
+			name:  "error - invalid token from repo",
 			token: "bad-token",
 			setup: func(f mockFields) {
 				f.subsRepo.On("Confirm", mock.Anything, "bad-token").
@@ -369,7 +369,7 @@ func TestSubscriptionUseCase_Confirm(t *testing.T) {
 			wantErr: model.ErrInvalidToken,
 		},
 		{
-			name:  "error — unexpected repo error",
+			name:  "error - unexpected repo error",
 			token: "some-token",
 			setup: func(f mockFields) {
 				f.subsRepo.On("Confirm", mock.Anything, "some-token").
@@ -389,9 +389,9 @@ func TestSubscriptionUseCase_Confirm(t *testing.T) {
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				require.ErrorIs(t, err, tt.wantErr)
 			case tt.expectErr:
-				assert.Error(t, err)
+				require.Error(t, err)
 			default:
 				require.NoError(t, err)
 			}
@@ -415,13 +415,13 @@ func TestSubscriptionUseCase_UnsubscribeByToken(t *testing.T) {
 			},
 		},
 		{
-			name:    "error — empty token",
+			name:    "error - empty token",
 			token:   "",
-			setup:   func(f mockFields) {},
+			setup:   func(_ mockFields) {},
 			wantErr: model.ErrInvalidToken,
 		},
 		{
-			name:  "error — invalid token from repo",
+			name:  "error - invalid token from repo",
 			token: "expired",
 			setup: func(f mockFields) {
 				f.subsRepo.On("UnsubscribeByToken", mock.Anything, "expired").
@@ -430,7 +430,7 @@ func TestSubscriptionUseCase_UnsubscribeByToken(t *testing.T) {
 			wantErr: model.ErrInvalidToken,
 		},
 		{
-			name:  "error — unexpected repo error",
+			name:  "error - unexpected repo error",
 			token: "some-token",
 			setup: func(f mockFields) {
 				f.subsRepo.On("UnsubscribeByToken", mock.Anything, "some-token").
@@ -450,9 +450,9 @@ func TestSubscriptionUseCase_UnsubscribeByToken(t *testing.T) {
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				require.ErrorIs(t, err, tt.wantErr)
 			case tt.expectErr:
-				assert.Error(t, err)
+				require.Error(t, err)
 			default:
 				require.NoError(t, err)
 			}
@@ -467,7 +467,7 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			name: "success — new release detected, notifications sent",
+			name: "success - new release detected, notifications sent",
 			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).Return([]model.Repository{
 					{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
@@ -490,14 +490,14 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 				for _, sub := range subs {
 					f.emailSender.
 						On("SendNotification", mock.Anything, sub.Email, "golang/go", "v1.22.0", sub.Token).
-						Run(func(args mock.Arguments) { wg.Done() }).
+						Run(func(_ mock.Arguments) { wg.Done() }).
 						Return(nil).Once()
 				}
 			},
 		},
 		{
-			name: "success — tag unchanged, no notifications",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			name: "success - tag unchanged, no notifications",
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).Return([]model.Repository{
 					{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 				}, nil).Once()
@@ -507,16 +507,16 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 			},
 		},
 		{
-			name: "error — GetAll fails, returns error",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			name: "error - GetAll fails, returns error",
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).
 					Return(nil, errors.New("db error")).Once()
 			},
 			expectErr: true,
 		},
 		{
-			name: "partial — GitHub fails for one repo, continues",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			name: "partial - GitHub fails for one repo, continues",
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).Return([]model.Repository{
 					{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 				}, nil).Once()
@@ -526,8 +526,8 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 			},
 		},
 		{
-			name: "partial — UpdateLastSeenTag fails, continues",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			name: "partial - UpdateLastSeenTag fails, continues",
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).Return([]model.Repository{
 					{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 				}, nil).Once()
@@ -540,8 +540,8 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 			},
 		},
 		{
-			name: "partial — GetSubscribersByRepoID fails, continues",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			name: "partial - GetSubscribersByRepoID fails, continues",
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).Return([]model.Repository{
 					{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 				}, nil).Once()
@@ -557,7 +557,7 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 			},
 		},
 		{
-			name: "partial — SendNotification fails, continues silently",
+			name: "partial - SendNotification fails, continues silently",
 			setup: func(f mockFields, wg *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).Return([]model.Repository{
 					{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
@@ -575,13 +575,13 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 				wg.Add(1)
 				f.emailSender.
 					On("SendNotification", mock.Anything, "a@test.com", "golang/go", "v1.22.0", "tok").
-					Run(func(args mock.Arguments) { wg.Done() }).
-					Return(errors.New("smtp error")).Once()
+					Run(func(_ mock.Arguments) { wg.Done() }).
+					Return(errors.New("SMTP error")).Once()
 			},
 		},
 		{
-			name: "success — nil release skipped",
-			setup: func(f mockFields, wg *sync.WaitGroup) {
+			name: "success - nil release skipped",
+			setup: func(f mockFields, _ *sync.WaitGroup) {
 				f.repoRepo.On("GetAll", mock.Anything).Return([]model.Repository{
 					{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 				}, nil).Once()

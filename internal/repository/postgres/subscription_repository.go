@@ -149,7 +149,7 @@ func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) (
 	var subs []model.Subscription
 	for rows.Next() {
 		var s model.Subscription
-		err := rows.Scan(
+		err = rows.Scan(
 			&s.ID,
 			&s.RepositoryID,
 			&s.RepositoryName,

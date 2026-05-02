@@ -9,6 +9,7 @@ import (
 	"github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
 )
@@ -59,12 +60,12 @@ func TestCache_Get(t *testing.T) {
 			val, err := cache.Get(context.Background(), tt.key)
 
 			if tt.expectedErr != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if errors.Is(tt.expectedErr, service.ErrCacheMiss) {
 					assert.ErrorIs(t, err, service.ErrCacheMiss)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expectedVal, val)
 			}
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -109,9 +110,9 @@ func TestCache_Set(t *testing.T) {
 			err := cache.Set(context.Background(), key, val, ttl)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})

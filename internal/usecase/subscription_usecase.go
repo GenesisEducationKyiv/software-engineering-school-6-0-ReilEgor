@@ -20,16 +20,16 @@ const (
 )
 
 const (
-	errMsgGetUser         = "get user"
-	errMsgDeleteSub       = "delete subscription"
-	errMsgGetRepos        = "get repos"
-	errMsgFetchRelease    = "fetch latest release"
-	errMsgUpdateTag       = "update last seen tag"
-	errMsgGetSubscribers  = "get subscribers"
-	errMsgGetOrCreateUser = "get or create user"
-	errMsgGetOrCreateRepo = "get or create repo"
-	errMsgCreateSub       = "create subscription"
-	errMsgCheckRepoExists = "check repo exists"
+	errMsgGetUser        = "get user"
+	errMsgDeleteSub      = "delete subscription"
+	errMsgGetRepos       = "get repos"
+	errMsgFetchRelease   = "fetch latest release"
+	errMsgUpdateTag      = "update last seen tag"
+	errMsgGetSubscribers = "get subscribers"
+	// errMsgGetOrCreateUser = "get or create user".
+	// errMsgGetOrCreateRepo = "get or create repo".
+	// errMsgCreateSub       = "create subscription".
+	// errMsgCheckRepoExists = "check repo exists".
 )
 
 const (
@@ -164,7 +164,7 @@ func (uc *SubscriptionUseCase) ProcessNotifications(ctx context.Context) error {
 	g.SetLimit(maxSendWorkers)
 
 	for _, repo := range repos {
-		log := log.With(slog.String("repo", repo.FullName))
+		log = log.With(slog.String("repo", repo.FullName))
 
 		repoCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		latestRelease, err := uc.ghClient.GetLatestRelease(repoCtx, repo.FullName)
@@ -216,8 +216,10 @@ func (uc *SubscriptionUseCase) ProcessNotifications(ctx context.Context) error {
 			})
 		}
 	}
-
-	return g.Wait()
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("%s: wait group: %w", op, err)
+	}
+	return nil
 }
 
 func (uc *SubscriptionUseCase) Confirm(ctx context.Context, token string) error {
@@ -232,7 +234,7 @@ func (uc *SubscriptionUseCase) Confirm(ctx context.Context, token string) error 
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidToken) {
 			log.WarnContext(ctx, "attempt to confirm with invalid token")
-			return err
+			return fmt.Errorf("%s: %w", op, err)
 		}
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -252,7 +254,7 @@ func (uc *SubscriptionUseCase) UnsubscribeByToken(ctx context.Context, token str
 	if err := uc.subsRepo.UnsubscribeByToken(ctx, token); err != nil {
 		if errors.Is(err, model.ErrInvalidToken) {
 			log.WarnContext(ctx, "invalid unsubscribe token", slog.String("token", token))
-			return err
+			return fmt.Errorf("%s: %w", op, err)
 		}
 		return fmt.Errorf("%s: %w", op, err)
 	}

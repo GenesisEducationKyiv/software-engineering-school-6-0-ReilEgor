@@ -8,7 +8,7 @@ import (
 	pb "github.com/ReilEgor/RepoNotifier/internal/transport/grpc/proto/v1"
 )
 
-func NewGrpcServer(h *SubscriptionHandler, apiKey config.ApiKeyType) *grpc.Server {
+func NewGrpcServer(h *SubscriptionHandler, apiKey config.APIKeyType) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.UnaryInterceptor(middleware.AuthInterceptor(string(apiKey))),
 	)

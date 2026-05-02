@@ -32,7 +32,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPort config.RedisPortType, redisPassword config.RedisPasswordType, redisDB int, dsn config.DSNType, emailHost config.EmailHostType, emailPort config.EmailPortType, emailPassword config.EmailPasswordType, emailFrom config.EmailFromType, emailUser config.EmailUserType, apiKey config.ApiKeyType, githubToken config.GitHubTokenType, baseURL config.AppBaseURLType) (*App, func(), error) {
+func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPort config.RedisPortType, redisPassword config.RedisPasswordType, redisDB int, dsn config.DSNType, emailHost config.EmailHostType, emailPort config.EmailPortType, emailPassword config.EmailPasswordType, emailFrom config.EmailFromType, emailUser config.EmailUserType, apiKey config.APIKeyType, githubToken config.GitHubTokenType, baseURL config.AppBaseURLType) (*App, func(), error) {
 	pool, cleanup, err := postgres.New(ctx, dsn)
 	if err != nil {
 		return nil, nil, err
@@ -47,7 +47,7 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 	gitHubClient := github.NewGitHubClient(cache, githubToken)
 	userRepository := postgres2.NewUserRepository(pool)
 	repositoryRepository := postgres2.NewRepositoryRepository(pool)
-	smtpClient := email.NewSmtpClient(emailHost, emailPort, emailFrom, emailPassword, emailUser, baseURL)
+	smtpClient := email.NewSMTPClient(emailHost, emailPort, emailFrom, emailPassword, emailUser, baseURL)
 	subscriptionUseCase := usecase.NewSubscriptionUseCase(subscriptionRepository, gitHubClient, userRepository, repositoryRepository, smtpClient)
 	ginServer := http.NewGinServer(subscriptionUseCase, client, apiKey)
 	subscriptionHandler := grpc.NewSubscriptionHandler(subscriptionUseCase)
@@ -72,7 +72,7 @@ var RestSet = wire.NewSet(http.NewGinServer, handlers.NewHandler)
 
 var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(service.Cache), new(*redis.Cache)))
 
-var ServicesSet = wire.NewSet(github.NewGitHubClient, email.NewSmtpClient, wire.Bind(new(service.EmailSender), new(*email.SmtpClient)), wire.Bind(new(service.GitHubClient), new(*github.GitHubClient)))
+var ServicesSet = wire.NewSet(github.NewGitHubClient, email.NewSMTPClient, wire.Bind(new(service.EmailSender), new(*email.SMTPClient)), wire.Bind(new(service.GitHubClient), new(*github.GitHubClient)))
 
 var GrpcSet = wire.NewSet(grpc.NewSubscriptionHandler, grpc.NewGrpcServer)
 
