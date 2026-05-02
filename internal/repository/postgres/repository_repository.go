@@ -105,7 +105,7 @@ const getOrCreateRepositoryQuery = `
 	RETURNING id, full_name, last_seen_tag, updated_at
 `
 
-func (r *RepositoryRepository) GetOrCreate(ctx context.Context, name string, tagName string) (*model.Repository, error) {
+func (r *RepositoryRepository) GetOrCreate(ctx context.Context, name, tagName string) (*model.Repository, error) {
 	const op = "RepositoryRepository.GetOrCreate"
 	log := r.logger.With(slog.String("op", op))
 

@@ -80,6 +80,7 @@ func NewSmtpClient(
 		baseURL:  baseURL,
 	}
 }
+
 func classifySmtpError(err error) error {
 	msg := strings.ToLower(err.Error())
 	if strings.Contains(msg, "535") || strings.Contains(msg, "authentication failed") {

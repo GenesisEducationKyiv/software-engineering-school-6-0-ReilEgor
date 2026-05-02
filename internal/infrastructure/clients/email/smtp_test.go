@@ -6,9 +6,10 @@ import (
 	"net/smtp"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ReilEgor/RepoNotifier/internal/config"
 	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
-	"github.com/stretchr/testify/assert"
 )
 
 func newTestClient(sendMail func(string, smtp.Auth, string, []string, []byte) error) *SmtpClient {

@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
-	"github.com/ReilEgor/RepoNotifier/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
+	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
+	"github.com/ReilEgor/RepoNotifier/internal/mocks"
 )
 
 func TestGitHubClient_RepoExists(t *testing.T) {

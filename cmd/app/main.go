@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	_ "context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,21 +12,24 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ReilEgor/RepoNotifier/internal/config"
 	"github.com/caarlos0/env/v11"
+
+	_ "context"
+
+	"github.com/ReilEgor/RepoNotifier/internal/config"
 )
 
 // Swagger Metadata for API Documentation
-// @title RepoNotifier API
-// @version 1.0    	      1.0
-// @description Service for tracking GitHub releases.
+//	@title			RepoNotifier API
+//	@version		1.0    	      1.0
+//	@description	Service for tracking GitHub releases.
 
-// @securityDefinitions.apiKey ApiKeyAuth
-// @in header
-// @name X-API-Key
+//	@securityDefinitions.apiKey	ApiKeyAuth
+//	@in							header
+//	@name						X-API-Key
 
-// @host      localhost:8080
-// @BasePath  /api/v1
+// @host		localhost:8080
+// @BasePath	/api/v1.
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,

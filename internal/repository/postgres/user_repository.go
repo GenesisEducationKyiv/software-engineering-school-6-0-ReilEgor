@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 )
 
 const (
@@ -34,7 +35,6 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (model.Us
 
 	var user model.User
 	err := r.db.QueryRow(ctx, getByEmailUserRepositoryQuery, email).Scan(&user.ID, &user.Email, &user.CreatedAt)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			log.DebugContext(ctx, "user not found",
@@ -64,7 +64,8 @@ func (r *UserRepository) GetOrCreate(ctx context.Context, email string) (model.U
 	log := r.logger.With(slog.String("op", op))
 
 	var user model.User
-	if err := r.db.QueryRow(ctx, getOrCreateUserRepositoryQuery, email).Scan(&user.ID, &user.Email, &user.CreatedAt); err != nil {
+	if err := r.db.QueryRow(ctx, getOrCreateUserRepositoryQuery, email).
+		Scan(&user.ID, &user.Email, &user.CreatedAt); err != nil {
 		log.ErrorContext(ctx, "query failed",
 			slog.String("email", email),
 			slog.String("error", err.Error()),

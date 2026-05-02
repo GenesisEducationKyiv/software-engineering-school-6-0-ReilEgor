@@ -13,6 +13,6 @@ var (
 
 //go:generate mockery --name EmailSender --output ../../mocks --case underscore --outpkg mocks
 type EmailSender interface {
-	SendNotification(ctx context.Context, to string, repoName string, tagName string, token string) error
-	SendConfirmation(ctx context.Context, to string, repoName string, token string) error
+	SendNotification(ctx context.Context, to, repoName, tagName, token string) error
+	SendConfirmation(ctx context.Context, to, repoName, token string) error
 }

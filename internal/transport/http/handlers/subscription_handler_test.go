@@ -10,13 +10,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
 	"github.com/ReilEgor/RepoNotifier/internal/mocks"
 	"github.com/ReilEgor/RepoNotifier/internal/transport/http/dto"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func init() {

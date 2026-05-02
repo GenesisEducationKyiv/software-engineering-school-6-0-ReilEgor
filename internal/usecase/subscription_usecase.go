@@ -7,11 +7,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 	"github.com/ReilEgor/RepoNotifier/internal/domain/repository"
 	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
-	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -30,6 +31,7 @@ const (
 	errMsgCreateSub       = "create subscription"
 	errMsgCheckRepoExists = "check repo exists"
 )
+
 const (
 	maxSendWorkers = 10
 )
@@ -59,7 +61,8 @@ func NewSubscriptionUseCase(
 		emailSender: es,
 	}
 }
-func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email string, repoName string) error {
+
+func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName string) error {
 	const op = "SubscriptionUseCase.Subscribe"
 	log := uc.logger.With(
 		slog.String("op", op),
@@ -109,7 +112,7 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email string, repo
 	return nil
 }
 
-func (uc *SubscriptionUseCase) Unsubscribe(ctx context.Context, email string, repoName string) error {
+func (uc *SubscriptionUseCase) Unsubscribe(ctx context.Context, email, repoName string) error {
 	const op = "SubscriptionUseCase.Unsubscribe"
 	log := uc.logger.With(slog.String("op", op), slog.String("email", email), slog.String("repo", repoName))
 
@@ -147,6 +150,7 @@ func (uc *SubscriptionUseCase) ListByEmail(ctx context.Context, email string) ([
 
 	return subs, nil
 }
+
 func (uc *SubscriptionUseCase) ProcessNotifications(ctx context.Context) error {
 	const op = "SubscriptionUseCase.ProcessNotifications"
 	log := uc.logger.With(slog.String("op", op))
@@ -196,7 +200,13 @@ func (uc *SubscriptionUseCase) ProcessNotifications(ctx context.Context) error {
 				mailCtx, mailCancel := context.WithTimeout(sendCtx, 5*time.Second)
 				defer mailCancel()
 
-				if err := uc.emailSender.SendNotification(mailCtx, sub.Email, repo.FullName, latestRelease.TagName, sub.Token); err != nil {
+				if err := uc.emailSender.SendNotification(
+					mailCtx,
+					sub.Email,
+					repo.FullName,
+					latestRelease.TagName,
+					sub.Token,
+				); err != nil {
 					log.ErrorContext(mailCtx, "failed to send email",
 						slog.String("to", sub.Email),
 						slog.String("error", err.Error()),
@@ -230,6 +240,7 @@ func (uc *SubscriptionUseCase) Confirm(ctx context.Context, token string) error 
 	log.InfoContext(ctx, "subscription confirmed successfully")
 	return nil
 }
+
 func (uc *SubscriptionUseCase) UnsubscribeByToken(ctx context.Context, token string) error {
 	const op = "SubscriptionUseCase.UnsubscribeByToken"
 	log := uc.logger.With(slog.String("op", op))

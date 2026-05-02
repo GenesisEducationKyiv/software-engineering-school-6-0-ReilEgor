@@ -1,10 +1,11 @@
 package grpc
 
 import (
+	"google.golang.org/grpc"
+
 	"github.com/ReilEgor/RepoNotifier/internal/config"
 	"github.com/ReilEgor/RepoNotifier/internal/transport/grpc/middleware"
 	pb "github.com/ReilEgor/RepoNotifier/internal/transport/grpc/proto/v1"
-	"google.golang.org/grpc"
 )
 
 func NewGrpcServer(h *SubscriptionHandler, apiKey config.ApiKeyType) *grpc.Server {

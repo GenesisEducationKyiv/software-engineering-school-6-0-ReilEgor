@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
-	"github.com/ReilEgor/RepoNotifier/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
+	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
+	"github.com/ReilEgor/RepoNotifier/internal/mocks"
 )
 
 type mockFields struct {
@@ -72,7 +73,8 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 				wg.Add(1)
 				f.emailSender.On("SendConfirmation", mock.Anything, "user@test.com", "golang/go", mock.AnythingOfType("string")).
 					Run(func(args mock.Arguments) { wg.Done() }).
-					Return(nil).Once()
+					Return(nil).
+					Once()
 			},
 		},
 		{

@@ -11,10 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
 	"github.com/ReilEgor/RepoNotifier/internal/transport/http/dto"
-	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -87,18 +88,19 @@ func (h *Handler) handleTokenAction(
 }
 
 // Subscribe godoc
-// @Summary      Subscribe to a repository
-// @Description  Create a pending subscription and send a confirmation email.
-// @Tags         subscriptions
-// @Accept       json
-// @Produce      json
-// @Param        request  body      dto.CreateSubscriptionRequest  true  "Subscription details"
-// @Success      202      {object}  dto.CreateSubscriptionResponse
-// @Failure      400      {object}  map[string]string "Invalid request body or validation errors"
-// @Failure      404      {object}  map[string]string "Repository not found"
-// @Failure      409      {object}  map[string]string "Already subscribed"
-// @Failure      503      {object}  map[string]string "GitHub API unavailable"
-// @Router       /subscribe [post]
+//
+//	@Summary		Subscribe to a repository
+//	@Description	Create a pending subscription and send a confirmation email.
+//	@Tags			subscriptions
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		dto.CreateSubscriptionRequest	true	"Subscription details"
+//	@Success		202		{object}	dto.CreateSubscriptionResponse
+//	@Failure		400		{object}	map[string]string	"Invalid request body or validation errors"
+//	@Failure		404		{object}	map[string]string	"Repository not found"
+//	@Failure		409		{object}	map[string]string	"Already subscribed"
+//	@Failure		503		{object}	map[string]string	"GitHub API unavailable"
+//	@Router			/subscribe [post].
 func (h *Handler) Subscribe(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), timeoutSubscribe)
 	defer cancel()
@@ -133,14 +135,20 @@ func (h *Handler) Subscribe(c *gin.Context) {
 		case errors.Is(err, ErrAlreadySubscribed):
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		case errors.Is(err, service.ErrGitHubUnavailable), errors.Is(err, service.ErrRateLimitExceeded):
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "GitHub API is currently unavailable, please try again later"})
+			c.JSON(
+				http.StatusServiceUnavailable,
+				gin.H{"error": "GitHub API is currently unavailable, please try again later"},
+			)
 		default:
 			log.ErrorContext(ctx, errFailedToSubscribe,
 				slog.String("email", req.Email),
 				slog.String("repo", req.Repository),
 				slog.String("error", err.Error()),
 			)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("%s: %s", errFailedToSubscribe, err.Error())})
+			c.JSON(
+				http.StatusInternalServerError,
+				gin.H{"error": fmt.Sprintf("%s: %s", errFailedToSubscribe, err.Error())},
+			)
 		}
 		return
 	}
@@ -155,16 +163,17 @@ func (h *Handler) Subscribe(c *gin.Context) {
 }
 
 // UnsubscribeByToken godoc
-// @Summary      Unsubscribe via token
-// @Description  Remove a subscription using the one-time token from the unsubscribe link.
-// @Tags         subscriptions
-// @Produce      json
-// @Param        token  path      string  true  "Unsubscribe token"
-// @Success      200    {object}  map[string]string
-// @Failure      400    {object}  map[string]string "Token is required"
-// @Failure      404    {object}  map[string]string "Invalid or expired token"
-// @Failure      500    {object}  map[string]string "Internal server error"
-// @Router       /unsubscribe/{token} [get]
+//
+//	@Summary		Unsubscribe via token
+//	@Description	Remove a subscription using the one-time token from the unsubscribe link.
+//	@Tags			subscriptions
+//	@Produce		json
+//	@Param			token	path		string	true	"Unsubscribe token"
+//	@Success		200		{object}	map[string]string
+//	@Failure		400		{object}	map[string]string	"Token is required"
+//	@Failure		404		{object}	map[string]string	"Invalid or expired token"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/unsubscribe/{token} [get].
 func (h *Handler) UnsubscribeByToken(c *gin.Context) {
 	h.handleTokenAction(
 		c,
@@ -179,16 +188,17 @@ func (h *Handler) UnsubscribeByToken(c *gin.Context) {
 }
 
 // ListSubscriptions godoc
-// @Summary      Get all subscriptions by email
-// @Description  Retrieve a list of all subscriptions (confirmed and pending) for a given email.
-// @Tags         subscriptions
-// @Produce      json
-// @Param        email  query     string  true  "User email address"
-// @Success      200    {object}  dto.ListSubscriptionsResponse
-// @Failure      400    {object}  map[string]string "Email is required or invalid"
-// @Failure      500    {object}  map[string]string "Internal server error"
-// @Security     ApiKeyAuth
-// @Router       /subscriptions [get]
+//
+//	@Summary		Get all subscriptions by email
+//	@Description	Retrieve a list of all subscriptions (confirmed and pending) for a given email.
+//	@Tags			subscriptions
+//	@Produce		json
+//	@Param			email	query		string	true	"User email address"
+//	@Success		200		{object}	dto.ListSubscriptionsResponse
+//	@Failure		400		{object}	map[string]string	"Email is required or invalid"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Security		ApiKeyAuth
+//	@Router			/subscriptions [get].
 func (h *Handler) ListSubscriptions(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), timeoutList)
 	defer cancel()
@@ -245,16 +255,17 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 }
 
 // Confirm godoc
-// @Summary      Confirm email subscription
-// @Description  Confirm a pending subscription using the token sent via email.
-// @Tags         subscriptions
-// @Produce      json
-// @Param        token  path      string  true  "Confirmation token"
-// @Success      200    {object}  map[string]string "subscription confirmed successfully"
-// @Failure      400    {object}  map[string]string "Token is required"
-// @Failure      404    {object}  map[string]string "Invalid or expired token"
-// @Failure      500    {object}  map[string]string "Internal server error"
-// @Router       /confirm/{token} [get]
+//
+//	@Summary		Confirm email subscription
+//	@Description	Confirm a pending subscription using the token sent via email.
+//	@Tags			subscriptions
+//	@Produce		json
+//	@Param			token	path		string				true	"Confirmation token"
+//	@Success		200		{object}	map[string]string	"subscription confirmed successfully"
+//	@Failure		400		{object}	map[string]string	"Token is required"
+//	@Failure		404		{object}	map[string]string	"Invalid or expired token"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/confirm/{token} [get].
 func (h *Handler) Confirm(c *gin.Context) {
 	h.handleTokenAction(
 		c,

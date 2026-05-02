@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-var (
-	ErrInvalidToken = errors.New("invalid or expired token")
-)
+var ErrInvalidToken = errors.New("invalid or expired token")
 
 type Subscription struct {
 	ID             int64

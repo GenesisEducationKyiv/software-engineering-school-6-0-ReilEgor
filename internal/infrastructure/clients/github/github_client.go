@@ -9,44 +9,43 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/sony/gobreaker"
+
 	"github.com/ReilEgor/RepoNotifier/internal/config"
 	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
-	"github.com/sony/gobreaker"
 )
 
 const (
-	// HTTP client
+	// HTTP client.
 	httpClientTimeout = 10 * time.Second
 
-	// Cache TTL
+	// Cache TTL.
 	cacheTTL = 1 * time.Minute
 
-	// Cache key prefixes
+	// Cache key prefixes.
 	cacheKeyRepoExists    = "repo_exists:"
 	cacheKeyLatestRelease = "release:"
 	cacheValTrue          = "true"
 	cacheValFalse         = "false"
 
-	// Circuit breaker
+	// Circuit breaker.
 	cbName             = "GitHubAPI"
 	cbMaxRequests      = 3
 	cbInterval         = 5 * time.Second
 	cbTimeout          = 30 * time.Second
 	cbFailureThreshold = 3
 
-	// GitHub API
+	// GitHub API.
 	githubAPIBase    = "https://api.github.com"
 	githubAPIVersion = "2026-03-10"
 	userAgent        = "RepoNotifier/1.0"
 
-	// Component name
+	// Component name.
 	componentGithubClient = "GithubClient"
 )
 
-var (
-	ErrUnexpectedStatus = errors.New("unexpected github api status")
-)
+var ErrUnexpectedStatus = errors.New("unexpected github api status")
 
 func (c *GitHubClient) getCached(ctx context.Context, log *slog.Logger, key string) (string, bool, error) {
 	val, err := c.cache.Get(ctx, key)
@@ -180,7 +179,7 @@ func (c *GitHubClient) RepoExists(ctx context.Context, fullName string) (bool, e
 			slog.String("key", cacheKey),
 			slog.String("error", err.Error()),
 		)
-		//return false, fmt.Errorf("%s: cache set: %w", op, err)
+		// return false, fmt.Errorf("%s: cache set: %w", op, err)
 	}
 	log.InfoContext(ctx, "repo existence checked", slog.Bool("exists", exists))
 	return exists, nil
@@ -258,7 +257,12 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*
 		log.ErrorContext(ctx, "cache set failed", slog.String("key", cacheKey), slog.Any("error", err))
 	}
 
-	log.InfoContext(ctx, "latest release fetched", slog.String("tag", info.TagName), slog.Time("published_at", info.PublishedAt))
+	log.InfoContext(
+		ctx,
+		"latest release fetched",
+		slog.String("tag", info.TagName),
+		slog.Time("published_at", info.PublishedAt),
+	)
 	return info, nil
 }
 

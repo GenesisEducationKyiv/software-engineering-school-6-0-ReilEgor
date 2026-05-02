@@ -10,5 +10,5 @@ import (
 type RepositoryRepository interface {
 	GetAll(ctx context.Context) ([]model.Repository, error)
 	UpdateLastSeenTag(ctx context.Context, name, tag string) error
-	GetOrCreate(ctx context.Context, name string, tagName string) (*model.Repository, error)
+	GetOrCreate(ctx context.Context, name, tagName string) (*model.Repository, error)
 }

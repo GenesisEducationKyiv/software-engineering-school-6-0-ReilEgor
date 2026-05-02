@@ -15,7 +15,7 @@ var (
 
 //go:generate mockery --name SubscriptionUseCase --output ../../mocks --case underscore --outpkg mocks
 type SubscriptionUseCase interface {
-	Subscribe(ctx context.Context, email string, repoName string) error
+	Subscribe(ctx context.Context, email, repoName string) error
 	ProcessNotifications(ctx context.Context) error
 	ListByEmail(ctx context.Context, email string) ([]model.Subscription, error)
 

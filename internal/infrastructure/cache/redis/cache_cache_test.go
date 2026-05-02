@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
 	"github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
 )
 
 func TestCache_Get(t *testing.T) {

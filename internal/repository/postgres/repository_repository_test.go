@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 )
 
 func TestRepositoryRepository_GetAll(t *testing.T) {
