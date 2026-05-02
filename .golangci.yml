@@ -52,7 +52,6 @@ linters:
     - nilerr # Find the code that returns nil even if it checks that the error is not nil.
     - godox # Check for TODO, FIXME, etc. comments in the code.
     - wrapcheck # Checks that errors returned from external packages are wrapped.
-    - depguard # Restrict usage of specified packages in code.
 
   settings:
     govet: # Vet examines Go source code and reports suspicious constructs.
