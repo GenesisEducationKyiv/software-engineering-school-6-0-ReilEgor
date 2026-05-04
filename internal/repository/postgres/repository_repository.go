@@ -12,11 +12,6 @@ const (
 	componentRepositoryRepository = "RepositoryRepository"
 )
 
-// Sentinel errors.
-var (
-// ErrRepositoryNotFound = errors.New("repository not found").
-)
-
 type RepositoryRepository struct {
 	db     PgxInterface
 	logger *slog.Logger

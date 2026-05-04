@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	// ErrSMTPUnavailable ErrEmailRateLimit  = errors.New("email provider rate limit reached").
 	ErrSMTPUnavailable = errors.New("email server is unreachable")
 	ErrAuthFailed      = errors.New("email service authentication failed")
 )

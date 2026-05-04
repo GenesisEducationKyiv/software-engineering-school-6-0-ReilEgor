@@ -37,7 +37,6 @@ var (
 	ErrInvalidRepoFormat  = errors.New("invalid repository format (expected 'owner/repo')")
 	ErrEmailRequired      = errors.New("email is required")
 	ErrAlreadySubscribed  = errors.New("user is already subscribed to this repository")
-	// ErrSubscriptionNotFound = errors.New("subscription not found").
 )
 
 var repoRegex = regexp.MustCompile(`^[a-zA-Z0-9-._]{1,100}/[a-zA-Z0-9-._]{1,100}$`)

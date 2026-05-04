@@ -12,8 +12,6 @@ var (
 	ErrRepositoryNotFound = errors.New("repository not found")
 	ErrReleaseNotFound    = errors.New("no releases found for this repository")
 	ErrGitHubUnavailable  = errors.New("github service is temporarily unavailable")
-	// ErrFetchFromExternalAPI = errors.New("failed to fetch data from external API").
-	// ErrSubscriptionNotFound = errors.New("subscription not found").
 )
 
 //go:generate mockery --name GitHubClient --output ../../mocks --case underscore --outpkg mocks

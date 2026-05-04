@@ -26,10 +26,6 @@ const (
 	errMsgFetchRelease   = "fetch latest release"
 	errMsgUpdateTag      = "update last seen tag"
 	errMsgGetSubscribers = "get subscribers"
-	// errMsgGetOrCreateUser = "get or create user".
-	// errMsgGetOrCreateRepo = "get or create repo".
-	// errMsgCreateSub       = "create subscription".
-	// errMsgCheckRepoExists = "check repo exists".
 )
 
 const (

@@ -37,7 +37,6 @@ const (
 
 const (
 	errMsgSendMail = "failed to send email"
-	// errMsgBuildMsg = "failed to build message".
 )
 
 func (c *SMTPClient) buildMessage(to, repoName, tagName, token string) []byte {
