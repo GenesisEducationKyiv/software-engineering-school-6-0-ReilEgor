@@ -7,8 +7,8 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/ReilEgor/RepoNotifier/internal/config"
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
 const (

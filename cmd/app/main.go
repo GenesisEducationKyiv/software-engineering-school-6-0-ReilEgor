@@ -17,7 +17,7 @@ import (
 
 	_ "context"
 
-	"github.com/ReilEgor/RepoNotifier/internal/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 )
 
 // Swagger Metadata for API Documentation

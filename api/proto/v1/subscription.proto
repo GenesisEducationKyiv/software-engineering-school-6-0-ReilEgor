@@ -4,7 +4,7 @@ package subscription.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/ReilEgor/RepoNotifier/internal/transport/grpc/proto/v1";
+option go_package = "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc/proto/v1";
 
 service SubscriptionService {
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse);

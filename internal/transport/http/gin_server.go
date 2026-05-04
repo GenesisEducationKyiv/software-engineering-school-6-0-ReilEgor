@@ -11,10 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/ReilEgor/RepoNotifier/internal/config"
-	"github.com/ReilEgor/RepoNotifier/internal/domain/usecase"
-	handler "github.com/ReilEgor/RepoNotifier/internal/transport/http/handlers"
-	"github.com/ReilEgor/RepoNotifier/internal/transport/http/middleware"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
+	handler "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/handlers"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/middleware"
 )
 
 type GinServer struct {

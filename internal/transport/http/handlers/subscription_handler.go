@@ -13,9 +13,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
-	"github.com/ReilEgor/RepoNotifier/internal/transport/http/dto"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/dto"
 )
 
 const (

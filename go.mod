@@ -1,4 +1,4 @@
-module github.com/ReilEgor/RepoNotifier
+module github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor
 
 go 1.25.0
 

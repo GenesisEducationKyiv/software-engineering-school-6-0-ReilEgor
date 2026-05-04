@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/usecase"
-	pb "github.com/ReilEgor/RepoNotifier/internal/transport/grpc/proto/v1"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
+	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc/proto/v1"
 )
 
 type SubscriptionHandler struct {

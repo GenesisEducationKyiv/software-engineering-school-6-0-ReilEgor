@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
 func newTestClient(sendMail func(string, smtp.Auth, string, []string, []byte) error) *SMTPClient {

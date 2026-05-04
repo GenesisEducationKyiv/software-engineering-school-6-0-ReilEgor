@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 )
 
 func newSubRepo(t *testing.T) (*SubscriptionRepository, pgxmock.PgxPoolIface) {
