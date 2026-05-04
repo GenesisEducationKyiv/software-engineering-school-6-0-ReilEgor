@@ -135,6 +135,9 @@ linters:
         - FIXME
         - BUG
         - HACK
+    wrapcheck:
+      ignore-package-globs:
+        - google.golang.org/grpc/*
 
 
 formatters:

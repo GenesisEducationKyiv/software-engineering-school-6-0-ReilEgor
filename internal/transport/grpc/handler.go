@@ -40,7 +40,6 @@ func (h *SubscriptionHandler) Unsubscribe(
 ) (*pb.UnsubscribeResponse, error) {
 	token := req.GetToken()
 	if token == "" {
-		//nolint:wrapcheck // gRPC status errors shouldn't be wrapped
 		return nil, status.Error(codes.InvalidArgument, "token is required")
 	}
 
