@@ -7,8 +7,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
 type Cache struct {
@@ -29,6 +30,7 @@ func NewCache(client *redis.Client) *Cache {
 		logger: slog.With(slog.String("component", componentCache)),
 	}
 }
+
 func (c *Cache) Get(ctx context.Context, key string) (string, error) {
 	const op = "Cache.Get"
 	log := c.logger.With(slog.String("op", op))
@@ -46,7 +48,7 @@ func (c *Cache) Get(ctx context.Context, key string) (string, error) {
 	return value, nil
 }
 
-func (c *Cache) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
+func (c *Cache) Set(ctx context.Context, key, value string, ttl time.Duration) error {
 	const op = "Cache.Set"
 	log := c.logger.With(slog.String("op", op))
 	if err := c.client.Set(ctx, key, value, ttl).Err(); err != nil {

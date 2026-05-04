@@ -9,7 +9,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"github.com/zsais/go-gin-prometheus"
+
+	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
 func SetupMiddleware(router *gin.Engine, logger *slog.Logger, redisClient *redis.Client) {
@@ -55,6 +56,7 @@ func slogMiddleware(logger *slog.Logger) gin.HandlerFunc {
 		)
 	}
 }
+
 func Timeout(timeout time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)

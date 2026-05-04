@@ -7,8 +7,8 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/ReilEgor/RepoNotifier/internal/config"
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
 const (
@@ -37,22 +37,21 @@ const (
 
 const (
 	errMsgSendMail = "failed to send email"
-	errMsgBuildMsg = "failed to build message"
 )
 
-func (c *SmtpClient) buildMessage(to, repoName, tagName, token string) []byte {
+func (c *SMTPClient) buildMessage(to, repoName, tagName, token string) []byte {
 	subject := fmt.Sprintf(emailSubjectTemplate, repoName)
 	body := fmt.Sprintf(emailBodyTemplate, tagName, repoName, repoName, tagName, c.baseURL, token)
 	return []byte(fmt.Sprintf(emailMsgTemplate, c.from, to, subject, body))
 }
 
-func (c *SmtpClient) buildConfirmMessage(to, repoName, token string) []byte {
+func (c *SMTPClient) buildConfirmMessage(to, repoName, token string) []byte {
 	subject := fmt.Sprintf(confirmSubjectTemplate, repoName)
 	body := fmt.Sprintf(confirmBodyTemplate, repoName, c.baseURL, token)
 	return []byte(fmt.Sprintf(emailMsgTemplate, c.from, to, subject, body))
 }
 
-type SmtpClient struct {
+type SMTPClient struct {
 	host     config.EmailHostType
 	port     config.EmailPortType
 	from     config.EmailFromType
@@ -62,15 +61,15 @@ type SmtpClient struct {
 	baseURL  config.AppBaseURLType
 }
 
-func NewSmtpClient(
+func NewSMTPClient(
 	host config.EmailHostType,
 	port config.EmailPortType,
 	from config.EmailFromType,
 	password config.EmailPasswordType,
 	user config.EmailUserType,
 	baseURL config.AppBaseURLType,
-) *SmtpClient {
-	return &SmtpClient{
+) *SMTPClient {
+	return &SMTPClient{
 		host:     host,
 		port:     port,
 		from:     from,
@@ -80,7 +79,8 @@ func NewSmtpClient(
 		baseURL:  baseURL,
 	}
 }
-func classifySmtpError(err error) error {
+
+func classifySMTPError(err error) error {
 	msg := strings.ToLower(err.Error())
 	if strings.Contains(msg, "535") || strings.Contains(msg, "authentication failed") {
 		return service.ErrAuthFailed
@@ -88,7 +88,7 @@ func classifySmtpError(err error) error {
 	return service.ErrSMTPUnavailable
 }
 
-func (c *SmtpClient) sendEmail(ctx context.Context, op, to string, msg []byte) error {
+func (c *SMTPClient) sendEmail(ctx context.Context, op, to string, msg []byte) error {
 	addr := fmt.Sprintf("%s:%s", c.host, c.port)
 	if err := c.sendMail(addr, c.auth, string(c.from), []string{to}, msg); err != nil {
 		c.logger.ErrorContext(ctx, errMsgSendMail,
@@ -96,13 +96,13 @@ func (c *SmtpClient) sendEmail(ctx context.Context, op, to string, msg []byte) e
 			slog.String("to", to),
 			slog.String("error", err.Error()),
 		)
-		return fmt.Errorf("%s: %w", op, classifySmtpError(err))
+		return fmt.Errorf("%s: %w", op, classifySMTPError(err))
 	}
 	return nil
 }
 
-func (c *SmtpClient) SendNotification(ctx context.Context, to, repoName, tagName, token string) error {
-	const op = "SmtpClient.SendNotification"
+func (c *SMTPClient) SendNotification(ctx context.Context, to, repoName, tagName, token string) error {
+	const op = "SMTPClient.SendNotification"
 	msg := c.buildMessage(to, repoName, tagName, token)
 	if err := c.sendEmail(ctx, op, to, msg); err != nil {
 		return err
@@ -115,8 +115,8 @@ func (c *SmtpClient) SendNotification(ctx context.Context, to, repoName, tagName
 	return nil
 }
 
-func (c *SmtpClient) SendConfirmation(ctx context.Context, to, repoName, token string) error {
-	const op = "SmtpClient.SendConfirmation"
+func (c *SMTPClient) SendConfirmation(ctx context.Context, to, repoName, token string) error {
+	const op = "SMTPClient.SendConfirmation"
 	msg := c.buildConfirmMessage(to, repoName, token)
 	if err := c.sendEmail(ctx, op, to, msg); err != nil {
 		return err

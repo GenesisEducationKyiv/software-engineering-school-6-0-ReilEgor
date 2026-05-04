@@ -6,13 +6,13 @@ import (
 	"net/smtp"
 	"testing"
 
-	"github.com/ReilEgor/RepoNotifier/internal/config"
-	"github.com/ReilEgor/RepoNotifier/internal/domain/service"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
-func newTestClient(sendMail func(string, smtp.Auth, string, []string, []byte) error) *SmtpClient {
-	c := NewSmtpClient(
+func newTestClient(sendMail func(string, smtp.Auth, string, []string, []byte) error) *SMTPClient {
+	c := NewSMTPClient(
 		"localhost",
 		"25",
 		"from@example.com",
@@ -50,7 +50,7 @@ func TestSmtpClient_SendNotification(t *testing.T) {
 			wantErr:     nil,
 		},
 		{
-			name:        "smtp auth failed — code 535",
+			name:        "SMTP auth failed - code 535",
 			to:          "user@example.com",
 			repoName:    "owner/repo",
 			tagName:     "v1.0.0",
@@ -59,16 +59,16 @@ func TestSmtpClient_SendNotification(t *testing.T) {
 			wantErr:     service.ErrAuthFailed,
 		},
 		{
-			name:        "smtp auth failed — text match",
+			name:        "SMTP auth failed - text match",
 			to:          "user@example.com",
 			repoName:    "owner/repo",
 			tagName:     "v1.0.0",
 			token:       "test-token",
-			sendMailErr: errors.New("Authentication failed: bad credentials"),
+			sendMailErr: errors.New("authentication failed: bad credentials"),
 			wantErr:     service.ErrAuthFailed,
 		},
 		{
-			name:        "smtp server unavailable — connection refused",
+			name:        "SMTP server unavailable - connection refused",
 			to:          "user@example.com",
 			repoName:    "owner/repo",
 			tagName:     "v1.0.0",
@@ -77,7 +77,7 @@ func TestSmtpClient_SendNotification(t *testing.T) {
 			wantErr:     service.ErrSMTPUnavailable,
 		},
 		{
-			name:        "smtp server unavailable — timeout",
+			name:        "SMTP server unavailable - timeout",
 			to:          "user@example.com",
 			repoName:    "owner/repo",
 			tagName:     "v1.0.0",
@@ -164,7 +164,7 @@ func TestClassifySmtpError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.errMsg, func(t *testing.T) {
-			got := classifySmtpError(errors.New(tt.errMsg))
+			got := classifySMTPError(errors.New(tt.errMsg))
 			assert.ErrorIs(t, got, tt.wantErr)
 		})
 	}
@@ -228,7 +228,7 @@ func TestSmtpClient_buildMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewSmtpClient("localhost", "25", "from@example.com", "pass", "user", config.AppBaseURLType(baseURL))
+			c := NewSMTPClient("localhost", "25", "from@example.com", "pass", "user", baseURL)
 			msg := string(c.buildMessage(tt.to, tt.repoName, tt.tagName, tt.token))
 
 			for _, expected := range tt.expectContain {
@@ -273,7 +273,7 @@ func TestSmtpClient_buildConfirmMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewSmtpClient("localhost", "25", "from@example.com", "pass", "user", config.AppBaseURLType(baseURL))
+			c := NewSMTPClient("localhost", "25", "from@example.com", "pass", "user", baseURL)
 			msg := string(c.buildConfirmMessage(tt.to, tt.repoName, tt.token))
 
 			for _, expected := range tt.expectContain {

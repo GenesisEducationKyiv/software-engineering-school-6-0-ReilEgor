@@ -4,11 +4,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/usecase"
-	"github.com/ReilEgor/RepoNotifier/internal/transport/http/middleware"
 	"github.com/gin-gonic/gin"
+
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/middleware"
 )
 
 type Handler struct {
@@ -34,7 +36,6 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 
 	api := router.Group("/api/v1")
 	{
-
 		api.GET("/confirm/:token", h.Confirm)
 		api.GET("/unsubscribe/:token", h.UnsubscribeByToken)
 

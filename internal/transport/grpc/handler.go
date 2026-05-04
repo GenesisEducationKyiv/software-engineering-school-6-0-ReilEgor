@@ -3,11 +3,12 @@ package grpc
 import (
 	"context"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/usecase"
-	pb "github.com/ReilEgor/RepoNotifier/internal/transport/grpc/proto/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
+	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc/proto/v1"
 )
 
 type SubscriptionHandler struct {
@@ -20,6 +21,7 @@ func NewSubscriptionHandler(uc usecase.SubscriptionUseCase) *SubscriptionHandler
 		usecase: uc,
 	}
 }
+
 func (h *SubscriptionHandler) Subscribe(ctx context.Context, req *pb.SubscribeRequest) (*pb.SubscribeResponse, error) {
 	err := h.usecase.Subscribe(ctx, req.GetEmail(), req.GetRepository())
 	if err != nil {
@@ -32,7 +34,10 @@ func (h *SubscriptionHandler) Subscribe(ctx context.Context, req *pb.SubscribeRe
 	}, nil
 }
 
-func (h *SubscriptionHandler) Unsubscribe(ctx context.Context, req *pb.UnsubscribeRequest) (*pb.UnsubscribeResponse, error) {
+func (h *SubscriptionHandler) Unsubscribe(
+	ctx context.Context,
+	req *pb.UnsubscribeRequest,
+) (*pb.UnsubscribeResponse, error) {
 	token := req.GetToken()
 	if token == "" {
 		return nil, status.Error(codes.InvalidArgument, "token is required")
@@ -49,7 +54,10 @@ func (h *SubscriptionHandler) Unsubscribe(ctx context.Context, req *pb.Unsubscri
 	}, nil
 }
 
-func (h *SubscriptionHandler) ListSubscriptions(ctx context.Context, req *pb.ListSubscriptionsRequest) (*pb.ListSubscriptionsResponse, error) {
+func (h *SubscriptionHandler) ListSubscriptions(
+	ctx context.Context,
+	req *pb.ListSubscriptionsRequest,
+) (*pb.ListSubscriptionsResponse, error) {
 	subs, err := h.usecase.ListByEmail(ctx, req.GetEmail())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list subscriptions: %v", err)

@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-var (
-	ErrUserNotFound = errors.New("user not found")
-)
+var ErrUserNotFound = errors.New("user not found")
 
 type User struct {
 	ID        int64
