@@ -8,15 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 )
 
 func TestUserRepository_GetByEmail(t *testing.T) {
 	mock, err := pgxmock.NewPool()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer mock.Close()
 
 	discardLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -41,7 +43,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			name:  "success",
 			email: userEmail,
 			mockSetup: func(email string) {
-				mock.ExpectQuery("SELECT id, email, created_at FROM users WHERE email = \\$1").
+				mock.ExpectQuery("^SELECT id, email, created_at FROM users WHERE email = \\$1").
 					WithArgs(email).
 					WillReturnRows(pgxmock.NewRows([]string{"id", "email", "created_at"}).
 						AddRow(int64(1), email, now))
@@ -57,7 +59,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			name:  "user not found",
 			email: "unknown@example.com",
 			mockSetup: func(email string) {
-				mock.ExpectQuery("SELECT (.+) FROM users WHERE email = \\$1").
+				mock.ExpectQuery("^SELECT (.+) FROM users WHERE email = \\$1").
 					WithArgs(email).
 					WillReturnError(pgx.ErrNoRows)
 			},
@@ -68,7 +70,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			name:  "database error",
 			email: userEmail,
 			mockSetup: func(email string) {
-				mock.ExpectQuery("SELECT (.+) FROM users").
+				mock.ExpectQuery("^SELECT (.+) FROM users").
 					WithArgs(email).
 					WillReturnError(fmt.Errorf("internal db error"))
 			},
@@ -84,16 +86,16 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			result, err := repo.GetByEmail(context.Background(), tt.email)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorIs != nil {
-					assert.ErrorIs(t, err, tt.errorIs)
+					require.ErrorIs(t, err, tt.errorIs)
 				}
 				if tt.checkErrMsg != "" {
 					assert.Contains(t, err.Error(), tt.checkErrMsg)
 				}
 				assert.Equal(t, model.User{}, result)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected.ID, result.ID)
 				assert.Equal(t, tt.expected.Email, result.Email)
 				assert.Equal(t, tt.expected.CreatedAt, result.CreatedAt)
@@ -106,7 +108,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 
 func TestUserRepository_GetOrCreate(t *testing.T) {
 	mock, err := pgxmock.NewPool()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer mock.Close()
 
 	discardLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -129,7 +131,7 @@ func TestUserRepository_GetOrCreate(t *testing.T) {
 			name:  "success create new user",
 			email: userEmail,
 			mockSetup: func(email string) {
-				mock.ExpectQuery("INSERT INTO users").
+				mock.ExpectQuery("^INSERT INTO users").
 					WithArgs(email).
 					WillReturnRows(pgxmock.NewRows([]string{"id", "email", "created_at"}).
 						AddRow(int64(1), email, now))
@@ -145,7 +147,7 @@ func TestUserRepository_GetOrCreate(t *testing.T) {
 			name:  "success get existing user (conflict)",
 			email: userEmail,
 			mockSetup: func(email string) {
-				mock.ExpectQuery("INSERT INTO users").
+				mock.ExpectQuery("^INSERT INTO users").
 					WithArgs(email).
 					WillReturnRows(pgxmock.NewRows([]string{"id", "email", "created_at"}).
 						AddRow(int64(1), email, now.Add(-time.Hour)))
@@ -161,7 +163,7 @@ func TestUserRepository_GetOrCreate(t *testing.T) {
 			name:  "database error",
 			email: userEmail,
 			mockSetup: func(email string) {
-				mock.ExpectQuery("INSERT INTO users").
+				mock.ExpectQuery("^INSERT INTO users").
 					WithArgs(email).
 					WillReturnError(fmt.Errorf("unexpected connection error"))
 			},
@@ -176,10 +178,10 @@ func TestUserRepository_GetOrCreate(t *testing.T) {
 			result, err := repo.GetOrCreate(context.Background(), tt.email)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, model.User{}, result)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected.ID, result.ID)
 				assert.Equal(t, tt.expected.Email, result.Email)
 				assert.Equal(t, tt.expected.CreatedAt, result.CreatedAt)

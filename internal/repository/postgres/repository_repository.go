@@ -2,20 +2,14 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 )
 
 const (
 	componentRepositoryRepository = "RepositoryRepository"
-)
-
-// Sentinel errors.
-var (
-	ErrRepositoryNotFound = errors.New("repository not found")
 )
 
 type RepositoryRepository struct {
@@ -105,7 +99,7 @@ const getOrCreateRepositoryQuery = `
 	RETURNING id, full_name, last_seen_tag, updated_at
 `
 
-func (r *RepositoryRepository) GetOrCreate(ctx context.Context, name string, tagName string) (*model.Repository, error) {
+func (r *RepositoryRepository) GetOrCreate(ctx context.Context, name, tagName string) (*model.Repository, error) {
 	const op = "RepositoryRepository.GetOrCreate"
 	log := r.logger.With(slog.String("op", op))
 

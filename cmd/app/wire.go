@@ -6,22 +6,23 @@ package main
 import (
 	"context"
 
-	"github.com/ReilEgor/RepoNotifier/internal/config"
-	repositoryInterface "github.com/ReilEgor/RepoNotifier/internal/domain/repository"
-	servicesInterface "github.com/ReilEgor/RepoNotifier/internal/domain/service"
-	usecaseInterface "github.com/ReilEgor/RepoNotifier/internal/domain/usecase"
-	cacheRealization "github.com/ReilEgor/RepoNotifier/internal/infrastructure/cache/redis"
-	servicesRealizationEmail "github.com/ReilEgor/RepoNotifier/internal/infrastructure/clients/email"
-	servicesRealizationGitHub "github.com/ReilEgor/RepoNotifier/internal/infrastructure/clients/github"
-	repository "github.com/ReilEgor/RepoNotifier/internal/infrastructure/storage/postgres"
-	repositoryRealization "github.com/ReilEgor/RepoNotifier/internal/repository/postgres"
-	grpcTransport "github.com/ReilEgor/RepoNotifier/internal/transport/grpc"
-	"github.com/ReilEgor/RepoNotifier/internal/transport/http"
-	"github.com/ReilEgor/RepoNotifier/internal/transport/http/handlers"
-	usecaseRealization "github.com/ReilEgor/RepoNotifier/internal/usecase"
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
+	repositoryInterface "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/repository"
+	servicesInterface "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
+	usecaseInterface "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
+	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/infrastructure/cache/redis"
+	servicesRealizationEmail "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/infrastructure/clients/email"
+	servicesRealizationGitHub "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/infrastructure/clients/github"
+	repository "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/infrastructure/storage/postgres"
+	repositoryRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/repository/postgres"
+	grpcTransport "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/handlers"
+	usecaseRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/usecase"
 )
 
 var UseCaseSet = wire.NewSet(
@@ -50,10 +51,11 @@ var CacheSet = wire.NewSet(
 	cacheRealization.NewCache,
 	wire.Bind(new(servicesInterface.Cache), new(*cacheRealization.Cache)),
 )
+
 var ServicesSet = wire.NewSet(
 	servicesRealizationGitHub.NewGitHubClient,
-	servicesRealizationEmail.NewSmtpClient,
-	wire.Bind(new(servicesInterface.EmailSender), new(*servicesRealizationEmail.SmtpClient)),
+	servicesRealizationEmail.NewSMTPClient,
+	wire.Bind(new(servicesInterface.EmailSender), new(*servicesRealizationEmail.SMTPClient)),
 	wire.Bind(new(servicesInterface.GitHubClient), new(*servicesRealizationGitHub.GitHubClient)),
 )
 
@@ -80,7 +82,7 @@ func InitializeApp(
 	emailPassword config.EmailPasswordType,
 	emailFrom config.EmailFromType,
 	emailUser config.EmailUserType,
-	apiKey config.ApiKeyType,
+	apiKey config.APIKeyType,
 	githubToken config.GitHubTokenType,
 	baseURL config.AppBaseURLType,
 ) (*App, func(), error) {

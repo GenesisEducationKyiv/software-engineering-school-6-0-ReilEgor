@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	model "github.com/ReilEgor/RepoNotifier/internal/domain/model"
+	model "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	mock "github.com/stretchr/testify/mock"
 )
 

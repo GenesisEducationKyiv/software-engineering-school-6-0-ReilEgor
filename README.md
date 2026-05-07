@@ -91,7 +91,7 @@ Email notification dispatched to all subscribers
  
 ```bash
 # Clone the repository
-git clone https://github.com/ReilEgor/RepoNotifier.git
+git clone https://github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor.git
 cd RepoNotifier
  
 # Copy and fill in environment variables

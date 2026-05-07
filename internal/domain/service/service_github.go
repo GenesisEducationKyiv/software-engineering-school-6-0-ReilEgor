@@ -4,16 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 )
 
 var (
-	ErrRateLimitExceeded    = errors.New("github api rate limit exceeded")
-	ErrRepositoryNotFound   = errors.New("repository not found")
-	ErrReleaseNotFound      = errors.New("no releases found for this repository")
-	ErrGitHubUnavailable    = errors.New("github service is temporarily unavailable")
-	ErrFetchFromExternalAPI = errors.New("failed to fetch data from external API")
-	ErrSubscriptionNotFound = errors.New("subscription not found")
+	ErrRateLimitExceeded  = errors.New("github api rate limit exceeded")
+	ErrRepositoryNotFound = errors.New("repository not found")
+	ErrReleaseNotFound    = errors.New("no releases found for this repository")
+	ErrGitHubUnavailable  = errors.New("github service is temporarily unavailable")
 )
 
 //go:generate mockery --name GitHubClient --output ../../mocks --case underscore --outpkg mocks

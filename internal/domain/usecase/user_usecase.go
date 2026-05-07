@@ -2,16 +2,8 @@ package usecase
 
 import (
 	"context"
-	"errors"
 
-	"github.com/ReilEgor/RepoNotifier/internal/domain/model"
-)
-
-var (
-	ErrInvalidEmail      = errors.New("invalid email format")
-	ErrUserNotFound      = errors.New("user not found")
-	ErrUserAlreadyExists = errors.New("user with this email already exists")
-	ErrInternalServer    = errors.New("internal server error")
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 )
 
 //go:generate mockery --name UserUseCase --output ../../mocks --case underscore --outpkg mocks
