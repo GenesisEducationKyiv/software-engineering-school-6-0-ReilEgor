@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoNotifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+    <h1 class="text-3xl font-extrabold mb-2 text-gray-900 text-center">RepoNotifier</h1>
+    <p class="text-gray-500 text-center mb-8 text-sm">Get notified about new GitHub releases</p>
+
+    <div id="message" class="hidden p-4 mb-6 rounded-lg text-sm font-medium border"></div>
+
+    <form id="subscribeForm" class="space-y-5">
+        <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">API Key</label>
+            <input type="password" id="apiKey" placeholder="Enter your API key" required
+                   class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Email Address</label>
+            <input type="email" id="email" placeholder="alex@example.com" required
+                   class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+        </div>
+
+        <div id="repoField">
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Repository (owner/repo)</label>
+            <input type="text" id="repository" placeholder="golang/go"
+                   class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 pt-2">
+            <button type="button" id="btnSubscribe"
+                    class="bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 active:transform active:scale-95 transition-all font-bold shadow-md shadow-blue-200">
+                Subscribe
+            </button>
+            <button type="button" id="btnList"
+                    class="bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 active:transform active:scale-95 transition-all font-bold">
+                My Subs
+            </button>
+        </div>
+    </form>
+
+    <div id="subList" class="mt-8 hidden border-t pt-6">
+        <h3 class="text-sm font-bold text-gray-800 mb-4">Your Active Subscriptions:</h3>
+        <ul id="listItems" class="space-y-2 text-sm text-gray-600"></ul>
+    </div>
+</div>
+
+<script>
+    const msgDiv = document.getElementById('message');
+    const apiKeyInput = document.getElementById('apiKey');
+    const emailInput = document.getElementById('email');
+    const repoInput = document.getElementById('repository');
+    const listItems = document.getElementById('listItems');
+    const subListDiv = document.getElementById('subList');
+
+    document.getElementById('btnSubscribe').addEventListener('click', async () => {
+        const payload = {
+            email: emailInput.value.trim(),
+            repository: repoInput.value.trim()
+        };
+        const apiKey = apiKeyInput.value.trim();
+
+        if (!payload.email || !payload.repository || !apiKey) {
+            showMsg('Please fill all fields', 'bg-yellow-50 text-yellow-700 border-yellow-200');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/v1/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (response.status === 202) {
+                showMsg(data.message || 'Check your email to confirm!', 'bg-green-50 text-green-700 border-green-200');
+                repoInput.value = '';
+            } else {
+                showMsg(data.error || data.errors?.[0] || 'Error occurred', 'bg-red-50 text-red-700 border-red-200');
+            }
+        } catch (err) {
+            showMsg('Connection error: ' + err.message, 'bg-red-50 text-red-700 border-red-200');
+        }
+    });
+
+    document.getElementById('btnList').addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        const apiKey = apiKeyInput.value.trim();
+
+        if (!email || !apiKey) {
+            showMsg('Email and API Key are required to view list', 'bg-yellow-50 text-yellow-700 border-yellow-200');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/v1/subscriptions?email=${encodeURIComponent(email)}`, {
+                method: 'GET',
+                headers: { 'X-API-Key': apiKey }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                listItems.innerHTML = '';
+                if (data.subscriptions.length === 0) {
+                    listItems.innerHTML = '<li>No subscriptions found.</li>';
+                } else {
+                    data.subscriptions.forEach(sub => {
+                        const status = sub.confirmed ? 'confirmed' : 'awaits';
+                        listItems.innerHTML += `<li class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                            <span>${sub.repository_name}</span>
+                            <span title="${sub.confirmed ? 'Confirmed' : 'Pending'}">${status}</span>
+                        </li>`;
+                    });
+                }
+                subListDiv.classList.remove('hidden');
+                showMsg(`Found ${data.total} subscriptions`, 'bg-blue-50 text-blue-700 border-blue-200');
+            } else {
+                showMsg(data.error || 'Failed to fetch list', 'bg-red-50 text-red-700 border-red-200');
+            }
+        } catch (err) {
+            showMsg('Error: ' + err.message, 'bg-red-50 text-red-700 border-red-200');
+        }
+    });
+
+    function showMsg(text, classes) {
+        msgDiv.innerText = text;
+        msgDiv.className = `p-4 mb-6 rounded-lg text-sm font-medium border ${classes}`;
+        msgDiv.classList.remove('hidden');
+    }
+</script>
+</body>
+</html>

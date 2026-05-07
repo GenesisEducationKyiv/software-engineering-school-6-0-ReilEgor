@@ -1,0 +1,207 @@
+basePath: /api/v1
+definitions:
+  github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionRequest:
+    properties:
+      email:
+        description: User email address for notifications.
+        example: user@example.com
+        type: string
+      repository:
+        description: GitHub repository full name (owner/repo).
+        example: golang/go
+        type: string
+    required:
+    - email
+    - repository
+    type: object
+  github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionResponse:
+    properties:
+      message:
+        description: Status message indicating the result of the subscription creation.
+        example: Confirmation email sent
+        type: string
+    type: object
+  github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.DeleteSubscriptionResponse:
+    properties:
+      message:
+        description: Status message confirming the operation.
+        example: Subscription deleted successfully
+        type: string
+    type: object
+  github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.ListSubscriptionsResponse:
+    properties:
+      subscriptions:
+        description: List of the user's subscriptions.
+        items:
+          $ref: '#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.SubscriptionResponse'
+        type: array
+      total:
+        description: Good practice to return count.
+        example: 2
+        type: integer
+    type: object
+  github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.SubscriptionResponse:
+    properties:
+      confirmed:
+        description: Indicates whether the subscription has been confirmed by the
+          user.
+        type: boolean
+      created_at:
+        description: Timestamp when the subscription was created.
+        example: "2026-04-08T18:00:00Z"
+        type: string
+      email:
+        description: Subscriber's email address.
+        example: user@example.com
+        type: string
+      id:
+        description: Unique identifier of the subscription.
+        example: 1
+        type: integer
+      last_seen_tag:
+        description: The latest tag seen for this subscription, useful for tracking
+          updates.
+        type: string
+      repository_name:
+        description: The name of the repository (extracted from FullName).
+        example: golang/go
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Service for tracking GitHub releases.
+  title: RepoNotifier API
+  version: "1.0    \t      1.0"
+paths:
+  /confirm/{token}:
+    get:
+      description: Confirm a pending subscription using the token sent via email.
+      parameters:
+      - description: Confirmation token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: subscription confirmed successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Invalid or expired token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Confirm email subscription
+      tags:
+      - subscriptions
+  /subscribe:
+    post:
+      consumes:
+      - application/json
+      description: Create a pending subscription and send a confirmation email.
+      parameters:
+      - description: Subscription details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Subscribe to a repository
+      tags:
+      - subscriptions
+  /subscriptions:
+    get:
+      description: Retrieve a list of all confirmed subscriptions for a given email.
+      parameters:
+      - description: User email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.ListSubscriptionsResponse'
+        "400":
+          description: Email is required or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all active subscriptions
+      tags:
+      - subscriptions
+  /unsubscribe/{token}:
+    get:
+      description: Remove a subscription using a unique token.
+      parameters:
+      - description: Unsubscribe token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.DeleteSubscriptionResponse'
+        "404":
+          description: Invalid token or subscription not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Unsubscribe from notifications
+      tags:
+      - subscriptions
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: X-API-Key
+    type: apiKey
+swagger: "2.0"

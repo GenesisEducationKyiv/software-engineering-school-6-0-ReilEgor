@@ -1,0 +1,303 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Service for tracking GitHub releases.",
+        "title": "RepoNotifier API",
+        "contact": {},
+        "version": "1.0    \t      1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/confirm/{token}": {
+            "get": {
+                "description": "Confirm a pending subscription using the token sent via email.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Confirm email subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Confirmation token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message: subscription confirmed successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid or expired token",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/subscribe": {
+            "post": {
+                "description": "Create a pending subscription and send a confirmation email.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Subscribe to a repository",
+                "parameters": [
+                    {
+                        "description": "Subscription details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/subscriptions": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all confirmed subscriptions for a given email.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Get all active subscriptions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User email address",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.ListSubscriptionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Email is required or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/unsubscribe/{token}": {
+            "get": {
+                "description": "Remove a subscription using a unique token.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Unsubscribe from notifications",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Unsubscribe token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.DeleteSubscriptionResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid token or subscription not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "repository"
+            ],
+            "properties": {
+                "email": {
+                    "description": "User email address for notifications.",
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "repository": {
+                    "description": "GitHub repository full name (owner/repo).",
+                    "type": "string",
+                    "example": "golang/go"
+                }
+            }
+        },
+        "github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.CreateSubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Status message indicating the result of the subscription creation.",
+                    "type": "string",
+                    "example": "Confirmation email sent"
+                }
+            }
+        },
+        "github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.DeleteSubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Status message confirming the operation.",
+                    "type": "string",
+                    "example": "Subscription deleted successfully"
+                }
+            }
+        },
+        "github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.ListSubscriptionsResponse": {
+            "type": "object",
+            "properties": {
+                "subscriptions": {
+                    "description": "List of the user's subscriptions.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.SubscriptionResponse"
+                    }
+                },
+                "total": {
+                    "description": "Good practice to return count.",
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "github_com_ReilEgor_RepoNotifier_internal_transport_http_dto.SubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "confirmed": {
+                    "description": "Indicates whether the subscription has been confirmed by the user.",
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "description": "Timestamp when the subscription was created.",
+                    "type": "string",
+                    "example": "2026-04-08T18:00:00Z"
+                },
+                "email": {
+                    "description": "Subscriber's email address.",
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "id": {
+                    "description": "Unique identifier of the subscription.",
+                    "type": "integer",
+                    "example": 1
+                },
+                "last_seen_tag": {
+                    "description": "The latest tag seen for this subscription, useful for tracking updates.",
+                    "type": "string"
+                },
+                "repository_name": {
+                    "description": "The name of the repository (extracted from FullName).",
+                    "type": "string",
+                    "example": "golang/go"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "X-API-Key",
+            "in": "header"
+        }
+    }
+}
