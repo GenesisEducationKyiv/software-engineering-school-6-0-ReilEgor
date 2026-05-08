@@ -1,4 +1,4 @@
-# [ADR-0001] Choosing Monolithic Architecture for the GitHub Release Notifier
+# [ADR-0001] Choosing Architecture for the GitHub Release Notifier
 
 * **Status:** accepted
 * **Deciders:** Yehor Reil (Lead Software Engineer)
@@ -10,12 +10,6 @@ The system must provide an API for managing subscriptions to GitHub repository r
 
 - All functionality must be implemented within a single service
 - Simplicity of deployment is required
-
-## Decision Drivers
-
-* **Simplicity:** Fast development and minimal infrastructure complexity
-* **Deployment:** Single containerized service
-* **Maintainability:** Easier debugging and local development
 
 ## Considered Options
 

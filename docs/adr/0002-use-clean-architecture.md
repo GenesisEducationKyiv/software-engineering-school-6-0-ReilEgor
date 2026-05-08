@@ -1,4 +1,4 @@
-# [ADR-0002] Adopting Clean Architecture for Service Design
+# [ADR-0002] Adopting Architecture for Service Design
 
 * **Status:** accepted
 * **Deciders:** Yehor Reil (Lead Software Engineer)
