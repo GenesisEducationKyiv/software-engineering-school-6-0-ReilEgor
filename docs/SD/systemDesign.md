@@ -33,7 +33,7 @@
 ### Users and Traffic:
 
 - Inbound Traffic (User API): The incoming HTTP traffic from users is extremely low. Assuming 1,000 Daily Active Users (DAU) making 2-3 requests (subscribe, confirm, unsubscribe), the load is approximately ~3,000 requests/day (0.035 RPS). This places negligible load on the HTTP delivery layer.
-- Outbound Traffic (Polling System): This is the primary source of continuous load. To check 2,000 unique repositories with a polling interval of 10 minutes, the system executes ~12,000 outbound requests per hour (~3.3 RPS) to the GitHub API.
+- Outbound Traffic (Polling System): This is the primary source of continuous load. To check 2,000 unique repositories with a polling interval of 1 minute, the system executes ~120,000 outbound requests per hour (~33.3 RPS) to the GitHub API.
 - Notification Spikes (Fan-out): Traffic is "bursty". If a popular repository (e.g., golang/go) with 1,000 subscribers releases a new version, the system will generate a sudden spike of 1,000 outbound SMTP requests. This is mitigated by bounded concurrency (errgroup.SetLimit).
 
 ### Data:
@@ -55,6 +55,17 @@
 - Summary: A basic cloud instance (e.g., AWS t3.micro) with a standard network interface (up to 5 Gbps) is vastly over-provisioned for this network load, guaranteeing stable performance.
 
 ## 3. System Architecture:
+
+### Sequence Diagram:
+
+#### Subscription Flow:
+![img_4.png](img_4.png)
+
+#### Subscription Confirm Flow:
+![img_5.png](img_5.png)
+
+#### New Release Notification Flow (every 1 minute):
+![img_6.png](img_6.png)
 
 ### C4 diagrams:
 
