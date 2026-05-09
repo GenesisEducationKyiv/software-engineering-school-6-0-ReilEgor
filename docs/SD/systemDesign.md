@@ -96,5 +96,5 @@ The API layer acts as the primary entry point for external client interactions. 
 - Endpoint: POST /api/v1/subscribe (Create a pending subscription and send a confirmation email.)
 - Endpoint: GET /api/v1/confirm/:token (Confirm a pending subscription using the token sent via email.)
 - Endpoint: GET /api/v1/unsubscribe/:token (Remove a subscription using a unique token.)
-- Endpoint: GET /subscriptions (Retrieve a list of all confirmed subscriptions for a given email.)
+- Endpoint: GET /api/v1/subscriptions (Retrieve a list of all confirmed subscriptions for a given email.)
 - Endpoint: GET /health
