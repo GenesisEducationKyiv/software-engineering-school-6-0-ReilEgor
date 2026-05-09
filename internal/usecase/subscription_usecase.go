@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,6 +40,7 @@ type SubscriptionUseCase struct {
 	repoRepo    repository.RepositoryRepository
 	emailSender service.EmailSender
 	ghClient    service.GitHubClient
+	wg          *sync.WaitGroup
 }
 
 func NewSubscriptionUseCase(
@@ -55,6 +57,7 @@ func NewSubscriptionUseCase(
 		userRepo:    ur,
 		repoRepo:    rr,
 		emailSender: es,
+		wg:          &sync.WaitGroup{},
 	}
 }
 
@@ -95,8 +98,9 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 		log.ErrorContext(ctx, "failed to create pending subscription", slog.String("error", err.Error()))
 		return fmt.Errorf("%s: create pending: %w", op, err)
 	}
-
+	uc.wg.Add(1)
 	go func() {
+		defer uc.wg.Done()
 		sendCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -104,7 +108,8 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 			log.Error("failed to send confirmation email", slog.String("error", err.Error()))
 		}
 	}()
-
+	uc.wg.Wait()
+	log.InfoContext(ctx, "subscription process completed, confirmation email sent")
 	return nil
 }
 

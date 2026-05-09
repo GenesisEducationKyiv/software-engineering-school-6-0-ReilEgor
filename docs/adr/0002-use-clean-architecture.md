@@ -1,4 +1,4 @@
-# [ADR-0002] Adopting Clean Architecture for Service Design
+# [ADR-0002] Adopting Architecture for Service Design
 
 * **Status:** accepted
 * **Deciders:** Yehor Reil (Lead Software Engineer)
@@ -23,9 +23,17 @@ A clear separation of concerns is required to ensure maintainability and testabi
 
 ## Considered Options
 
-* **Clean Architecture**
-* **Layered Architecture (MVC)**
-* **Minimal/Flat Structure**
+### Clean Architecture
+* **Pros:** Strong separation of concerns, high testability
+* **Cons:** More code and abstractions
+
+### Layered Architecture (MVC)
+* **Pros:** Simpler structure, widely understood
+* **Cons:** Business logic often tightly coupled with infrastructure
+
+### Minimal/Flat Structure
+* **Pros:** Fast to start
+* **Cons:** Quickly becomes unmaintainable
 
 ## Decision Outcome
 
@@ -38,22 +46,6 @@ Chosen option: **Clean Architecture**
 * **Good:** Flexible to replace DB, HTTP framework, or external APIs
 * **Bad:** Increased initial complexity
 * **Bad:** More boilerplate code
-
----
-
-## Pros and Cons of the Options
-
-### Clean Architecture
-* **Pros:** Strong separation of concerns, high testability
-* **Cons:** More code and abstractions
-
-### Layered Architecture
-* **Pros:** Simpler structure, widely understood
-* **Cons:** Business logic often tightly coupled with infrastructure
-
-### Minimal Structure
-* **Pros:** Fast to start
-* **Cons:** Quickly becomes unmaintainable
 
 ## More Information
 
