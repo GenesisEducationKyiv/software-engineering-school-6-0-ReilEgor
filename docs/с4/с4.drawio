@@ -58,12 +58,12 @@
         </mxCell>
         <object placeholders="1" c4Name="HTTP Handlers" c4Type="Component" c4Technology="Go, net/http / Gin" c4Description="Provides REST endpoints for subscribing, unsubscribing, and confirming emails." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="6TYx0S4oUNZdPBhkwosm-1">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#63BEF2;fontColor=#ffffff;align=center;arcSize=6;strokeColor=#2086C9;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="120" width="240" x="-1335" y="970" as="geometry" />
+            <mxGeometry height="120" width="240" x="-1400" y="970" as="geometry" />
           </mxCell>
         </object>
         <object placeholders="1" c4Name="Cron / Ticker Worker" c4Type="Component" c4Technology="Go" c4Description="Periodically triggers the release polling process." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="6TYx0S4oUNZdPBhkwosm-3">
           <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#63BEF2;fontColor=#ffffff;align=center;arcSize=6;strokeColor=#2086C9;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
-            <mxGeometry height="120" width="240" x="-890" y="970" as="geometry" />
+            <mxGeometry height="120" width="240" x="-1100" y="970" as="geometry" />
           </mxCell>
         </object>
         <mxCell id="6TYx0S4oUNZdPBhkwosm-17" edge="1" parent="1" source="6TYx0S4oUNZdPBhkwosm-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="6TYx0S4oUNZdPBhkwosm-5">
@@ -148,7 +148,7 @@
         <mxCell id="6TYx0S4oUNZdPBhkwosm-16" edge="1" parent="1" source="6TYx0S4oUNZdPBhkwosm-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="6TYx0S4oUNZdPBhkwosm-6" value="Uses to send confirmations &amp; notifications">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="6TYx0S4oUNZdPBhkwosm-19" edge="1" parent="1" source="6TYx0S4oUNZdPBhkwosm-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.25;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="6TYx0S4oUNZdPBhkwosm-4">
+        <mxCell id="6TYx0S4oUNZdPBhkwosm-19" edge="1" parent="1" source="6TYx0S4oUNZdPBhkwosm-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.25;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;" target="6TYx0S4oUNZdPBhkwosm-4">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="6TYx0S4oUNZdPBhkwosm-24" connectable="0" parent="6TYx0S4oUNZdPBhkwosm-19" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Calls methods on" vertex="1">
@@ -156,7 +156,7 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="6TYx0S4oUNZdPBhkwosm-20" edge="1" parent="1" source="6TYx0S4oUNZdPBhkwosm-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="6TYx0S4oUNZdPBhkwosm-4">
+        <mxCell id="6TYx0S4oUNZdPBhkwosm-20" edge="1" parent="1" source="6TYx0S4oUNZdPBhkwosm-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="6TYx0S4oUNZdPBhkwosm-4">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="6TYx0S4oUNZdPBhkwosm-25" connectable="0" parent="6TYx0S4oUNZdPBhkwosm-20" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Triggers ProcessNotifications()" vertex="1">
@@ -771,6 +771,19 @@
         </mxCell>
         <mxCell id="6TYx0S4oUNZdPBhkwosm-172" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="send notification" vertex="1">
           <mxGeometry height="30" width="160" x="545" y="2028" as="geometry" />
+        </mxCell>
+        <object placeholders="1" c4Name="gRPC Handlers" c4Type="Component" c4Technology="gRPC, Protobuf" c4Description="Provides gRPC endpoints for internal service communication and subscription management." label="&lt;font style=&quot;font-size: 16px&quot;&gt;&lt;b&gt;%c4Name%&lt;/b&gt;&lt;/font&gt;&lt;div&gt;[%c4Type%: %c4Technology%]&lt;/div&gt;&lt;br&gt;&lt;div&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;%c4Description%&lt;/font&gt;&lt;/div&gt;" id="V-gxPUOZhYaoiV7T6MKv-1">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#63BEF2;fontColor=#ffffff;align=center;arcSize=6;strokeColor=#2086C9;metaEdit=1;resizable=0;points=[[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0.25,0],[1,0.5,0],[1,0.75,0],[0.75,1,0],[0.5,1,0],[0.25,1,0],[0,0.75,0],[0,0.5,0],[0,0.25,0]];" vertex="1">
+            <mxGeometry height="120" width="240" x="-800" y="970" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="V-gxPUOZhYaoiV7T6MKv-2" edge="1" parent="1" source="V-gxPUOZhYaoiV7T6MKv-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;" target="6TYx0S4oUNZdPBhkwosm-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="V-gxPUOZhYaoiV7T6MKv-3" connectable="0" parent="V-gxPUOZhYaoiV7T6MKv-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Calls methods on" vertex="1">
+          <mxGeometry relative="1" x="-0.8343" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
