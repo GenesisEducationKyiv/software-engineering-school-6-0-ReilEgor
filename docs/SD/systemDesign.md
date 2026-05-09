@@ -59,26 +59,26 @@
 ### Sequence Diagram:
 
 #### Subscription Flow:
-![img_4.png](img_4.png)
+![img_4.png](img/sequence1.png)
 
 #### Subscription Confirm Flow:
-![img_5.png](img_5.png)
+![img_5.png](img/sequence2.png)
 
 #### New Release Notification Flow (every 1 minute):
-![img_6.png](img_6.png)
+![img_6.png](img/sequence3.png)
 
 ### C4 diagrams:
 
 ### lvl 1:
-![img_1.png](img_1.png)
+![img_1.png](img/c4#2.png)
 ### lvl 2:
-![img_2.png](img_2.png)
+![img_2.png](img/c4#3.png)
 ### lvl 3:
-![img.png](img.png)
+![img.png](img/c4#1.png)
 
 ### Entity-Relationship diagram:
 
-![img_3.png](img_3.png)
+![img_3.png](img/er-model.png)
 
 ## 4. Detailed Design of Components:
 
