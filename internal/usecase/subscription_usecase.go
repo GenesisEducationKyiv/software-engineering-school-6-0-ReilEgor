@@ -108,7 +108,8 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 			log.Error("failed to send confirmation email", slog.String("error", err.Error()))
 		}
 	}()
-
+	uc.wg.Wait()
+	log.InfoContext(ctx, "subscription process completed, confirmation email sent")
 	return nil
 }
 
