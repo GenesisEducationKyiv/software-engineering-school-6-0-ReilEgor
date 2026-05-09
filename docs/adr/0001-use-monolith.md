@@ -13,8 +13,13 @@ The system must provide an API for managing subscriptions to GitHub repository r
 
 ## Considered Options
 
-* **Monolith**
-* **Microservices Architecture**
+### Monolith
+* **Pros:** Simplicity, fewer moving parts, easy to test and deploy
+* **Cons:** Tight coupling, limited scalability
+
+### Microservices Architecture
+* **Pros:** Independent scaling, better separation of concerns
+* **Cons:** Overkill for current scope, operational complexity
 
 ## Decision Outcome
 
@@ -27,15 +32,3 @@ Chosen option: **Monolithic Architecture**
 * **Good:** No network overhead between components
 * **Bad:** Reduced scalability compared to microservices
 * **Bad:** Harder to split into services in the future
-
----
-
-## Pros and Cons of the Options
-
-### Monolith
-* **Pros:** Simplicity, fewer moving parts, easy to test and deploy
-* **Cons:** Tight coupling, limited scalability
-
-### Microservices
-* **Pros:** Independent scaling, better separation of concerns
-* **Cons:** Overkill for current scope, operational complexity
