@@ -17,21 +17,21 @@ import (
 )
 
 type mockFields struct {
-	subsRepo    *mocks.SubscriptionRepository
-	userRepo    *mocks.UserRepository
-	repoRepo    *mocks.RepositoryRepository
-	ghClient    *mocks.GitHubClient
-	emailSender *mocks.EmailSender
+	subsRepo     *mocks.SubscriptionRepository
+	userRepo     *mocks.UserRepository
+	repoRepo     *mocks.RepositoryRepository
+	ghClient     *mocks.GitHubClient
+	emailManager *mocks.EmailService
 }
 
 func newMockFields(t *testing.T) mockFields {
 	t.Helper()
 	return mockFields{
-		subsRepo:    mocks.NewSubscriptionRepository(t),
-		userRepo:    mocks.NewUserRepository(t),
-		repoRepo:    mocks.NewRepositoryRepository(t),
-		ghClient:    mocks.NewGitHubClient(t),
-		emailSender: mocks.NewEmailSender(t),
+		subsRepo:     mocks.NewSubscriptionRepository(t),
+		userRepo:     mocks.NewUserRepository(t),
+		repoRepo:     mocks.NewRepositoryRepository(t),
+		ghClient:     mocks.NewGitHubClient(t),
+		emailManager: mocks.NewEmailService(t),
 	}
 }
 
@@ -41,7 +41,7 @@ func newUC(f mockFields) *SubscriptionUseCase {
 		f.ghClient,
 		f.userRepo,
 		f.repoRepo,
-		f.emailSender,
+		f.emailManager,
 	)
 }
 
@@ -86,7 +86,7 @@ func TestSubscriptionUseCase_Subscribe(t *testing.T) {
 					Return(nil).Once()
 
 				wg.Add(1)
-				f.emailSender.On("SendConfirmation", mock.Anything, "user@test.com", "golang/go", mock.AnythingOfType("string")).
+				f.emailManager.On("SendConfirmation", mock.Anything, "user@test.com", "golang/go", mock.AnythingOfType("string")).
 					Run(func(_ mock.Arguments) { wg.Done() }).
 					Return(nil).
 					Once()
@@ -502,7 +502,7 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 
 				wg.Add(len(subs))
 				for _, sub := range subs {
-					f.emailSender.
+					f.emailManager.
 						On("SendNotification", mock.Anything, sub.Email, "golang/go", "v1.22.0", sub.Token).
 						Run(func(_ mock.Arguments) { wg.Done() }).
 						Return(nil).Once()
@@ -607,7 +607,7 @@ func TestSubscriptionUseCase_ProcessNotifications(t *testing.T) {
 			}
 
 			mock.AssertExpectationsForObjects(t,
-				f.repoRepo, f.subsRepo, f.ghClient, f.emailSender,
+				f.repoRepo, f.subsRepo, f.ghClient, f.emailManager,
 			)
 		})
 	}

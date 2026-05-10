@@ -30,6 +30,8 @@ linters:
       - path: _test\.go
         linters:
           - funlen
+          - gocognit
+          - nestif
   enable:
     - govet # Vet examines Go source code and reports suspicious constructs.
     - errcheck # Errcheck is a program for checking for unchecked errors in Go code.
@@ -86,6 +88,7 @@ linters:
         - "-ST1000" # Incorrect or missing package comment.
     gocyclo: # Computes and checks the cyclomatic complexity of functions.
       min-complexity: 15 # Minimal code complexity to report.
+
     gocognit: # Computes and checks the cognitive complexity of functions.
         min-complexity: 20 # Minimal code complexity to report.
     nestif: # Reports deeply nested if statements.
@@ -167,4 +170,3 @@ issues:
   max-same-issues: 0
   max-issues-per-linter: 0
   fix: false
-

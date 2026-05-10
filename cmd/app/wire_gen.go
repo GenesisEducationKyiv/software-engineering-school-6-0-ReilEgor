@@ -26,10 +26,6 @@ import (
 	grpc2 "google.golang.org/grpc"
 )
 
-import (
-	_ "context"
-)
-
 // Injectors from wire.go:
 
 func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPort config.RedisPortType, redisPassword config.RedisPasswordType, redisDB int, dsn config.DSNType, emailHost config.EmailHostType, emailPort config.EmailPortType, emailPassword config.EmailPasswordType, emailFrom config.EmailFromType, emailUser config.EmailUserType, apiKey config.APIKeyType, githubToken config.GitHubTokenType, baseURL config.AppBaseURLType) (*App, func(), error) {
@@ -38,17 +34,19 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 		return nil, nil, err
 	}
 	subscriptionRepository := postgres2.NewSubscriptionRepository(pool)
+	gitHubClient := github.NewGitHubClient(githubToken)
 	client, err := redis.NewRedisClient(redisHost, redisPort, redisPassword, redisDB)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
 	cache := redis.NewCache(client)
-	gitHubClient := github.NewGitHubClient(cache, githubToken)
+	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	userRepository := postgres2.NewUserRepository(pool)
 	repositoryRepository := postgres2.NewRepositoryRepository(pool)
-	smtpClient := email.NewSMTPClient(emailHost, emailPort, emailFrom, emailPassword, emailUser, baseURL)
-	subscriptionUseCase := usecase.NewSubscriptionUseCase(subscriptionRepository, gitHubClient, userRepository, repositoryRepository, smtpClient)
+	smtpClient := email.NewSMTPClient(emailHost, emailPort, emailFrom, emailPassword, emailUser)
+	emailManager := email.NewEmailManager(smtpClient, baseURL)
+	subscriptionUseCase := usecase.NewSubscriptionUseCase(subscriptionRepository, serviceGitHubClient, userRepository, repositoryRepository, emailManager)
 	ginServer := http.NewGinServer(subscriptionUseCase, client, apiKey)
 	subscriptionHandler := grpc.NewSubscriptionHandler(subscriptionUseCase)
 	server := grpc.NewGrpcServer(subscriptionHandler, apiKey)
@@ -68,11 +66,22 @@ var UseCaseSet = wire.NewSet(usecase.NewSubscriptionUseCase, wire.Bind(new(useca
 
 var RepositorySet = wire.NewSet(postgres.New, postgres2.NewRepositoryRepository, postgres2.NewSubscriptionRepository, postgres2.NewUserRepository, wire.Bind(new(postgres2.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres2.RepositoryRepository)), wire.Bind(new(repository.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(repository.UserRepository), new(*postgres2.UserRepository)))
 
+func ProvideCachedClient(c *github.GitHubClient, cache service.Cache) service.GitHubClient {
+	return github.NewCachedGitHubClient(c, cache)
+}
+
+var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
+
 var RestSet = wire.NewSet(http.NewGinServer, handlers.NewHandler)
 
 var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(service.Cache), new(*redis.Cache)))
 
-var ServicesSet = wire.NewSet(github.NewGitHubClient, email.NewSMTPClient, wire.Bind(new(service.EmailSender), new(*email.SMTPClient)), wire.Bind(new(service.GitHubClient), new(*github.GitHubClient)))
+var EmailSet = wire.NewSet(email.NewSMTPClient, email.NewEmailManager, wire.Bind(new(service.EmailService), new(*email.EmailManager)), wire.Bind(new(service.EmailSender), new(*email.SMTPClient)))
+
+var ServicesSet = wire.NewSet(
+	GitHubSet,
+	EmailSet,
+)
 
 var GrpcSet = wire.NewSet(grpc.NewSubscriptionHandler, grpc.NewGrpcServer)
 

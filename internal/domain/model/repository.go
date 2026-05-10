@@ -13,3 +13,8 @@ type Repository struct {
 	LastSeenTag string
 	UpdatedAt   time.Time
 }
+type EmailMessage struct {
+	To      string
+	Subject string
+	Body    string
+}

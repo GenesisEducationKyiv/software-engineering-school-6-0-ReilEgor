@@ -33,12 +33,12 @@ const (
 )
 
 type SubscriptionUseCase struct {
-	logger      *slog.Logger
-	subsRepo    repository.SubscriptionRepository
-	userRepo    repository.UserRepository
-	repoRepo    repository.RepositoryRepository
-	emailSender service.EmailSender
-	ghClient    service.GitHubClient
+	logger       *slog.Logger
+	subsRepo     repository.SubscriptionRepository
+	userRepo     repository.UserRepository
+	repoRepo     repository.RepositoryRepository
+	emailService service.EmailService
+	ghClient     service.GitHubClient
 }
 
 func NewSubscriptionUseCase(
@@ -46,15 +46,15 @@ func NewSubscriptionUseCase(
 	gh service.GitHubClient,
 	ur repository.UserRepository,
 	rr repository.RepositoryRepository,
-	es service.EmailSender,
+	es service.EmailService,
 ) *SubscriptionUseCase {
 	return &SubscriptionUseCase{
-		logger:      slog.With(slog.String("useCase", componentSubscriptionUseCase)),
-		subsRepo:    sr,
-		ghClient:    gh,
-		userRepo:    ur,
-		repoRepo:    rr,
-		emailSender: es,
+		logger:       slog.With(slog.String("useCase", componentSubscriptionUseCase)),
+		subsRepo:     sr,
+		ghClient:     gh,
+		userRepo:     ur,
+		repoRepo:     rr,
+		emailService: es,
 	}
 }
 
@@ -125,7 +125,7 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 		sendCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err := uc.emailSender.SendConfirmation(sendCtx, email, repoName, token); err != nil {
+		if err := uc.emailService.SendConfirmation(sendCtx, email, repoName, token); err != nil {
 			log.Error("failed to send confirmation email", slog.String("error", err.Error()))
 		}
 	}()
@@ -223,7 +223,7 @@ func (uc *SubscriptionUseCase) ProcessNotifications(ctx context.Context) error {
 				mailCtx, mailCancel := context.WithTimeout(sendCtx, 5*time.Second)
 				defer mailCancel()
 
-				if err := uc.emailSender.SendNotification(
+				if err := uc.emailService.SendNotification(
 					mailCtx,
 					sub.Email,
 					repo.FullName,

@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	model "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,35 +14,17 @@ type EmailSender struct {
 	mock.Mock
 }
 
-// SendConfirmation provides a mock function with given fields: ctx, to, repoName, token
-func (_m *EmailSender) SendConfirmation(ctx context.Context, to string, repoName string, token string) error {
-	ret := _m.Called(ctx, to, repoName, token)
+// Send provides a mock function with given fields: ctx, msg
+func (_m *EmailSender) Send(ctx context.Context, msg model.EmailMessage) error {
+	ret := _m.Called(ctx, msg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SendConfirmation")
+		panic("no return value specified for Send")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
-		r0 = rf(ctx, to, repoName, token)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// SendNotification provides a mock function with given fields: ctx, to, repoName, tagName, token
-func (_m *EmailSender) SendNotification(ctx context.Context, to string, repoName string, tagName string, token string) error {
-	ret := _m.Called(ctx, to, repoName, tagName, token)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SendNotification")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) error); ok {
-		r0 = rf(ctx, to, repoName, tagName, token)
+	if rf, ok := ret.Get(0).(func(context.Context, model.EmailMessage) error); ok {
+		r0 = rf(ctx, msg)
 	} else {
 		r0 = ret.Error(0)
 	}

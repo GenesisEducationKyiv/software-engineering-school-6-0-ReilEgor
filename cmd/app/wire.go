@@ -41,6 +41,15 @@ var RepositorySet = wire.NewSet(
 	wire.Bind(new(repositoryInterface.UserRepository), new(*repositoryRealization.UserRepository)),
 )
 
+func ProvideCachedClient(c *servicesRealizationGitHub.GitHubClient, cache servicesInterface.Cache) servicesInterface.GitHubClient {
+	return servicesRealizationGitHub.NewCachedGitHubClient(c, cache)
+}
+
+var GitHubSet = wire.NewSet(
+	servicesRealizationGitHub.NewGitHubClient,
+	ProvideCachedClient,
+)
+
 var RestSet = wire.NewSet(
 	http.NewGinServer,
 	handlers.NewHandler,
@@ -52,11 +61,16 @@ var CacheSet = wire.NewSet(
 	wire.Bind(new(servicesInterface.Cache), new(*cacheRealization.Cache)),
 )
 
-var ServicesSet = wire.NewSet(
-	servicesRealizationGitHub.NewGitHubClient,
+var EmailSet = wire.NewSet(
 	servicesRealizationEmail.NewSMTPClient,
+	servicesRealizationEmail.NewEmailManager,
+	wire.Bind(new(servicesInterface.EmailService), new(*servicesRealizationEmail.EmailManager)),
 	wire.Bind(new(servicesInterface.EmailSender), new(*servicesRealizationEmail.SMTPClient)),
-	wire.Bind(new(servicesInterface.GitHubClient), new(*servicesRealizationGitHub.GitHubClient)),
+)
+
+var ServicesSet = wire.NewSet(
+	GitHubSet,
+	EmailSet,
 )
 
 var GrpcSet = wire.NewSet(
