@@ -2,8 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 )
@@ -29,15 +32,15 @@ const deleteSubscriptionQuery = `
 	WHERE user_id = $1 AND repository_id = (SELECT id FROM repositories WHERE full_name = $2)
 `
 
-func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repo string) error {
+func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repoName string) error {
 	const op = "SubscriptionRepository.Delete"
 	log := r.logger.With(slog.String("op", op))
 
-	res, err := r.db.Exec(ctx, deleteSubscriptionQuery, userID, repo)
+	res, err := r.db.Exec(ctx, deleteSubscriptionQuery, userID, repoName)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to delete subscription",
 			slog.Int64("user_id", userID),
-			slog.String("repo", repo),
+			slog.String("repo", repoName),
 			slog.String("error", err.Error()),
 		)
 		return fmt.Errorf("%s: exec: %w", op, err)
@@ -45,66 +48,53 @@ func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repo 
 
 	log.DebugContext(ctx, "subscription deleted",
 		slog.Int64("user_id", userID),
-		slog.String("repo", repo),
+		slog.String("repo", repoName),
 		slog.Int64("affected", res.RowsAffected()),
 	)
 	return nil
 }
 
-const confirmSubscriptionQuery = `
-    UPDATE subscriptions 
-    SET is_confirmed = TRUE 
-    WHERE token = $1 
-    RETURNING id
+const getByTokenQuery = `
+	SELECT s.id, s.user_id, s.repository_id, r.full_name, s.token, s.is_confirmed, s.created_at
+	FROM subscriptions s
+	JOIN repositories r ON s.repository_id = r.id
+	WHERE s.token = $1
 `
 
-func (r *SubscriptionRepository) Confirm(ctx context.Context, token string) error {
-	const op = "SubscriptionRepository.Confirm"
+func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (*model.Subscription, error) {
+	const op = "SubscriptionRepository.GetByToken"
 
-	result, err := r.db.Exec(ctx, confirmSubscriptionQuery, token)
+	var sub model.Subscription
+	err := r.db.QueryRow(ctx, getByTokenQuery, token).Scan(
+		&sub.ID,
+		&sub.UserID,
+		&sub.RepositoryID,
+		&sub.RepositoryName,
+		&sub.Token,
+		&sub.Confirmed,
+		&sub.CreatedAt,
+	)
 	if err != nil {
-		return fmt.Errorf("%s: exec: %w", op, err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%s: %w", op, model.ErrInvalidToken)
+		}
+		return nil, fmt.Errorf("%s: query: %w", op, err)
 	}
 
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("%s: %w", op, model.ErrInvalidToken)
-	}
-
-	return nil
-}
-
-const unsubscribeByTokenQuery = `
-    DELETE FROM subscriptions 
-    WHERE token = $1 
-    RETURNING id
-`
-
-func (r *SubscriptionRepository) UnsubscribeByToken(ctx context.Context, token string) error {
-	const op = "SubscriptionRepository.UnsubscribeByToken"
-
-	result, err := r.db.Exec(ctx, unsubscribeByTokenQuery, token)
-	if err != nil {
-		return fmt.Errorf("%s: exec: %w", op, err)
-	}
-
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("%s: %w", op, model.ErrInvalidToken)
-	}
-
-	return nil
+	return &sub, nil
 }
 
 const getSubscribersQuery = `
-    SELECT u.email, s.token 
-    FROM subscriptions s
-    JOIN users u ON s.user_id = u.id
-    WHERE s.repository_id = $1 AND s.is_confirmed = TRUE
+	SELECT u.email, s.token 
+	FROM subscriptions s
+	JOIN users u ON s.user_id = u.id
+	WHERE s.repository_id = $1 AND s.is_confirmed = TRUE
 `
 
-func (r *SubscriptionRepository) GetSubscribersByRepoID(ctx context.Context, id int64) ([]model.Subscriber, error) {
-	const op = "SubscriptionRepository.GetSubscribersByRepoID"
+func (r *SubscriptionRepository) GetByRepoID(ctx context.Context, repoID int64) ([]model.Subscriber, error) {
+	const op = "SubscriptionRepository.GetByRepoID"
 
-	rows, err := r.db.Query(ctx, getSubscribersQuery, id)
+	rows, err := r.db.Query(ctx, getSubscribersQuery, repoID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: query: %w", op, err)
 	}
@@ -123,18 +113,19 @@ func (r *SubscriptionRepository) GetSubscribersByRepoID(ctx context.Context, id 
 }
 
 const listByEmailQuery = `
-    SELECT 
-        s.id, 
-        r.id as repository_id,
-        r.full_name, 
-        s.is_confirmed, 
-        r.last_seen_tag, 
-        s.created_at
-    FROM subscriptions s
-    JOIN users u ON s.user_id = u.id
-    JOIN repositories r ON s.repository_id = r.id
-    WHERE u.email = $1
-    ORDER BY s.created_at DESC
+	SELECT 
+		s.id, 
+		r.id as repository_id,
+		r.full_name, 
+		s.token,
+		s.is_confirmed, 
+		r.last_seen_tag, 
+		s.created_at
+	FROM subscriptions s
+	JOIN users u ON s.user_id = u.id
+	JOIN repositories r ON s.repository_id = r.id
+	WHERE u.email = $1
+	ORDER BY s.created_at DESC
 `
 
 func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) ([]model.Subscription, error) {
@@ -153,6 +144,7 @@ func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) (
 			&s.ID,
 			&s.RepositoryID,
 			&s.RepositoryName,
+			&s.Token,
 			&s.Confirmed,
 			&s.LastSeenTag,
 			&s.CreatedAt,
@@ -172,4 +164,30 @@ func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) (
 	}
 
 	return subs, nil
+}
+
+const saveSubscriptionQuery = `
+	INSERT INTO subscriptions (user_id, repository_id, token, is_confirmed)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT (user_id, repository_id) 
+	DO UPDATE SET token = EXCLUDED.token, is_confirmed = EXCLUDED.is_confirmed
+	RETURNING id
+`
+
+func (r *SubscriptionRepository) Save(ctx context.Context, sub *model.Subscription) error {
+	const op = "SubscriptionRepository.Save"
+
+	err := r.db.QueryRow(
+		ctx,
+		saveSubscriptionQuery,
+		sub.UserID,
+		sub.RepositoryID,
+		sub.Token,
+		sub.Confirmed,
+	).Scan(&sub.ID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }

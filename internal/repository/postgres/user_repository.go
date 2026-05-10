@@ -52,30 +52,28 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (model.Us
 	return user, nil
 }
 
-const getOrCreateUserRepositoryQuery = `
+const createUserQuery = `
 	INSERT INTO users (email)
 	VALUES ($1)
-	ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
-	RETURNING id, email, created_at
+	RETURNING id, created_at
 `
 
-func (r *UserRepository) GetOrCreate(ctx context.Context, email string) (model.User, error) {
-	const op = "UserRepository.GetOrCreate"
-	log := r.logger.With(slog.String("op", op))
+func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
+	const op = "UserRepository.Create"
+	log := r.logger.With(slog.String("op", op), slog.String("email", user.Email))
 
-	var user model.User
-	if err := r.db.QueryRow(ctx, getOrCreateUserRepositoryQuery, email).
-		Scan(&user.ID, &user.Email, &user.CreatedAt); err != nil {
-		log.ErrorContext(ctx, "query failed",
-			slog.String("email", email),
+	err := r.db.QueryRow(ctx, createUserQuery, user.Email).Scan(&user.ID, &user.CreatedAt)
+	if err != nil {
+		log.ErrorContext(ctx, "insert failed",
+			slog.String("email", user.Email),
 			slog.String("error", err.Error()),
 		)
-		return model.User{}, fmt.Errorf("%s: query row: %w", op, err)
+		return fmt.Errorf("%s: insert: %w", op, err)
 	}
 
-	log.DebugContext(ctx, "user get or created",
-		slog.String("email", email),
+	log.DebugContext(ctx, "user created",
+		slog.String("email", user.Email),
 		slog.Int64("id", user.ID),
 	)
-	return user, nil
+	return nil
 }

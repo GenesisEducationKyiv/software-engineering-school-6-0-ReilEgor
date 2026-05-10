@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrRepositoryNotFound = errors.New("repository not found")
 
 type Repository struct {
 	ID          int64

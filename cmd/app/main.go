@@ -15,8 +15,6 @@ import (
 	"github.com/bytedance/gopkg/util/logger"
 	"github.com/caarlos0/env/v11"
 
-	_ "context"
-
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 )
 

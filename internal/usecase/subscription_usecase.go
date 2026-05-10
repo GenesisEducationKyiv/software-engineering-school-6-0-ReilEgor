@@ -79,21 +79,46 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 		return fmt.Errorf("%s: fetch release: %w", op, err)
 	}
 
-	repo, err := uc.repoRepo.GetOrCreate(ctx, repoName, release.TagName)
+	repo, err := uc.repoRepo.GetByName(ctx, repoName)
 	if err != nil {
-		return fmt.Errorf("%s: repo storage: %w", op, err)
+		if !errors.Is(err, model.ErrRepositoryNotFound) {
+			return fmt.Errorf("%s: get repo: %w", op, err)
+		}
+
+		repo = &model.Repository{
+			FullName:    repoName,
+			LastSeenTag: release.TagName,
+		}
+
+		if err = uc.repoRepo.Create(ctx, repo); err != nil {
+			return fmt.Errorf("%s: create repo: %w", op, err)
+		}
 	}
 
-	user, err := uc.userRepo.GetOrCreate(ctx, email)
+	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return fmt.Errorf("%s: user storage: %w", op, err)
+		if !errors.Is(err, model.ErrUserNotFound) {
+			return fmt.Errorf("%s: get user: %w", op, err)
+		}
+
+		user = model.User{Email: email}
+		if err := uc.userRepo.Create(ctx, &user); err != nil {
+			return fmt.Errorf("%s: create user: %w", op, err)
+		}
 	}
 
 	token := uuid.NewString()
-	_, err = uc.subsRepo.CreatePending(ctx, user.ID, repo.ID, token)
-	if err != nil {
-		log.ErrorContext(ctx, "failed to create pending subscription", slog.String("error", err.Error()))
-		return fmt.Errorf("%s: create pending: %w", op, err)
+	sub := &model.Subscription{
+		UserID:         user.ID,
+		RepositoryID:   repo.ID,
+		RepositoryName: repo.FullName,
+		Token:          token,
+		Confirmed:      false,
+	}
+
+	if err := uc.subsRepo.Save(ctx, sub); err != nil {
+		log.ErrorContext(ctx, "failed to save pending subscription", slog.String("error", err.Error()))
+		return fmt.Errorf("%s: save pending: %w", op, err)
 	}
 
 	go func() {
@@ -180,18 +205,20 @@ func (uc *SubscriptionUseCase) ProcessNotifications(ctx context.Context) error {
 			continue
 		}
 
-		if err = uc.repoRepo.UpdateLastSeenTag(ctx, repo.FullName, latestRelease.TagName); err != nil {
+		repo.LastSeenTag = latestRelease.TagName
+		if err = uc.repoRepo.Update(ctx, &repo); err != nil {
 			log.ErrorContext(ctx, errMsgUpdateTag, slog.String("error", err.Error()))
 			continue
 		}
 
-		subs, err := uc.subsRepo.GetSubscribersByRepoID(ctx, repo.ID)
+		subs, err := uc.subsRepo.GetByRepoID(ctx, repo.ID)
 		if err != nil {
 			log.ErrorContext(ctx, errMsgGetSubscribers, slog.String("error", err.Error()))
 			continue
 		}
 
 		for _, sub := range subs {
+			sub := sub
 			g.Go(func() error {
 				mailCtx, mailCancel := context.WithTimeout(sendCtx, 5*time.Second)
 				defer mailCancel()
@@ -226,13 +253,18 @@ func (uc *SubscriptionUseCase) Confirm(ctx context.Context, token string) error 
 		return model.ErrInvalidToken
 	}
 
-	err := uc.subsRepo.Confirm(ctx, token)
+	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidToken) {
 			log.WarnContext(ctx, "attempt to confirm with invalid token")
-			return fmt.Errorf("%s: %w", op, err)
 		}
 		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	sub.Confirmed = true
+
+	if err := uc.subsRepo.Save(ctx, sub); err != nil {
+		return fmt.Errorf("%s: save: %w", op, err)
 	}
 
 	log.InfoContext(ctx, "subscription confirmed successfully")
@@ -247,12 +279,16 @@ func (uc *SubscriptionUseCase) UnsubscribeByToken(ctx context.Context, token str
 		return model.ErrInvalidToken
 	}
 
-	if err := uc.subsRepo.UnsubscribeByToken(ctx, token); err != nil {
+	sub, err := uc.subsRepo.GetByToken(ctx, token)
+	if err != nil {
 		if errors.Is(err, model.ErrInvalidToken) {
 			log.WarnContext(ctx, "invalid unsubscribe token", slog.String("token", token))
-			return fmt.Errorf("%s: %w", op, err)
 		}
-		return fmt.Errorf("%s: %w", op, err)
+		return fmt.Errorf("%s: get by token: %w", op, err)
+	}
+
+	if err := uc.subsRepo.Delete(ctx, sub.UserID, sub.RepositoryName); err != nil {
+		return fmt.Errorf("%s: delete: %w", op, err)
 	}
 
 	log.InfoContext(ctx, "unsubscribed by token successfully")

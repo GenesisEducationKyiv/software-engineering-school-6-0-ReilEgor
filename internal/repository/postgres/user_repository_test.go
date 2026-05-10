@@ -75,7 +75,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 					WillReturnError(fmt.Errorf("internal db error"))
 			},
 			expectError: true,
-			checkErrMsg: "query row",
+			checkErrMsg: "query row:",
 		},
 	}
 
@@ -106,7 +106,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 	}
 }
 
-func TestUserRepository_GetOrCreate(t *testing.T) {
+func TestUserRepository_Create(t *testing.T) {
 	mock, err := pgxmock.NewPool()
 	require.NoError(t, err)
 	defer mock.Close()
@@ -117,74 +117,58 @@ func TestUserRepository_GetOrCreate(t *testing.T) {
 		logger: discardLogger,
 	}
 
-	userEmail := "test@example.com"
 	now := time.Now()
 
 	tests := []struct {
 		name        string
-		email       string
-		mockSetup   func(email string)
+		inputUser   *model.User
+		mockSetup   func(u *model.User)
 		expectError bool
-		expected    model.User
+		checkErrMsg string
 	}{
 		{
-			name:  "success create new user",
-			email: userEmail,
-			mockSetup: func(email string) {
+			name: "success create new user",
+			inputUser: &model.User{
+				Email: "test@example.com",
+			},
+			mockSetup: func(u *model.User) {
 				mock.ExpectQuery("^INSERT INTO users").
-					WithArgs(email).
-					WillReturnRows(pgxmock.NewRows([]string{"id", "email", "created_at"}).
-						AddRow(int64(1), email, now))
+					WithArgs(u.Email).
+					WillReturnRows(pgxmock.NewRows([]string{"id", "created_at"}).
+						AddRow(int64(1), now))
 			},
 			expectError: false,
-			expected: model.User{
-				ID:        1,
-				Email:     userEmail,
-				CreatedAt: now,
-			},
 		},
 		{
-			name:  "success get existing user (conflict)",
-			email: userEmail,
-			mockSetup: func(email string) {
-				mock.ExpectQuery("^INSERT INTO users").
-					WithArgs(email).
-					WillReturnRows(pgxmock.NewRows([]string{"id", "email", "created_at"}).
-						AddRow(int64(1), email, now.Add(-time.Hour)))
+			name: "database error on insert (e.g. duplicate email)",
+			inputUser: &model.User{
+				Email: "duplicate@example.com",
 			},
-			expectError: false,
-			expected: model.User{
-				ID:        1,
-				Email:     userEmail,
-				CreatedAt: now.Add(-time.Hour),
-			},
-		},
-		{
-			name:  "database error",
-			email: userEmail,
-			mockSetup: func(email string) {
+			mockSetup: func(u *model.User) {
 				mock.ExpectQuery("^INSERT INTO users").
-					WithArgs(email).
-					WillReturnError(fmt.Errorf("unexpected connection error"))
+					WithArgs(u.Email).
+					WillReturnError(fmt.Errorf("unique constraint violation"))
 			},
 			expectError: true,
+			checkErrMsg: "insert:",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup(tt.email)
+			tt.mockSetup(tt.inputUser)
 
-			result, err := repo.GetOrCreate(context.Background(), tt.email)
+			err := repo.Create(context.Background(), tt.inputUser)
 
 			if tt.expectError {
 				require.Error(t, err)
-				assert.Equal(t, model.User{}, result)
+				if tt.checkErrMsg != "" {
+					assert.Contains(t, err.Error(), tt.checkErrMsg)
+				}
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expected.ID, result.ID)
-				assert.Equal(t, tt.expected.Email, result.Email)
-				assert.Equal(t, tt.expected.CreatedAt, result.CreatedAt)
+				assert.Equal(t, int64(1), tt.inputUser.ID)
+				assert.Equal(t, now, tt.inputUser.CreatedAt)
 			}
 
 			assert.NoError(t, mock.ExpectationsWereMet())
