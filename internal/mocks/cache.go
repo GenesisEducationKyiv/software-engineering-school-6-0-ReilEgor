@@ -16,22 +16,24 @@ type Cache struct {
 }
 
 // Get provides a mock function with given fields: ctx, key
-func (_m *Cache) Get(ctx context.Context, key string) (string, error) {
+func (_m *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 	ret := _m.Called(ctx, key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 string
+	var r0 []byte
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]byte, error)); ok {
 		return rf(ctx, key)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) []byte); ok {
 		r0 = rf(ctx, key)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
@@ -44,7 +46,7 @@ func (_m *Cache) Get(ctx context.Context, key string) (string, error) {
 }
 
 // Set provides a mock function with given fields: ctx, key, value, ttl
-func (_m *Cache) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
+func (_m *Cache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
 	ret := _m.Called(ctx, key, value, ttl)
 
 	if len(ret) == 0 {
@@ -52,7 +54,7 @@ func (_m *Cache) Set(ctx context.Context, key string, value string, ttl time.Dur
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, []byte, time.Duration) error); ok {
 		r0 = rf(ctx, key, value, ttl)
 	} else {
 		r0 = ret.Error(0)

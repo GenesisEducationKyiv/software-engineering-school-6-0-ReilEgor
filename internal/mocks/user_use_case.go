@@ -14,23 +14,43 @@ type UserUseCase struct {
 	mock.Mock
 }
 
-// Create provides a mock function with given fields: ctx, email
-func (_m *UserUseCase) Create(ctx context.Context, email string) (int, error) {
+// Confirm provides a mock function with given fields: ctx, token
+func (_m *UserUseCase) Confirm(ctx context.Context, token string) error {
+	ret := _m.Called(ctx, token)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Confirm")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, token)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// ListByEmail provides a mock function with given fields: ctx, email
+func (_m *UserUseCase) ListByEmail(ctx context.Context, email string) ([]model.Subscription, error) {
 	ret := _m.Called(ctx, email)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Create")
+		panic("no return value specified for ListByEmail")
 	}
 
-	var r0 int
+	var r0 []model.Subscription
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (int, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.Subscription, error)); ok {
 		return rf(ctx, email)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) []model.Subscription); ok {
 		r0 = rf(ctx, email)
 	} else {
-		r0 = ret.Get(0).(int)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.Subscription)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
@@ -42,32 +62,58 @@ func (_m *UserUseCase) Create(ctx context.Context, email string) (int, error) {
 	return r0, r1
 }
 
-// GetByEmail provides a mock function with given fields: ctx, email
-func (_m *UserUseCase) GetByEmail(ctx context.Context, email string) (model.User, error) {
-	ret := _m.Called(ctx, email)
+// Subscribe provides a mock function with given fields: ctx, email, repoName
+func (_m *UserUseCase) Subscribe(ctx context.Context, email string, repoName string) error {
+	ret := _m.Called(ctx, email, repoName)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetByEmail")
+		panic("no return value specified for Subscribe")
 	}
 
-	var r0 model.User
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (model.User, error)); ok {
-		return rf(ctx, email)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) model.User); ok {
-		r0 = rf(ctx, email)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, email, repoName)
 	} else {
-		r0 = ret.Get(0).(model.User)
+		r0 = ret.Error(0)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, email)
+	return r0
+}
+
+// Unsubscribe provides a mock function with given fields: ctx, email, repoName
+func (_m *UserUseCase) Unsubscribe(ctx context.Context, email string, repoName string) error {
+	ret := _m.Called(ctx, email, repoName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Unsubscribe")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, email, repoName)
 	} else {
-		r1 = ret.Error(1)
+		r0 = ret.Error(0)
 	}
 
-	return r0, r1
+	return r0
+}
+
+// UnsubscribeByToken provides a mock function with given fields: ctx, token
+func (_m *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) error {
+	ret := _m.Called(ctx, token)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnsubscribeByToken")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, token)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // NewUserUseCase creates a new instance of UserUseCase. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

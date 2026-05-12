@@ -15,8 +15,6 @@ import (
 	"github.com/bytedance/gopkg/util/logger"
 	"github.com/caarlos0/env/v11"
 
-	_ "context"
-
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 )
 
@@ -113,7 +111,7 @@ func startNotificationWorker(ctx context.Context, app *App, l *slog.Logger) {
 			l.Info("notification worker stopped")
 			return
 		case <-ticker.C:
-			if err := app.SubscriptionUseCase.ProcessNotifications(ctx); err != nil {
+			if err := app.NotificationUseCase.ProcessNotifications(ctx); err != nil {
 				l.Error("worker check failed", slog.Any("error", err))
 			}
 		}

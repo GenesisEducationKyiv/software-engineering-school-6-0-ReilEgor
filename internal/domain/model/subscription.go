@@ -13,6 +13,7 @@ type Subscription struct {
 	LastSeenTag    string
 	CreatedAt      time.Time
 	RepositoryID   int64
+	Token          string
 	RepositoryName string
 	Confirmed      bool `json:"confirmed"`
 }

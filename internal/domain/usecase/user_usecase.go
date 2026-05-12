@@ -8,6 +8,9 @@ import (
 
 //go:generate mockery --name UserUseCase --output ../../mocks --case underscore --outpkg mocks
 type UserUseCase interface {
-	GetByEmail(ctx context.Context, email string) (model.User, error)
-	Create(ctx context.Context, email string) (int, error)
+	Subscribe(ctx context.Context, email, repoName string) error
+	Unsubscribe(ctx context.Context, email, repoName string) error
+	UnsubscribeByToken(ctx context.Context, token string) error
+	Confirm(ctx context.Context, token string) error
+	ListByEmail(ctx context.Context, email string) ([]model.Subscription, error)
 }

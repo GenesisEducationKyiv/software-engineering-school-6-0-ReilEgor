@@ -31,26 +31,28 @@ func NewCache(client *redis.Client) *Cache {
 	}
 }
 
-func (c *Cache) Get(ctx context.Context, key string) (string, error) {
+func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 	const op = "Cache.Get"
 	log := c.logger.With(slog.String("op", op))
-	value, err := c.client.Get(ctx, key).Result()
+
+	value, err := c.client.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return "", service.ErrCacheMiss
+			return nil, service.ErrCacheMiss
 		}
 		log.ErrorContext(ctx, errMsgCacheGet,
 			slog.String("key", key),
 			slog.String("error", err.Error()),
 		)
-		return "", fmt.Errorf("redis get: %w", err)
+		return nil, fmt.Errorf("redis get: %w", err)
 	}
 	return value, nil
 }
 
-func (c *Cache) Set(ctx context.Context, key, value string, ttl time.Duration) error {
+func (c *Cache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
 	const op = "Cache.Set"
 	log := c.logger.With(slog.String("op", op))
+
 	if err := c.client.Set(ctx, key, value, ttl).Err(); err != nil {
 		log.ErrorContext(ctx, errMsgCacheSet,
 			slog.String("key", key),

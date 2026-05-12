@@ -14,16 +14,16 @@ import (
 )
 
 type Handler struct {
-	subscriptionUC usecase.SubscriptionUseCase
-	logger         *slog.Logger
-	apiKey         string
+	userUC usecase.UserUseCase
+	logger *slog.Logger
+	apiKey string
 }
 
-func NewHandler(subscriptionUC usecase.SubscriptionUseCase, apiKey string) *Handler {
+func NewHandler(userUC usecase.UserUseCase, apiKey string) *Handler {
 	return &Handler{
-		subscriptionUC: subscriptionUC,
-		logger:         slog.With(slog.String("component", "handler")),
-		apiKey:         apiKey,
+		userUC: userUC,
+		logger: slog.With(slog.String("component", "handler")),
+		apiKey: apiKey,
 	}
 }
 

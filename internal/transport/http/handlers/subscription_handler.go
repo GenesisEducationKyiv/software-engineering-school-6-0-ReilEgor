@@ -123,7 +123,7 @@ func (h *Handler) Subscribe(c *gin.Context) {
 		return
 	}
 
-	if err := h.subscriptionUC.Subscribe(ctx, req.Email, req.Repository); err != nil {
+	if err := h.userUC.Subscribe(ctx, req.Email, req.Repository); err != nil {
 		switch {
 		case errors.Is(err, service.ErrRepositoryNotFound):
 			log.WarnContext(ctx, "repository not found",
@@ -177,7 +177,7 @@ func (h *Handler) UnsubscribeByToken(c *gin.Context) {
 	h.handleTokenAction(
 		c,
 		timeoutUnsubscribe,
-		h.subscriptionUC.UnsubscribeByToken,
+		h.userUC.UnsubscribeByToken,
 		"invalid or expired unsubscribe link",
 		errFailedToUnsubscribe,
 	)
@@ -220,7 +220,7 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 		return
 	}
 
-	subs, err := h.subscriptionUC.ListByEmail(ctx, email)
+	subs, err := h.userUC.ListByEmail(ctx, email)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to fetch subscriptions",
 			slog.String("email", email),
@@ -269,7 +269,7 @@ func (h *Handler) Confirm(c *gin.Context) {
 	h.handleTokenAction(
 		c,
 		timeoutConfirm,
-		h.subscriptionUC.Confirm,
+		h.userUC.Confirm,
 		"invalid or expired token",
 		"failed to confirm subscription",
 	)

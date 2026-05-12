@@ -26,8 +26,12 @@ import (
 )
 
 var UseCaseSet = wire.NewSet(
-	usecaseRealization.NewSubscriptionUseCase,
-	wire.Bind(new(usecaseInterface.SubscriptionUseCase), new(*usecaseRealization.SubscriptionUseCase)),
+	usecaseRealization.NewRepositoryUseCase,
+	usecaseRealization.NewNotificationUseCase,
+	usecaseRealization.NewUserUseCase,
+	wire.Bind(new(usecaseInterface.RepositoryUseCase), new(*usecaseRealization.RepositoryUseCase)),
+	wire.Bind(new(usecaseInterface.NotificationUseCase), new(*usecaseRealization.NotificationUseCase)),
+	wire.Bind(new(usecaseInterface.UserUseCase), new(*usecaseRealization.UserUseCase)),
 )
 
 var RepositorySet = wire.NewSet(
@@ -41,6 +45,18 @@ var RepositorySet = wire.NewSet(
 	wire.Bind(new(repositoryInterface.UserRepository), new(*repositoryRealization.UserRepository)),
 )
 
+func ProvideCachedClient(
+	c *servicesRealizationGitHub.GitHubClient,
+	cache servicesInterface.Cache,
+) servicesInterface.GitHubClient {
+	return servicesRealizationGitHub.NewCachedGitHubClient(c, cache)
+}
+
+var GitHubSet = wire.NewSet(
+	servicesRealizationGitHub.NewGitHubClient,
+	ProvideCachedClient,
+)
+
 var RestSet = wire.NewSet(
 	http.NewGinServer,
 	handlers.NewHandler,
@@ -52,11 +68,16 @@ var CacheSet = wire.NewSet(
 	wire.Bind(new(servicesInterface.Cache), new(*cacheRealization.Cache)),
 )
 
-var ServicesSet = wire.NewSet(
-	servicesRealizationGitHub.NewGitHubClient,
+var EmailSet = wire.NewSet(
 	servicesRealizationEmail.NewSMTPClient,
+	servicesRealizationEmail.NewEmailManager,
+	wire.Bind(new(servicesInterface.EmailService), new(*servicesRealizationEmail.EmailManager)),
 	wire.Bind(new(servicesInterface.EmailSender), new(*servicesRealizationEmail.SMTPClient)),
-	wire.Bind(new(servicesInterface.GitHubClient), new(*servicesRealizationGitHub.GitHubClient)),
+)
+
+var ServicesSet = wire.NewSet(
+	GitHubSet,
+	EmailSet,
 )
 
 var GrpcSet = wire.NewSet(
@@ -67,7 +88,7 @@ var GrpcSet = wire.NewSet(
 type App struct {
 	HTTPServer          *http.GinServer
 	GrpcServer          *grpc.Server
-	SubscriptionUseCase usecaseInterface.SubscriptionUseCase
+	NotificationUseCase usecaseInterface.NotificationUseCase
 }
 
 func InitializeApp(
