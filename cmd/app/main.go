@@ -111,7 +111,7 @@ func startNotificationWorker(ctx context.Context, app *App, l *slog.Logger) {
 			l.Info("notification worker stopped")
 			return
 		case <-ticker.C:
-			if err := app.SubscriptionUseCase.ProcessNotifications(ctx); err != nil {
+			if err := app.NotificationUseCase.ProcessNotifications(ctx); err != nil {
 				l.Error("worker check failed", slog.Any("error", err))
 			}
 		}

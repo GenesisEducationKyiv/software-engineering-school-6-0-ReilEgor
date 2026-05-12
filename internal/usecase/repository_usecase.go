@@ -31,6 +31,8 @@ func NewRepositoryUseCase(
 	}
 }
 
+var errMsgUpdateTag = errors.New("update last seen tag in database")
+
 func (uc *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (*model.Repository, error) {
 	const op = "RepositoryUseCase.GetOrCreate"
 	log := uc.logger.With(
@@ -101,7 +103,7 @@ func (uc *RepositoryUseCase) CheckForUpdates(ctx context.Context, repo model.Rep
 
 	repo.LastSeenTag = latestRelease.TagName
 	if err := uc.repoRepo.Update(ctx, &repo); err != nil {
-		log.ErrorContext(ctx, errMsgUpdateTag, slog.String("error", err.Error()))
+		log.ErrorContext(ctx, errMsgUpdateTag.Error(), slog.String("error", err.Error()))
 		return nil, fmt.Errorf("%s: update tag in db: %w", op, err)
 	}
 

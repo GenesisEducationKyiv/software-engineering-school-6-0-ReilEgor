@@ -26,10 +26,12 @@ import (
 )
 
 var UseCaseSet = wire.NewSet(
-	usecaseRealization.NewSubscriptionUseCase,
 	usecaseRealization.NewRepositoryUseCase,
-	wire.Bind(new(usecaseInterface.SubscriptionUseCase), new(*usecaseRealization.SubscriptionUseCase)),
+	usecaseRealization.NewNotificationUseCase,
+	usecaseRealization.NewUserUseCase,
 	wire.Bind(new(usecaseInterface.RepositoryUseCase), new(*usecaseRealization.RepositoryUseCase)),
+	wire.Bind(new(usecaseInterface.NotificationUseCase), new(*usecaseRealization.NotificationUseCase)),
+	wire.Bind(new(usecaseInterface.UserUseCase), new(*usecaseRealization.UserUseCase)),
 )
 
 var RepositorySet = wire.NewSet(
@@ -43,7 +45,10 @@ var RepositorySet = wire.NewSet(
 	wire.Bind(new(repositoryInterface.UserRepository), new(*repositoryRealization.UserRepository)),
 )
 
-func ProvideCachedClient(c *servicesRealizationGitHub.GitHubClient, cache servicesInterface.Cache) servicesInterface.GitHubClient {
+func ProvideCachedClient(
+	c *servicesRealizationGitHub.GitHubClient,
+	cache servicesInterface.Cache,
+) servicesInterface.GitHubClient {
 	return servicesRealizationGitHub.NewCachedGitHubClient(c, cache)
 }
 
@@ -83,7 +88,7 @@ var GrpcSet = wire.NewSet(
 type App struct {
 	HTTPServer          *http.GinServer
 	GrpcServer          *grpc.Server
-	SubscriptionUseCase usecaseInterface.SubscriptionUseCase
+	NotificationUseCase usecaseInterface.NotificationUseCase
 }
 
 func InitializeApp(

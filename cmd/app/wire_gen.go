@@ -34,6 +34,8 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 		return nil, nil, err
 	}
 	subscriptionRepository := postgres2.NewSubscriptionRepository(pool)
+	userRepository := postgres2.NewUserRepository(pool)
+	repositoryRepository := postgres2.NewRepositoryRepository(pool)
 	gitHubClient := github.NewGitHubClient(githubToken)
 	client, err := redis.NewRedisClient(redisHost, redisPort, redisPassword, redisDB)
 	if err != nil {
@@ -42,19 +44,18 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 	}
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
-	repositoryRepository := postgres2.NewRepositoryRepository(pool)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
-	userRepository := postgres2.NewUserRepository(pool)
 	smtpClient := email.NewSMTPClient(emailHost, emailPort, emailFrom, emailPassword, emailUser)
 	emailManager := email.NewEmailManager(smtpClient, baseURL)
-	subscriptionUseCase := usecase.NewSubscriptionUseCase(subscriptionRepository, serviceGitHubClient, repositoryUseCase, userRepository, emailManager, repositoryRepository)
-	ginServer := http.NewGinServer(subscriptionUseCase, client, apiKey)
-	subscriptionHandler := grpc.NewSubscriptionHandler(subscriptionUseCase)
+	userUseCase := usecase.NewUserUseCase(subscriptionRepository, userRepository, repositoryUseCase, emailManager)
+	ginServer := http.NewGinServer(userUseCase, client, apiKey)
+	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
 	server := grpc.NewGrpcServer(subscriptionHandler, apiKey)
+	notificationUseCase := usecase.NewNotificationUseCase(subscriptionRepository, repositoryRepository, repositoryUseCase, emailManager)
 	app := &App{
 		HTTPServer:          ginServer,
 		GrpcServer:          server,
-		SubscriptionUseCase: subscriptionUseCase,
+		NotificationUseCase: notificationUseCase,
 	}
 	return app, func() {
 		cleanup()
@@ -63,11 +64,14 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 
 // wire.go:
 
-var UseCaseSet = wire.NewSet(usecase.NewSubscriptionUseCase, usecase.NewRepositoryUseCase, wire.Bind(new(usecase2.SubscriptionUseCase), new(*usecase.SubscriptionUseCase)), wire.Bind(new(usecase2.RepositoryUseCase), new(*usecase.RepositoryUseCase)))
+var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase.NewNotificationUseCase, usecase.NewUserUseCase, wire.Bind(new(usecase2.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase2.NotificationUseCase), new(*usecase.NotificationUseCase)), wire.Bind(new(usecase2.UserUseCase), new(*usecase.UserUseCase)))
 
 var RepositorySet = wire.NewSet(postgres.New, postgres2.NewRepositoryRepository, postgres2.NewSubscriptionRepository, postgres2.NewUserRepository, wire.Bind(new(postgres2.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres2.RepositoryRepository)), wire.Bind(new(repository.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(repository.UserRepository), new(*postgres2.UserRepository)))
 
-func ProvideCachedClient(c *github.GitHubClient, cache service.Cache) service.GitHubClient {
+func ProvideCachedClient(
+	c *github.GitHubClient,
+	cache service.Cache,
+) service.GitHubClient {
 	return github.NewCachedGitHubClient(c, cache)
 }
 
@@ -89,5 +93,5 @@ var GrpcSet = wire.NewSet(grpc.NewSubscriptionHandler, grpc.NewGrpcServer)
 type App struct {
 	HTTPServer          *http.GinServer
 	GrpcServer          *grpc2.Server
-	SubscriptionUseCase usecase2.SubscriptionUseCase
+	NotificationUseCase usecase2.NotificationUseCase
 }
