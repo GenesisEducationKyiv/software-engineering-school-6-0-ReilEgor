@@ -42,11 +42,12 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 	}
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
-	userRepository := postgres2.NewUserRepository(pool)
 	repositoryRepository := postgres2.NewRepositoryRepository(pool)
+	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
+	userRepository := postgres2.NewUserRepository(pool)
 	smtpClient := email.NewSMTPClient(emailHost, emailPort, emailFrom, emailPassword, emailUser)
 	emailManager := email.NewEmailManager(smtpClient, baseURL)
-	subscriptionUseCase := usecase.NewSubscriptionUseCase(subscriptionRepository, serviceGitHubClient, userRepository, repositoryRepository, emailManager)
+	subscriptionUseCase := usecase.NewSubscriptionUseCase(subscriptionRepository, serviceGitHubClient, repositoryUseCase, userRepository, emailManager, repositoryRepository)
 	ginServer := http.NewGinServer(subscriptionUseCase, client, apiKey)
 	subscriptionHandler := grpc.NewSubscriptionHandler(subscriptionUseCase)
 	server := grpc.NewGrpcServer(subscriptionHandler, apiKey)
@@ -62,7 +63,7 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 
 // wire.go:
 
-var UseCaseSet = wire.NewSet(usecase.NewSubscriptionUseCase, wire.Bind(new(usecase2.SubscriptionUseCase), new(*usecase.SubscriptionUseCase)))
+var UseCaseSet = wire.NewSet(usecase.NewSubscriptionUseCase, usecase.NewRepositoryUseCase, wire.Bind(new(usecase2.SubscriptionUseCase), new(*usecase.SubscriptionUseCase)), wire.Bind(new(usecase2.RepositoryUseCase), new(*usecase.RepositoryUseCase)))
 
 var RepositorySet = wire.NewSet(postgres.New, postgres2.NewRepositoryRepository, postgres2.NewSubscriptionRepository, postgres2.NewUserRepository, wire.Bind(new(postgres2.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres2.RepositoryRepository)), wire.Bind(new(repository.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(repository.UserRepository), new(*postgres2.UserRepository)))
 

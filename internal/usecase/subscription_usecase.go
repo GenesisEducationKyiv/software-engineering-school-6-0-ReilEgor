@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
 )
 
 const (
@@ -35,26 +37,29 @@ const (
 type SubscriptionUseCase struct {
 	logger       *slog.Logger
 	subsRepo     repository.SubscriptionRepository
+	repoUC       usecase.RepositoryUseCase
 	userRepo     repository.UserRepository
-	repoRepo     repository.RepositoryRepository
 	emailService service.EmailService
 	ghClient     service.GitHubClient
+	repoRepo     repository.RepositoryRepository
 }
 
 func NewSubscriptionUseCase(
 	sr repository.SubscriptionRepository,
 	gh service.GitHubClient,
+	ru usecase.RepositoryUseCase,
 	ur repository.UserRepository,
-	rr repository.RepositoryRepository,
 	es service.EmailService,
+	rr repository.RepositoryRepository,
 ) *SubscriptionUseCase {
 	return &SubscriptionUseCase{
 		logger:       slog.With(slog.String("useCase", componentSubscriptionUseCase)),
 		subsRepo:     sr,
 		ghClient:     gh,
+		repoUC:       ru,
+		emailService: es,
 		userRepo:     ur,
 		repoRepo:     rr,
-		emailService: es,
 	}
 }
 
@@ -66,33 +71,9 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 		slog.String("repo", repoName),
 	)
 
-	exists, err := uc.ghClient.RepoExists(ctx, repoName)
+	repo, err := uc.repoUC.GetOrCreate(ctx, repoName)
 	if err != nil {
-		return fmt.Errorf("%s: check repo: %w", op, err)
-	}
-	if !exists {
-		return service.ErrRepositoryNotFound
-	}
-
-	release, err := uc.ghClient.GetLatestRelease(ctx, repoName)
-	if err != nil {
-		return fmt.Errorf("%s: fetch release: %w", op, err)
-	}
-
-	repo, err := uc.repoRepo.GetByName(ctx, repoName)
-	if err != nil {
-		if !errors.Is(err, model.ErrRepositoryNotFound) {
-			return fmt.Errorf("%s: get repo: %w", op, err)
-		}
-
-		repo = &model.Repository{
-			FullName:    repoName,
-			LastSeenTag: release.TagName,
-		}
-
-		if err = uc.repoRepo.Create(ctx, repo); err != nil {
-			return fmt.Errorf("%s: create repo: %w", op, err)
-		}
+		return fmt.Errorf("%s: get or create repo: %w", op, err)
 	}
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
@@ -105,6 +86,7 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 		if err := uc.userRepo.Create(ctx, &user); err != nil {
 			return fmt.Errorf("%s: create user: %w", op, err)
 		}
+		log.InfoContext(ctx, "new user created", slog.String("id", strconv.FormatInt(user.ID, 10)))
 	}
 
 	token := uuid.NewString()
@@ -117,18 +99,11 @@ func (uc *SubscriptionUseCase) Subscribe(ctx context.Context, email, repoName st
 	}
 
 	if err := uc.subsRepo.Save(ctx, sub); err != nil {
-		log.ErrorContext(ctx, "failed to save pending subscription", slog.String("error", err.Error()))
+		log.ErrorContext(ctx, "failed to save pending subscription", slog.Any("error", err))
 		return fmt.Errorf("%s: save pending: %w", op, err)
 	}
 
-	go func() {
-		sendCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := uc.emailService.SendConfirmation(sendCtx, email, repoName, token); err != nil {
-			log.Error("failed to send confirmation email", slog.String("error", err.Error()))
-		}
-	}()
+	go uc.sendConfirmationEmail(email, repoName, token)
 
 	return nil
 }
@@ -173,75 +148,43 @@ func (uc *SubscriptionUseCase) ListByEmail(ctx context.Context, email string) ([
 }
 
 func (uc *SubscriptionUseCase) ProcessNotifications(ctx context.Context) error {
-	const op = "SubscriptionUseCase.ProcessNotifications"
-	log := uc.logger.With(slog.String("op", op))
-
 	repos, err := uc.repoRepo.GetAll(ctx)
 	if err != nil {
-		return fmt.Errorf("%s: %s: %w", op, errMsgGetRepos, err)
+		return fmt.Errorf("%s: %w", errMsgGetRepos, err)
 	}
 
-	g, sendCtx := errgroup.WithContext(context.Background())
+	g, sendCtx := errgroup.WithContext(ctx)
 	g.SetLimit(maxSendWorkers)
 
 	for _, repo := range repos {
-		log = log.With(slog.String("repo", repo.FullName))
-
-		repoCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		latestRelease, err := uc.ghClient.GetLatestRelease(repoCtx, repo.FullName)
-		cancel()
-
+		updatedRepo, err := uc.repoUC.CheckForUpdates(ctx, repo)
 		if err != nil {
-			log.ErrorContext(ctx, errMsgFetchRelease, slog.String("error", err.Error()))
+			uc.logger.ErrorContext(ctx, errMsgFetchRelease, "repo", repo.FullName, "err", err)
 			continue
 		}
 
-		if latestRelease == nil {
-			log.WarnContext(ctx, "latest release is nil")
+		if updatedRepo == nil {
 			continue
 		}
 
-		if latestRelease.TagName == repo.LastSeenTag {
-			continue
-		}
-
-		repo.LastSeenTag = latestRelease.TagName
-		if err = uc.repoRepo.Update(ctx, &repo); err != nil {
-			log.ErrorContext(ctx, errMsgUpdateTag, slog.String("error", err.Error()))
-			continue
-		}
-
-		subs, err := uc.subsRepo.GetByRepoID(ctx, repo.ID)
+		subs, err := uc.subsRepo.GetByRepoID(ctx, updatedRepo.ID)
 		if err != nil {
-			log.ErrorContext(ctx, errMsgGetSubscribers, slog.String("error", err.Error()))
+			uc.logger.ErrorContext(ctx, errMsgGetSubscribers, "repo", updatedRepo.FullName, "err", err)
 			continue
 		}
 
 		for _, sub := range subs {
 			sub := sub
 			g.Go(func() error {
-				mailCtx, mailCancel := context.WithTimeout(sendCtx, 5*time.Second)
-				defer mailCancel()
-
-				if err := uc.emailService.SendNotification(
-					mailCtx,
-					sub.Email,
-					repo.FullName,
-					latestRelease.TagName,
-					sub.Token,
-				); err != nil {
-					log.ErrorContext(mailCtx, "failed to send email",
-						slog.String("to", sub.Email),
-						slog.String("error", err.Error()),
-					)
-				}
-				return nil
+				return uc.sendNotificationEmail(sendCtx, sub, updatedRepo.FullName, updatedRepo.LastSeenTag)
 			})
 		}
 	}
+
 	if err := g.Wait(); err != nil {
-		return fmt.Errorf("%s: wait group: %w", op, err)
+		return fmt.Errorf("group task failed: %w", err)
 	}
+
 	return nil
 }
 
@@ -292,5 +235,34 @@ func (uc *SubscriptionUseCase) UnsubscribeByToken(ctx context.Context, token str
 	}
 
 	log.InfoContext(ctx, "unsubscribed by token successfully")
+	return nil
+}
+
+func (uc *SubscriptionUseCase) sendConfirmationEmail(email, repo, token string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := uc.emailService.SendConfirmation(ctx, email, repo, token); err != nil {
+		uc.logger.Error("failed to send confirmation email",
+			slog.String("to", email),
+			slog.Any("error", err),
+		)
+	}
+}
+
+func (uc *SubscriptionUseCase) sendNotificationEmail(
+	ctx context.Context,
+	sub model.Subscriber,
+	repoName, tag string,
+) error {
+	mailCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := uc.emailService.SendNotification(mailCtx, sub.Email, repoName, tag, sub.Token); err != nil {
+		uc.logger.ErrorContext(mailCtx, "failed to send email",
+			slog.String("to", sub.Email),
+			slog.Any("error", err),
+		)
+	}
 	return nil
 }

@@ -27,7 +27,9 @@ import (
 
 var UseCaseSet = wire.NewSet(
 	usecaseRealization.NewSubscriptionUseCase,
+	usecaseRealization.NewRepositoryUseCase,
 	wire.Bind(new(usecaseInterface.SubscriptionUseCase), new(*usecaseRealization.SubscriptionUseCase)),
+	wire.Bind(new(usecaseInterface.RepositoryUseCase), new(*usecaseRealization.RepositoryUseCase)),
 )
 
 var RepositorySet = wire.NewSet(
