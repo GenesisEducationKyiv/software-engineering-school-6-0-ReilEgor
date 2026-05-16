@@ -23,7 +23,7 @@ jobs:
         run: go build -v ./...
 
       - name: Run Tests
-        run: go test -v -race ./internal/... -coverprofile=coverage.txt -covermode=atomic
+        run: go test -v -race ./internal/... ./tests/integration/... -coverprofile=coverage.txt -covermode=atomic
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
