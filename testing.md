@@ -11,6 +11,14 @@ Before running the tests, make sure the following tools are installed on your ma
 
 ---
 
+## Run All Tests
+
+To run all tests in the project
+
+```bash
+go test -v ./...
+```
+
 ## Unit Tests
 
 Unit tests cover the internal business logic of the application and do not require any external dependencies.
