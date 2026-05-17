@@ -8,6 +8,7 @@ Before running the tests, make sure the following tools are installed on your ma
 
 - Go
 - Docker
+- Node.js and npm
 
 ---
 
@@ -39,4 +40,15 @@ Run integration tests with:
 
 ```bash
 go test -v ./tests/integration/...
+
+```
+
+## End-to-End (E2E) Tests
+
+E2E tests are written using Playwright and validate the application from the user's perspective.
+
+Run E2E tests with:
+
+```bash
+npx --prefix static playwright test
 ```
