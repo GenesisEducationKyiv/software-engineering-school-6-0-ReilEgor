@@ -16,7 +16,10 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
 )
 
-const componentUserUseCase = "UserUseCase"
+const (
+	componentUserUseCase            = "UserUseCase"
+	sendConfirmationEmailctxTimeout = 10
+)
 
 const (
 	ErrMsgGetUser   = "get user"
@@ -181,7 +184,7 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) err
 }
 
 func (uc *UserUseCase) sendConfirmationEmail(email, repo, token string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), sendConfirmationEmailctxTimeout*time.Second)
 	defer cancel()
 
 	if err := uc.emailService.SendConfirmation(ctx, email, repo, token); err != nil {

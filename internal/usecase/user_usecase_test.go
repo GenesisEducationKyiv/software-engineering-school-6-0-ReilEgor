@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -425,6 +427,53 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			default:
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestUserUseCase_sendConfirmationEmail(t *testing.T) {
+	tests := []struct {
+		name          string
+		mockErr       error
+		expectedCalls int
+	}{
+		{
+			name:          "send fails - error branch entered",
+			mockErr:       errors.New("smtp error"),
+			expectedCalls: 1,
+		},
+		{
+			name:          "send succeeds - no error branch",
+			mockErr:       nil,
+			expectedCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newUserMockFields(t)
+
+			var callCount atomic.Int32
+
+			f.emailService.On("SendConfirmation",
+				mock.MatchedBy(func(ctx context.Context) bool {
+					deadline, hasDeadline := ctx.Deadline()
+					if !hasDeadline {
+						return false
+					}
+					remaining := time.Until(deadline)
+					return remaining > (sendConfirmationEmailctxTimeout-1)*time.Second &&
+						remaining <= sendConfirmationEmailctxTimeout*time.Second
+				}),
+				"user@example.com", "golang/go", "tok-123",
+			).Run(func(_ mock.Arguments) {
+				callCount.Add(1)
+			}).Return(tt.mockErr).Once()
+
+			uc := newUserUC(f)
+			uc.sendConfirmationEmail("user@example.com", "golang/go", "tok-123")
+			assert.Equal(t, int32(tt.expectedCalls), callCount.Load())
+			f.emailService.AssertExpectations(t)
 		})
 	}
 }
