@@ -14,7 +14,10 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
 )
 
-const componentNotificationUseCase = "NotificationUseCase"
+const (
+	componentNotificationUseCase = "NotificationUseCase"
+	ctxTimeout                   = 5
+)
 
 const (
 	errMsgGetRepos       = "get repos"
@@ -76,7 +79,15 @@ func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
 		for _, sub := range subs {
 			sub := sub
 			g.Go(func() error {
-				return uc.sendNotificationEmail(sendCtx, sub, updatedRepo.FullName, updatedRepo.LastSeenTag)
+				if err := uc.sendNotificationEmail(
+					sendCtx,
+					sub,
+					updatedRepo.FullName,
+					updatedRepo.LastSeenTag,
+				); err != nil {
+					uc.logger.WarnContext(sendCtx, "skipping failed notification", "email", sub.Email, "err", err)
+				}
+				return nil
 			})
 		}
 	}
@@ -93,7 +104,7 @@ func (uc *NotificationUseCase) sendNotificationEmail(
 	sub model.Subscriber,
 	repoName, tag string,
 ) error {
-	mailCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	mailCtx, cancel := context.WithTimeout(ctx, ctxTimeout*time.Second)
 	defer cancel()
 
 	if err := uc.emailService.SendNotification(mailCtx, sub.Email, repoName, tag, sub.Token); err != nil {
@@ -101,6 +112,7 @@ func (uc *NotificationUseCase) sendNotificationEmail(
 			slog.String("to", sub.Email),
 			slog.Any("error", err),
 		)
+		return fmt.Errorf("send notification email: %w", err)
 	}
 	return nil
 }

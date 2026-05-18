@@ -12,7 +12,10 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
-const componentRepositoryUseCase = "RepositoryUseCase"
+const (
+	componentRepositoryUseCase = "RepositoryUseCase"
+	checkForUpdatesCtxTimeout  = 10
+)
 
 type RepositoryUseCase struct {
 	logger   *slog.Logger
@@ -89,7 +92,7 @@ func (uc *RepositoryUseCase) CheckForUpdates(ctx context.Context, repo model.Rep
 	const op = "RepositoryUseCase.CheckForUpdates"
 	log := uc.logger.With(slog.String("repo", repo.FullName))
 
-	repoCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	repoCtx, cancel := context.WithTimeout(ctx, checkForUpdatesCtxTimeout*time.Second)
 	defer cancel()
 
 	latestRelease, err := uc.ghClient.GetLatestRelease(repoCtx, repo.FullName)
