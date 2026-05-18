@@ -4,17 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
@@ -485,4 +488,121 @@ func TestValidateSubscription(t *testing.T) {
 			}
 		})
 	}
+}
+
+func FuzzValidateSubscription(f *testing.F) {
+	f.Add("user@example.com", "owner/repo")
+	f.Add("", "")
+	f.Add("bad", "bad")
+	f.Add("a@b.c", "/")
+	f.Add("x@y.z", "owner/")
+	f.Add("x@y.z", "/repo")
+	f.Add(strings.Repeat("a", 200)+"@b.com", "owner/repo")
+	f.Add("x@y.z", strings.Repeat("a", 200)+"/repo")
+	f.Add("user@example.com", "a/b/c")
+	f.Add("\x00\n\t", "\x00\n\t")
+
+	f.Fuzz(func(t *testing.T, email, repo string) {
+		errs := validateSubscription(email, repo)
+		if strings.TrimSpace(email) == "" {
+			hasEmailErr := false
+			for _, e := range errs {
+				if strings.Contains(e, "invalid email") {
+					hasEmailErr = true
+					break
+				}
+			}
+			if !hasEmailErr {
+				t.Errorf("empty email %q should produce email error, got: %v", email, errs)
+			}
+		}
+
+		validEmail := "user@example.com"
+		validRepo := "owner/repo"
+		if email == validEmail && repo == validRepo {
+			if len(errs) != 0 {
+				t.Errorf("valid inputs produced errors: %v", errs)
+			}
+		}
+
+		if len(errs) > 2 {
+			t.Errorf("too many errors (%d) for 2 fields: %v", len(errs), errs)
+		}
+
+		for i, e := range errs {
+			if e == "" {
+				t.Errorf("error[%d] is empty string", i)
+			}
+		}
+	})
+}
+
+func TestValidateSubscription_Rapid(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		email := rapid.StringMatching(`[a-z0-9_%+-]+(?:\.[a-z0-9_%+-]+)*@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,4}`).
+			Draw(t, "email")
+
+		owner := rapid.StringMatching(`[a-zA-Z0-9-]+`).Draw(t, "owner")
+		repo := rapid.StringMatching(`[a-zA-Z0-9-_.]+`).Draw(t, "repo")
+		fullRepo := owner + "/" + repo
+
+		errs := validateSubscription(email, fullRepo)
+
+		if len(errs) > 0 {
+			t.Errorf("expected no errors for %s and %s, got %v", email, fullRepo, errs)
+		}
+	})
+}
+
+func FuzzValidateEmail(f *testing.F) {
+	f.Add("user@example.com")
+	f.Add("")
+	f.Add("@")
+	f.Add("a@b.c")
+	f.Add(strings.Repeat("a", 10000))
+
+	f.Fuzz(func(t *testing.T, email string) {
+		err := validateEmail(email)
+
+		if err != nil && !errors.Is(err, ErrInvalidEmailFormat) {
+			t.Errorf("unexpected error type: %v", err)
+		}
+
+		err2 := validateEmail(email)
+		if (err == nil) != (err2 == nil) {
+			t.Errorf("non-deterministic result for %q", email)
+		}
+	})
+}
+
+func TestValidateEmail_Rapid_Invalid(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		email := rapid.StringMatching(`[a-z0-9]{1,50}`).Draw(t, "email")
+		err := validateEmail(email)
+		if err == nil {
+			t.Errorf("expected error for email without @: %q", email)
+		}
+	})
+}
+
+func TestValidateSubscription_Rapid_InvalidRepo(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		email := rapid.StringMatching(
+			`[a-z0-9]+@[a-z0-9]+\.[a-z]{2,4}`,
+		).Draw(t, "email")
+
+		repo := rapid.StringMatching(`[a-zA-Z0-9._-]{1,100}`).Draw(t, "repo")
+
+		errs := validateSubscription(email, repo)
+
+		hasRepoErr := false
+		for _, e := range errs {
+			if strings.Contains(e, "owner/repo") {
+				hasRepoErr = true
+			}
+		}
+		if !hasRepoErr {
+			t.Errorf("expected repo error for %q, got: %v", repo, errs)
+		}
+	})
 }

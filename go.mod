@@ -21,11 +21,13 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
+	github.com/testcontainers/testcontainers-go/modules/redis v0.42.0
 	github.com/ulule/limiter/v3 v3.11.2
 	github.com/zsais/go-gin-prometheus v1.0.3
 	golang.org/x/sync v0.20.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
+	pgregory.net/rapid v1.2.0
 )
 
 require (
@@ -108,7 +110,6 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	github.com/testcontainers/testcontainers-go/modules/redis v0.42.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
