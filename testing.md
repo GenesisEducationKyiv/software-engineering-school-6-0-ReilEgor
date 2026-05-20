@@ -51,5 +51,5 @@ E2E tests are written using Playwright and validate the application from the use
 Run E2E tests with:
 
 ```bash
-npx --prefix static playwright test
+npx --prefix tests/e2e playwright test
 ```
