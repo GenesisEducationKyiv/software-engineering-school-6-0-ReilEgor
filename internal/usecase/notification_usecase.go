@@ -77,7 +77,6 @@ func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
 		}
 
 		for _, sub := range subs {
-			sub := sub
 			g.Go(func() error {
 				if err := uc.sendNotificationEmail(
 					sendCtx,
