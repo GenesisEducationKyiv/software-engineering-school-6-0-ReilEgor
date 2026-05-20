@@ -16,9 +16,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run start',
     url: 'http://localhost:8080',
-    reuseExistingServer: !process.env.CI,
-    stdout: 'ignore',
-    stderr: 'pipe',
+    reuseExistingServer: true,
   },
   testDir: './e2e',
   /* Run tests in files in parallel */
