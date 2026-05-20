@@ -18,6 +18,7 @@ To run all tests in the project
 
 ```bash
 go test -v ./...
+npx --prefix static playwright test
 ```
 
 ## Unit Tests
