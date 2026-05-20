@@ -16,7 +16,7 @@ import (
 
 const (
 	componentNotificationUseCase = "NotificationUseCase"
-	ctxTimeout                   = 5
+	sendNotificationCtxTimeout   = 5
 )
 
 const (
@@ -103,7 +103,7 @@ func (uc *NotificationUseCase) sendNotificationEmail(
 	sub model.Subscriber,
 	repoName, tag string,
 ) error {
-	mailCtx, cancel := context.WithTimeout(ctx, ctxTimeout*time.Second)
+	mailCtx, cancel := context.WithTimeout(ctx, sendNotificationCtxTimeout*time.Second)
 	defer cancel()
 
 	if err := uc.emailService.SendNotification(mailCtx, sub.Email, repoName, tag, sub.Token); err != nil {
