@@ -278,7 +278,8 @@ func TestNotificationUseCase_sendNotificationEmail(t *testing.T) {
 						return false
 					}
 					remaining := time.Until(deadline)
-					return remaining > (ctxTimeout-1)*time.Second && remaining <= ctxTimeout*time.Second
+					return remaining > (sendNotificationCtxTimeout-1)*time.Second &&
+						remaining <= sendNotificationCtxTimeout*time.Second
 				}),
 				"alice@example.com", "golang/go", "v1.22.0", "tok-a",
 			).Return(tt.mockErr).Once()
