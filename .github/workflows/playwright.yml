@@ -66,8 +66,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        working-directory: ./tests/e2e
-        run: npx playwright test
+        run: npx --prefix tests/e2e playwright test
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
