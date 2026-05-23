@@ -24,12 +24,12 @@ A clear separation of concerns is required to ensure maintainability and testabi
 ## Considered Options
 
 ### Clean Architecture
-* **Pros:** Strong separation of concerns, high testability
+* **Pros:** Want to learn
 * **Cons:** More code and abstractions
 
 ### Layered Architecture (MVC)
 * **Pros:** Simpler structure, widely understood
-* **Cons:** Business logic often tightly coupled with infrastructure
+* **Cons:** Does not provide a dedicated layer for complex business logic, often leading to "Fat Controllers" or "Bloated Models."
 
 ### Minimal/Flat Structure
 * **Pros:** Fast to start

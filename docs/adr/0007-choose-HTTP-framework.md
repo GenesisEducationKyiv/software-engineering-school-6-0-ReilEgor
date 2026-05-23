@@ -40,12 +40,11 @@ The framework must be lightweight, performant, easy to integrate with Clean Arch
 
 ## Decision Outcome
 
-Chosen option: **Gin** because it provides an optimal balance between performance, simplicity, and developer experience.
+Chosen option: **Gin**. While Echo and Fiber offer similar performance, Gin was selected due to its status as the de facto industry standard for Go web frameworks. This ensures a lower onboarding threshold for new developers and the highest availability of battle-tested community middleware (e.g., for OIDC, Prometheus, and logging), reducing custom integration effort.
 
 ## More Information
 
-Gin will be used only in the delivery layer (HTTP handlers).  
-Business logic will remain in the usecase layer, and domain models will remain independent of the HTTP framework.
+Gin will be used only in the delivery layer (HTTP handlers).
 
 This ensures that switching the HTTP framework in the future will require minimal changes.
 

@@ -12,11 +12,11 @@
 
 ### Non-functional requirements:
 
-- Observability: The system should support metric collection (Prometheus) and structured logging (slog + Promtail + Loki) for health monitoring and anomaly detection via Grafana dashboards.
-- Concurrency & Resource Control: Email distribution should be performed in parallel, but with strict worker pool restrictions (e.g., via a limited errgroup) to prevent server resource exhaustion (CPU/RAM) and network ports.
-- Fault Tolerance: All network requests to external providers (GitHub API, SMTP server) should be limited by timeouts (context.WithTimeout) to prevent a third-party service crash from blocking the entire application. 
+- Observability: The system must provide deep visibility into its internal state via structured logging and real-time metric collection to ensure proactive health monitoring.
+- Concurrency & Resource Control: The system must strictly limit the number of concurrent outbound operations (email sending, API requests) to prevent resource exhaustion (CPU, memory, file descriptors) and avoid being flagged as spam by external providers. The background processing must not degrade the performance of the User API.
+- Fault Tolerance: All interactions with external dependencies (GitHub API, SMTP, Databases) must be time-bound. The system must implement fail-fast mechanisms to prevent a slow or unresponsive third-party service from causing a resource leak or blocking the entire application execution flow.
 - Maintainability: The codebase must strictly adhere to the principles of Clean Architecture (separation into Delivery, UseCase, and Repository), utilize Dependency Injection for easy component replacement, and be covered by unit tests (using mocks for external dependencies).
-- Data Integrity: Database access (PostgreSQL) must be performed through a connection pool (pgxpool) to ensure safe concurrent query processing.
+- Data Integrity: The system must guarantee data consistency and integrity under concurrent load. Database interactions must be managed to handle multiple simultaneous connections efficiently without causing deadlocks or data corruption.
 - Scalability: The system should support horizontal scaling of API servers and background workers independently without service interruption.
 - Availability: The system should remain operational even if individual external dependencies (GitHub API, SMTP provider, Redis) become temporarily unavailable.
 - Target API availability: 99.9%
