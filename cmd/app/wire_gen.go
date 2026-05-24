@@ -47,7 +47,7 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
 	smtpClient := email.NewSMTPClient(emailHost, emailPort, emailFrom, emailPassword, emailUser)
 	emailManager := email.NewEmailManager(smtpClient, baseURL)
-	userUseCase := usecase.NewUserUseCase(subscriptionRepository, userRepository, repositoryUseCase, emailManager)
+	userUseCase := usecase.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, emailManager)
 	ginServer := http.NewGinServer(userUseCase, client, apiKey)
 	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
 	server := grpc.NewGrpcServer(subscriptionHandler, apiKey)

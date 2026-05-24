@@ -27,6 +27,7 @@ const (
 )
 
 type UserUseCase struct {
+	appCtx       context.Context
 	logger       *slog.Logger
 	subsRepo     repository.SubscriptionRepository
 	userRepo     repository.UserRepository
@@ -35,6 +36,7 @@ type UserUseCase struct {
 }
 
 func NewUserUseCase(
+	appCtx context.Context,
 	sr repository.SubscriptionRepository,
 	ur repository.UserRepository,
 	ru usecase.RepositoryUseCase,
@@ -46,6 +48,7 @@ func NewUserUseCase(
 		userRepo:     ur,
 		repoUC:       ru,
 		emailService: es,
+		appCtx:       appCtx,
 	}
 }
 
@@ -184,7 +187,7 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) err
 }
 
 func (uc *UserUseCase) sendConfirmationEmail(email, repo, token string) {
-	ctx, cancel := context.WithTimeout(context.Background(), sendConfirmationEmailctxTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(uc.appCtx, sendConfirmationEmailctxTimeout*time.Second)
 	defer cancel()
 
 	if err := uc.emailService.SendConfirmation(ctx, email, repo, token); err != nil {
