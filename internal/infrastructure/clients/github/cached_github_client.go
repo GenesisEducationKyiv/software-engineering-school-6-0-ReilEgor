@@ -53,11 +53,14 @@ func (c *CachedGitHubClient) GetLatestRelease(ctx context.Context, fullName stri
 	const op = "CachedGitHubClient.GetLatestRelease"
 	key := "release:" + fullName
 
-	if data, err := c.cache.Get(ctx, key); err == nil {
+	data, err := c.cache.Get(ctx, key)
+	if err == nil {
 		var info model.ReleaseInfo
-		if err := json.Unmarshal(data, &info); err == nil {
+		if err = json.Unmarshal(data, &info); err == nil {
 			return &info, nil
 		}
+
+		c.logger.Warn("cache unmarshal failed, falling back to API", "key", key, "err", err)
 	}
 
 	info, err := c.client.GetLatestRelease(ctx, fullName)
