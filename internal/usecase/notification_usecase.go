@@ -20,7 +20,6 @@ const (
 )
 
 const (
-	errMsgGetRepos       = "get repos"
 	errMsgFetchRelease   = "fetch latest release"
 	errMsgGetSubscribers = "get subscribers"
 )
@@ -51,9 +50,10 @@ func NewNotificationUseCase(
 }
 
 func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
+	const op = "NotificationUseCase.ProcessNotifications"
 	repos, err := uc.repoRepo.GetAll(ctx)
 	if err != nil {
-		return fmt.Errorf("%s: %w", errMsgGetRepos, err)
+		return fmt.Errorf("%s: get repos: %w", op, err)
 	}
 
 	g, sendCtx := errgroup.WithContext(ctx)
@@ -92,7 +92,7 @@ func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
 	}
 
 	if err := g.Wait(); err != nil {
-		return fmt.Errorf("group task failed: %w", err)
+		return fmt.Errorf("%s: group task: %w", op, err)
 	}
 
 	return nil
@@ -103,6 +103,7 @@ func (uc *NotificationUseCase) sendNotificationEmail(
 	sub model.Subscriber,
 	repoName, tag string,
 ) error {
+	const op = "NotificationUseCase.sendNotificationEmail"
 	mailCtx, cancel := context.WithTimeout(ctx, sendNotificationCtxTimeout*time.Second)
 	defer cancel()
 
@@ -111,7 +112,7 @@ func (uc *NotificationUseCase) sendNotificationEmail(
 			slog.String("to", sub.Email),
 			slog.Any("error", err),
 		)
-		return fmt.Errorf("send notification email: %w", err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
