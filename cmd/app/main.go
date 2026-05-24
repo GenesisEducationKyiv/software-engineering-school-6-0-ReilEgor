@@ -51,10 +51,14 @@ func main() {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", cfg.HTTPPort)
+		myLogger.Info("HTTP server starting", slog.String("addr", addr))
 		return startHTTPServer(ctx, app, cfg, myLogger)
 	})
 
 	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", cfg.GRPCPort)
+		myLogger.Info("gRPC server starting", slog.String("addr", addr))
 		return startGRPCServer(ctx, app, cfg, myLogger)
 	})
 
