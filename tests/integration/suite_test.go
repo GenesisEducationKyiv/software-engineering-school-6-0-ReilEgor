@@ -149,7 +149,7 @@ func (s *APITestSuite) buildRouter() {
 	subsRepo := repositoryRealization.NewSubscriptionRepository(s.dbPool)
 
 	repoUseCase := usecase.NewRepositoryUseCase(repoRepo, cachedGitHub)
-	userUseCase := usecase.NewUserUseCase(subsRepo, userRepo, repoUseCase, s.mockSMTP)
+	userUseCase := usecase.NewUserUseCase(context.Background(), subsRepo, userRepo, repoUseCase, s.mockSMTP)
 
 	handler := handlers.NewHandler(userUseCase, testAPIKey)
 

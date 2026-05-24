@@ -39,9 +39,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	app, cleanup, err := InitializeApp(ctx, cfg.RedisHost, cfg.RedisPort, cfg.RedisPassword, 0, cfg.DSN,
-		cfg.EmailHost, cfg.EmailPort, cfg.EmailPassword, cfg.EmailFrom, cfg.EmailUser,
-		cfg.APIKey, cfg.GitHubToken, cfg.AppBaseURL)
+	app, cleanup, err := InitializeApp(ctx, cfg)
 	if err != nil {
 		myLogger.Error("application initialization failed", slog.Any("error", err))
 		os.Exit(1)
@@ -51,13 +49,13 @@ func main() {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		addr := fmt.Sprintf(":%s", cfg.HTTPPort)
+		addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
 		myLogger.Info("HTTP server starting", slog.String("addr", addr))
 		return startHTTPServer(ctx, app, cfg, myLogger)
 	})
 
 	g.Go(func() error {
-		addr := fmt.Sprintf(":%s", cfg.GRPCPort)
+		addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 		myLogger.Info("gRPC server starting", slog.String("addr", addr))
 		return startGRPCServer(ctx, app, cfg, myLogger)
 	})
@@ -89,7 +87,7 @@ func loadConfig(l *slog.Logger) (config.Config, error) {
 }
 
 func startHTTPServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger) error {
-	addr := fmt.Sprintf(":%s", cfg.HTTPPort)
+	addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
 	l.Info("HTTP server starting", slog.String("addr", addr))
 	if err := app.HTTPServer.Run(ctx, addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("http server error: %w", err)
@@ -98,7 +96,7 @@ func startHTTPServer(ctx context.Context, app *App, cfg config.Config, l *slog.L
 }
 
 func startGRPCServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger) error {
-	addr := fmt.Sprintf(":%s", cfg.GRPCPort)
+	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 	lc := net.ListenConfig{}
 	lis, err := lc.Listen(ctx, "tcp", addr)
 	if err != nil {

@@ -21,9 +21,17 @@ import (
 	repositoryRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/repository/postgres"
 	grpcTransport "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/handlers"
 	usecaseRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/usecase"
 )
+
+func ProvideDBConfig(cfg config.Config) config.DBConfig         { return cfg.DB }
+func ProvideRedisConfig(cfg config.Config) config.RedisConfig   { return cfg.Redis }
+func ProvideEmailConfig(cfg config.Config) config.EmailConfig   { return cfg.Email }
+func ProvideGitHubConfig(cfg config.Config) config.GitHubConfig { return cfg.GitHub }
+func ProvideHTTPConfig(cfg config.Config) config.HTTPConfig     { return cfg.HTTP }
+func ProvideAppConfig(cfg config.Config) config.AppConfig       { return cfg.App }
+func ProvideWorkerConfig(cfg config.Config) config.WorkerConfig { return cfg.Worker }
+func ProvideBaseURL(cfg config.AppConfig) string { return cfg.BaseURL }
 
 var UseCaseSet = wire.NewSet(
 	usecaseRealization.NewRepositoryUseCase,
@@ -59,7 +67,6 @@ var GitHubSet = wire.NewSet(
 
 var RestSet = wire.NewSet(
 	http.NewGinServer,
-	handlers.NewHandler,
 )
 
 var CacheSet = wire.NewSet(
@@ -91,23 +98,16 @@ type App struct {
 	NotificationUseCase usecaseInterface.NotificationUseCase
 }
 
-func InitializeApp(
-	ctx context.Context,
-	redisHost config.RedisHostType,
-	redisPort config.RedisPortType,
-	redisPassword config.RedisPasswordType,
-	redisDB int,
-	dsn config.DSNType,
-	emailHost config.EmailHostType,
-	emailPort config.EmailPortType,
-	emailPassword config.EmailPasswordType,
-	emailFrom config.EmailFromType,
-	emailUser config.EmailUserType,
-	apiKey config.APIKeyType,
-	githubToken config.GitHubTokenType,
-	baseURL config.AppBaseURLType,
-) (*App, func(), error) {
+func InitializeApp(ctx context.Context, cfg config.Config) (*App, func(), error) {
 	wire.Build(
+		ProvideDBConfig,
+		ProvideRedisConfig,
+		ProvideEmailConfig,
+		ProvideGitHubConfig,
+		ProvideHTTPConfig,
+		ProvideAppConfig,
+		ProvideWorkerConfig,
+		ProvideBaseURL,
 		ServicesSet,
 		RepositorySet,
 		UseCaseSet,

@@ -21,14 +21,23 @@ import (
 
 func newTestClient(t *testing.T, token string, server *httptest.Server) *GitHubClient {
 	t.Helper()
-	c := NewGitHubClient(config.GitHubTokenType(token))
+	c := NewGitHubClient(
+		config.GitHubConfig{
+			Token:              token,
+			HTTPTimeout:        10 * time.Second,
+			CBMaxRequests:      3,
+			CBInterval:         5 * time.Second,
+			CBTimeout:          30 * time.Second,
+			CBFailureThreshold: 3,
+		},
+	)
 	c.apiBase = server.URL
 	return c
 }
 
 func tripBreaker(t *testing.T, client *GitHubClient) {
 	t.Helper()
-	for i := 0; i < cbFailureThreshold; i++ {
+	for i := 0; i < 3; i++ {
 		_, err := client.RepoExists(context.Background(), "trip/repo")
 		require.Error(t, err, "iteration %d must return an error to trip the breaker", i)
 	}
@@ -410,7 +419,7 @@ func TestGitHubClient_CircuitBreaker(t *testing.T) {
 
 		client := newTestClient(t, "", server)
 
-		for i := 0; i < cbFailureThreshold-1; i++ {
+		for i := 0; i < 3-1; i++ {
 			_, err := client.RepoExists(context.Background(), "test/repo")
 			require.Error(t, err)
 			assert.NotErrorIs(t, err, service.ErrGitHubUnavailable,
@@ -438,7 +447,7 @@ func TestGitHubClient_CircuitBreaker(t *testing.T) {
 		client := newTestClient(t, "", server)
 		client.cb = newTestCircuitBreaker(50 * time.Millisecond)
 
-		for i := 0; i < cbFailureThreshold; i++ {
+		for i := 0; i < 3; i++ {
 			_, err := client.RepoExists(context.Background(), "trip/repo")
 			require.Error(t, err, "iteration %d: trip request must fail to increment failure counter", i)
 			require.NotErrorIs(t, err, service.ErrGitHubUnavailable,
@@ -463,11 +472,11 @@ func TestGitHubClient_CircuitBreaker(t *testing.T) {
 func newTestCircuitBreaker(timeout time.Duration) *gobreaker.CircuitBreaker {
 	settings := gobreaker.Settings{
 		Name:        cbName,
-		MaxRequests: cbMaxRequests,
-		Interval:    cbInterval,
+		MaxRequests: 3,
+		Interval:    5 * time.Second,
 		Timeout:     timeout,
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			return counts.ConsecutiveFailures >= cbFailureThreshold
+			return counts.ConsecutiveFailures >= 3
 		},
 	}
 	return gobreaker.NewCircuitBreaker(settings)

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/mocks"
 )
@@ -31,7 +32,11 @@ func newNotifMockFields(t *testing.T) notifMockFields {
 }
 
 func newNotifUC(f notifMockFields) *NotificationUseCase {
-	return NewNotificationUseCase(f.subsRepo, f.repoRepo, f.repoUC, f.emailService)
+	return NewNotificationUseCase(f.subsRepo, f.repoRepo, f.repoUC, f.emailService, config.WorkerConfig{
+		NotificationInterval: time.Minute,
+		MaxSendWorkers:       10,
+		SendTimeout:          5 * time.Second,
+	})
 }
 
 func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
@@ -278,8 +283,8 @@ func TestNotificationUseCase_sendNotificationEmail(t *testing.T) {
 						return false
 					}
 					remaining := time.Until(deadline)
-					return remaining > (sendNotificationCtxTimeout-1)*time.Second &&
-						remaining <= sendNotificationCtxTimeout*time.Second
+					return remaining > 4*time.Second &&
+						remaining <= 5*time.Second
 				}),
 				"alice@example.com", "golang/go", "v1.22.0", "tok-a",
 			).Return(tt.mockErr).Once()

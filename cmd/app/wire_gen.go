@@ -19,7 +19,6 @@ import (
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/handlers"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/usecase"
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,16 +27,19 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPort config.RedisPortType, redisPassword config.RedisPasswordType, redisDB int, dsn config.DSNType, emailHost config.EmailHostType, emailPort config.EmailPortType, emailPassword config.EmailPasswordType, emailFrom config.EmailFromType, emailUser config.EmailUserType, apiKey config.APIKeyType, githubToken config.GitHubTokenType, baseURL config.AppBaseURLType) (*App, func(), error) {
-	pool, cleanup, err := postgres.New(ctx, dsn)
+func InitializeApp(ctx context.Context, cfg config.Config) (*App, func(), error) {
+	dbConfig := ProvideDBConfig(cfg)
+	pool, cleanup, err := postgres.New(ctx, dbConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 	subscriptionRepository := postgres2.NewSubscriptionRepository(pool)
 	userRepository := postgres2.NewUserRepository(pool)
 	repositoryRepository := postgres2.NewRepositoryRepository(pool)
-	gitHubClient := github.NewGitHubClient(githubToken)
-	client, err := redis.NewRedisClient(redisHost, redisPort, redisPassword, redisDB)
+	gitHubConfig := ProvideGitHubConfig(cfg)
+	gitHubClient := github.NewGitHubClient(gitHubConfig)
+	redisConfig := ProvideRedisConfig(cfg)
+	client, err := redis.NewRedisClient(redisConfig)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
@@ -45,13 +47,18 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
-	smtpClient := email.NewSMTPClient(emailHost, emailPort, emailFrom, emailPassword, emailUser)
-	emailManager := email.NewEmailManager(smtpClient, baseURL)
+	emailConfig := ProvideEmailConfig(cfg)
+	smtpClient := email.NewSMTPClient(emailConfig)
+	appConfig := ProvideAppConfig(cfg)
+	string2 := ProvideBaseURL(appConfig)
+	emailManager := email.NewEmailManager(smtpClient, string2)
 	userUseCase := usecase.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, emailManager)
-	ginServer := http.NewGinServer(userUseCase, client, apiKey)
+	httpConfig := ProvideHTTPConfig(cfg)
+	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
 	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
-	server := grpc.NewGrpcServer(subscriptionHandler, apiKey)
-	notificationUseCase := usecase.NewNotificationUseCase(subscriptionRepository, repositoryRepository, repositoryUseCase, emailManager)
+	server := grpc.NewGrpcServer(subscriptionHandler, appConfig)
+	workerConfig := ProvideWorkerConfig(cfg)
+	notificationUseCase := usecase.NewNotificationUseCase(subscriptionRepository, repositoryRepository, repositoryUseCase, emailManager, workerConfig)
 	app := &App{
 		HTTPServer:          ginServer,
 		GrpcServer:          server,
@@ -63,6 +70,22 @@ func InitializeApp(ctx context.Context, redisHost config.RedisHostType, redisPor
 }
 
 // wire.go:
+
+func ProvideDBConfig(cfg config.Config) config.DBConfig { return cfg.DB }
+
+func ProvideRedisConfig(cfg config.Config) config.RedisConfig { return cfg.Redis }
+
+func ProvideEmailConfig(cfg config.Config) config.EmailConfig { return cfg.Email }
+
+func ProvideGitHubConfig(cfg config.Config) config.GitHubConfig { return cfg.GitHub }
+
+func ProvideHTTPConfig(cfg config.Config) config.HTTPConfig { return cfg.HTTP }
+
+func ProvideAppConfig(cfg config.Config) config.AppConfig { return cfg.App }
+
+func ProvideWorkerConfig(cfg config.Config) config.WorkerConfig { return cfg.Worker }
+
+func ProvideBaseURL(cfg config.AppConfig) string { return cfg.BaseURL }
 
 var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase.NewNotificationUseCase, usecase.NewUserUseCase, wire.Bind(new(usecase2.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase2.NotificationUseCase), new(*usecase.NotificationUseCase)), wire.Bind(new(usecase2.UserUseCase), new(*usecase.UserUseCase)))
 
@@ -77,7 +100,7 @@ func ProvideCachedClient(
 
 var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
 
-var RestSet = wire.NewSet(http.NewGinServer, handlers.NewHandler)
+var RestSet = wire.NewSet(http.NewGinServer)
 
 var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(service.Cache), new(*redis.Cache)))
 

@@ -9,16 +9,11 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 )
 
-func NewRedisClient(
-	host config.RedisHostType,
-	port config.RedisPortType,
-	password config.RedisPasswordType,
-	db int,
-) (*redis.Client, error) {
+func NewRedisClient(cfg config.RedisConfig) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", host, port),
-		Password: string(password),
-		DB:       db,
+		Addr:     fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+		Password: cfg.Password,
+		DB:       cfg.DB,
 	})
 
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
