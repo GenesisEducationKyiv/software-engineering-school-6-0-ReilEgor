@@ -60,7 +60,10 @@ func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
 	for _, repo := range repos {
 		updatedRepo, err := uc.repoUC.CheckForUpdates(ctx, repo)
 		if err != nil {
-			uc.logger.ErrorContext(ctx, errMsgFetchRelease, "repo", repo.FullName, "err", err)
+			uc.logger.ErrorContext(ctx, errMsgFetchRelease,
+				slog.String("repo", repo.FullName),
+				slog.Any("error", err),
+			)
 			continue
 		}
 
@@ -70,7 +73,10 @@ func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
 
 		subs, err := uc.subsRepo.GetByRepoID(ctx, updatedRepo.ID)
 		if err != nil {
-			uc.logger.ErrorContext(ctx, errMsgGetSubscribers, "repo", updatedRepo.FullName, "err", err)
+			uc.logger.ErrorContext(ctx, errMsgGetSubscribers,
+				slog.String("repo", repo.FullName),
+				slog.Any("error", err),
+			)
 			continue
 		}
 
@@ -82,7 +88,10 @@ func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
 					updatedRepo.FullName,
 					updatedRepo.LastSeenTag,
 				); err != nil {
-					uc.logger.WarnContext(sendCtx, "skipping failed notification", "email", sub.Email, "err", err)
+					uc.logger.WarnContext(sendCtx, "skipping failed notification",
+						slog.String("email", sub.Email),
+						slog.Any("error", err),
+					)
 				}
 				return nil
 			})
