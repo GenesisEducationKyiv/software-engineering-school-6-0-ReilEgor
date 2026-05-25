@@ -52,7 +52,7 @@ func InitializeApp(ctx context.Context, cfg config.Config) (*App, func(), error)
 	appConfig := ProvideAppConfig(cfg)
 	string2 := ProvideBaseURL(appConfig)
 	emailManager := email.NewEmailManager(smtpClient, string2)
-	userUseCase := usecase.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, emailManager)
+	userUseCase, cleanup2 := usecase.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, emailManager)
 	httpConfig := ProvideHTTPConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
 	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
@@ -65,6 +65,7 @@ func InitializeApp(ctx context.Context, cfg config.Config) (*App, func(), error)
 		NotificationUseCase: notificationUseCase,
 	}
 	return app, func() {
+		cleanup2()
 		cleanup()
 	}, nil
 }

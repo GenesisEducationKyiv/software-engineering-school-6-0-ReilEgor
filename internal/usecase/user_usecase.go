@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,6 +34,7 @@ type UserUseCase struct {
 	userRepo     repository.UserRepository
 	repoUC       usecase.RepositoryUseCase
 	emailService service.EmailService
+	wg           sync.WaitGroup
 }
 
 func NewUserUseCase(
@@ -41,8 +43,8 @@ func NewUserUseCase(
 	ur repository.UserRepository,
 	ru usecase.RepositoryUseCase,
 	es service.EmailService,
-) *UserUseCase {
-	return &UserUseCase{
+) (*UserUseCase, func()) {
+	uc := &UserUseCase{
 		logger:       slog.With(slog.String("useCase", componentUserUseCase)),
 		subsRepo:     sr,
 		userRepo:     ur,
@@ -50,6 +52,7 @@ func NewUserUseCase(
 		emailService: es,
 		appCtx:       appCtx,
 	}
+	return uc, func() { uc.wg.Wait() }
 }
 
 func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) error {
@@ -92,7 +95,11 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) er
 		return fmt.Errorf("%s: save pending: %w", op, err)
 	}
 
-	go uc.sendConfirmationEmail(email, repoName, token)
+	uc.wg.Add(1)
+	go func() {
+		defer uc.wg.Done()
+		uc.sendConfirmationEmail(email, repoName, token)
+	}()
 
 	return nil
 }
