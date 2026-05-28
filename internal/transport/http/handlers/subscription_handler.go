@@ -36,7 +36,6 @@ var (
 	ErrInvalidEmailFormat = errors.New("invalid email format")
 	ErrInvalidRepoFormat  = errors.New("invalid repository format (expected 'owner/repo')")
 	ErrEmailRequired      = errors.New("email is required")
-	ErrAlreadySubscribed  = errors.New("user is already subscribed to this repository")
 )
 
 var repoRegex = regexp.MustCompile(`^[a-zA-Z0-9-._]{1,100}/[a-zA-Z0-9-._]{1,100}$`)
@@ -131,8 +130,6 @@ func (h *Handler) Subscribe(c *gin.Context) {
 				slog.String("repo", req.Repository),
 			)
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		case errors.Is(err, ErrAlreadySubscribed):
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		case errors.Is(err, service.ErrGitHubUnavailable), errors.Is(err, service.ErrRateLimitExceeded):
 			c.JSON(
 				http.StatusServiceUnavailable,

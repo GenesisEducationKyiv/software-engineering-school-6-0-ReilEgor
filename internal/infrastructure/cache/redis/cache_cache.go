@@ -44,7 +44,7 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 			slog.String("key", key),
 			slog.String("error", err.Error()),
 		)
-		return nil, fmt.Errorf("redis get: %w", err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return value, nil
 }

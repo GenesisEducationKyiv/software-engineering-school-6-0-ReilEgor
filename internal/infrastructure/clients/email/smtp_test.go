@@ -242,13 +242,13 @@ func TestSMTPClient_Send(t *testing.T) {
 				resolvedFrom = tc.from
 			}
 
-			client := NewSMTPClient(
-				config.EmailHostType(resolvedHost),
-				config.EmailPortType(resolvedPort),
-				config.EmailFromType(resolvedFrom),
-				pass,
-				user,
-			)
+			client := NewSMTPClient(config.EmailConfig{
+				Host:     resolvedHost,
+				Port:     resolvedPort,
+				From:     resolvedFrom,
+				Password: pass,
+				User:     user,
+			})
 
 			var captured capturedCall
 			client.sendMail = makeFakeSendMail(&captured, tc.sendMailErr)

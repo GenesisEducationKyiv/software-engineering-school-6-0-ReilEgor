@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
 type EmailManager struct {
 	sender  service.EmailSender
-	baseURL config.AppBaseURLType
+	baseURL string
 	logger  *slog.Logger
 }
 
-func NewEmailManager(sender service.EmailSender, baseURL config.AppBaseURLType) *EmailManager {
+func NewEmailManager(sender service.EmailSender, baseURL string) *EmailManager {
 	return &EmailManager{
 		sender:  sender,
 		baseURL: baseURL,

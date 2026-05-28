@@ -13,16 +13,22 @@ import (
 	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
-func SetupMiddleware(router *gin.Engine, logger *slog.Logger, redisClient *redis.Client) {
+func SetupMiddleware(
+	router *gin.Engine,
+	logger *slog.Logger,
+	redisClient *redis.Client,
+	rateLimit string,
+	requestTimeout time.Duration,
+) {
 	router.Use(customCORS())
 	p := ginprometheus.NewPrometheus("gin")
 	p.Use(router)
 
 	router.Use(gin.Recovery())
 	router.Use(slogMiddleware(logger))
-	router.Use(Timeout(5 * time.Second))
+	router.Use(Timeout(requestTimeout))
 
-	rateLimiter, err := RateLimit(redisClient)
+	rateLimiter, err := RateLimit(redisClient, rateLimit)
 	if err != nil {
 		logger.Error("failed to create rate limiter", "error", err)
 		os.Exit(1)

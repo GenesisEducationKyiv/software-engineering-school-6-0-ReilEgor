@@ -163,15 +163,6 @@ func TestHandler_Subscribe(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name: "already subscribed - 409 conflict",
-			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
-			mockSetup: func(uc *mocks.UserUseCase) {
-				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").
-					Return(ErrAlreadySubscribed).Once()
-			},
-			expectedStatus: http.StatusConflict,
-		},
-		{
 			name: "github unavailable - 503",
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
 			mockSetup: func(uc *mocks.UserUseCase) {

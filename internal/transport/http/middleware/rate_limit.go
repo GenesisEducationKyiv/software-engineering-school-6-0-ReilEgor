@@ -11,8 +11,8 @@ import (
 	redisstore "github.com/ulule/limiter/v3/drivers/store/redis"
 )
 
-func RateLimit(client *redis.Client) (gin.HandlerFunc, error) {
-	rate, err := limiter.NewRateFromFormatted("10-S")
+func RateLimit(client *redis.Client, rateLimit string) (gin.HandlerFunc, error) {
+	rate, err := limiter.NewRateFromFormatted(rateLimit)
 	if err != nil {
 		return nil, fmt.Errorf("parse rate: %w", err)
 	}

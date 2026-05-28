@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,26 +28,31 @@ const (
 )
 
 type UserUseCase struct {
+	appCtx       context.Context
 	logger       *slog.Logger
 	subsRepo     repository.SubscriptionRepository
 	userRepo     repository.UserRepository
 	repoUC       usecase.RepositoryUseCase
 	emailService service.EmailService
+	wg           sync.WaitGroup
 }
 
 func NewUserUseCase(
+	appCtx context.Context,
 	sr repository.SubscriptionRepository,
 	ur repository.UserRepository,
 	ru usecase.RepositoryUseCase,
 	es service.EmailService,
-) *UserUseCase {
-	return &UserUseCase{
+) (*UserUseCase, func()) {
+	uc := &UserUseCase{
 		logger:       slog.With(slog.String("useCase", componentUserUseCase)),
 		subsRepo:     sr,
 		userRepo:     ur,
 		repoUC:       ru,
 		emailService: es,
+		appCtx:       appCtx,
 	}
+	return uc, func() { uc.wg.Wait() }
 }
 
 func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) error {
@@ -89,7 +95,11 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) er
 		return fmt.Errorf("%s: save pending: %w", op, err)
 	}
 
-	go uc.sendConfirmationEmail(email, repoName, token)
+	uc.wg.Add(1)
+	go func() {
+		defer uc.wg.Done()
+		uc.sendConfirmationEmail(email, repoName, token)
+	}()
 
 	return nil
 }
@@ -184,7 +194,7 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) err
 }
 
 func (uc *UserUseCase) sendConfirmationEmail(email, repo, token string) {
-	ctx, cancel := context.WithTimeout(context.Background(), sendConfirmationEmailctxTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(uc.appCtx, sendConfirmationEmailctxTimeout*time.Second)
 	defer cancel()
 
 	if err := uc.emailService.SendConfirmation(ctx, email, repo, token); err != nil {

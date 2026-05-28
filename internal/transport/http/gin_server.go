@@ -18,27 +18,30 @@ import (
 )
 
 type GinServer struct {
-	router *gin.Engine
-	userUC usecase.UserUseCase
-	logger *slog.Logger
+	router          *gin.Engine
+	userUC          usecase.UserUseCase
+	logger          *slog.Logger
+	shutdownTimeout time.Duration
 }
 
 func NewGinServer(
 	userUC usecase.UserUseCase,
 	redisClient *redis.Client,
-	apiKey config.APIKeyType,
+	httpCfg config.HTTPConfig,
+	appCfg config.AppConfig,
 ) *GinServer {
 	router := gin.New()
 	logger := slog.With(slog.String("component", "gin_server"))
-	middleware.SetupMiddleware(router, logger, redisClient)
+	middleware.SetupMiddleware(router, logger, redisClient, appCfg.RateLimit, httpCfg.RequestTimeout)
 
 	s := &GinServer{
-		router: router,
-		userUC: userUC,
-		logger: logger,
+		router:          router,
+		userUC:          userUC,
+		logger:          logger,
+		shutdownTimeout: httpCfg.ShutdownTimeout,
 	}
 
-	h := handler.NewHandler(userUC, string(apiKey))
+	h := handler.NewHandler(userUC, appCfg.APIKey)
 	h.InitRoutes(s.router)
 
 	return s
@@ -49,7 +52,7 @@ func (s *GinServer) Run(ctx context.Context, port string) error {
 
 	go func() {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			s.logger.Error("forced shutdown", "error", err)

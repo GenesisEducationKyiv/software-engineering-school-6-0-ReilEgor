@@ -8,9 +8,9 @@ import (
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc/proto/v1"
 )
 
-func NewGrpcServer(h *SubscriptionHandler, apiKey config.APIKeyType) *grpc.Server {
+func NewGrpcServer(h *SubscriptionHandler, appCfg config.AppConfig) *grpc.Server {
 	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(middleware.AuthInterceptor(string(apiKey))),
+		grpc.UnaryInterceptor(middleware.AuthInterceptor(appCfg.APIKey)),
 	)
 	pb.RegisterSubscriptionServiceServer(srv, h)
 
