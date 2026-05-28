@@ -33,7 +33,8 @@ func newUserMockFields(t *testing.T) userMockFields {
 }
 
 func newUserUC(f userMockFields) *UserUseCase {
-	return NewUserUseCase(context.Background(), f.subsRepo, f.userRepo, f.repoUC, f.emailService)
+	newUseUsecase, _ := NewUserUseCase(context.Background(), f.subsRepo, f.userRepo, f.repoUC, f.emailService)
+	return newUseUsecase
 }
 
 func TestUserUseCase_Subscribe(t *testing.T) {
