@@ -237,6 +237,7 @@ services:
     image: swaggerapi/swagger-ui:v5.32.2
     container_name: swagger-ui
     restart: always
+    profiles: [docs]
     ports:
       - "${SWAGGER_PORT}:8080"
     volumes:
