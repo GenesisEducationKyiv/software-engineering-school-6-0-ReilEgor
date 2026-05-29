@@ -15,6 +15,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/metrics"
 )
 
 const (
@@ -55,8 +56,19 @@ func NewUserUseCase(
 	return uc, func() { uc.wg.Wait() }
 }
 
-func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) error {
+func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (err error) {
 	const op = "UserUseCase.Subscribe"
+	start := time.Now()
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+	}()
+
 	log := uc.logger.With(
 		slog.String("op", op),
 		slog.String("email", email),
@@ -104,8 +116,20 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) er
 	return nil
 }
 
-func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) error {
+func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) (err error) {
 	const op = "UserUseCase.Unsubscribe"
+
+	start := time.Now()
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+	}()
+
 	log := uc.logger.With(slog.String("op", op), slog.String("email", email), slog.String("repo", repoName))
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
@@ -127,8 +151,19 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 	return nil
 }
 
-func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) ([]model.Subscription, error) {
+func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model.Subscription, err error) {
 	const op = "UserUseCase.ListByEmail"
+
+	start := time.Now()
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+	}()
 
 	subs, err := uc.subsRepo.GetByEmail(ctx, email)
 	if err != nil {
@@ -143,8 +178,20 @@ func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) ([]model.S
 	return subs, nil
 }
 
-func (uc *UserUseCase) Confirm(ctx context.Context, token string) error {
+func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 	const op = "UserUseCase.Confirm"
+
+	start := time.Now()
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+	}()
+
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
@@ -169,8 +216,20 @@ func (uc *UserUseCase) Confirm(ctx context.Context, token string) error {
 	return nil
 }
 
-func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) error {
+func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (err error) {
 	const op = "UserUseCase.UnsubscribeByToken"
+
+	start := time.Now()
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+	}()
+
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
@@ -197,10 +256,14 @@ func (uc *UserUseCase) sendConfirmationEmail(email, repo, token string) {
 	ctx, cancel := context.WithTimeout(uc.appCtx, sendConfirmationEmailctxTimeout*time.Second)
 	defer cancel()
 
-	if err := uc.emailService.SendConfirmation(ctx, email, repo, token); err != nil {
+	err := uc.emailService.SendConfirmation(ctx, email, repo, token)
+	status := "success"
+	if err != nil {
+		status = "error"
 		uc.logger.Error("failed to send confirmation email",
 			slog.String("to", email),
 			slog.Any("error", err),
 		)
 	}
+	metrics.ConfirmationEmailsSentTotal.WithLabelValues(status).Inc()
 }

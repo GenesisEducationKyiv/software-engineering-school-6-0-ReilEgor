@@ -24,6 +24,7 @@ func SetupMiddleware(
 	p := ginprometheus.NewPrometheus("gin")
 	p.Use(router)
 
+	router.Use(PrometheusMiddleware())
 	router.Use(gin.Recovery())
 	router.Use(slogMiddleware(logger))
 	router.Use(Timeout(requestTimeout))

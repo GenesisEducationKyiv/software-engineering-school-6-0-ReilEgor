@@ -10,6 +10,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/metrics"
 )
 
 const (
@@ -36,8 +37,20 @@ func NewRepositoryUseCase(
 
 var errMsgUpdateTag = errors.New("update last seen tag in database")
 
-func (uc *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (*model.Repository, error) {
+func (uc *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (_ *model.Repository, err error) {
 	const op = "RepositoryUseCase.GetOrCreate"
+
+	start := time.Now()
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+	}()
+
 	log := uc.logger.With(
 		slog.String("op", op),
 		slog.String("repo", repoName),
@@ -88,8 +101,23 @@ func (uc *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (
 	return repo, nil
 }
 
-func (uc *RepositoryUseCase) CheckForUpdates(ctx context.Context, repo model.Repository) (*model.Repository, error) {
+func (uc *RepositoryUseCase) CheckForUpdates(
+	ctx context.Context,
+	repo model.Repository,
+) (_ *model.Repository, err error) {
 	const op = "RepositoryUseCase.CheckForUpdates"
+
+	start := time.Now()
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+	}()
+
 	log := uc.logger.With(slog.String("repo", repo.FullName))
 
 	repoCtx, cancel := context.WithTimeout(ctx, checkForUpdatesCtxTimeout*time.Second)
