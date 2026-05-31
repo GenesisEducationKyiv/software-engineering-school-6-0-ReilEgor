@@ -129,6 +129,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.45.0
     restart: always
+    profiles: [observability]
     ports:
       - "${PROMETHEUS_PORT}:9090"
     volumes:
@@ -142,6 +143,7 @@ services:
     platform: linux/amd64
     container_name: fluent-bit
     restart: always
+    profiles: [observability]
     user: root
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -156,6 +158,7 @@ services:
   grafana:
     image: grafana/grafana:10.1.0
     restart: always
+    profiles: [observability]
     ports:
       - "${GRAFANA_PORT}:3000"
     environment:
@@ -170,10 +173,12 @@ services:
       - prometheus
     networks:
       - monitoring
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
     container_name: elasticsearch
     restart: always
+    profiles: [observability]
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -195,6 +200,7 @@ services:
     image: docker.elastic.co/kibana/kibana:8.12.2
     container_name: kibana
     restart: always
+    profiles: [observability]
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
@@ -215,6 +221,7 @@ services:
     image: curlimages/curl:8.6.0
     container_name: kibana-init
     restart: on-failure
+    profiles: [observability]
     depends_on:
       kibana:
         condition: service_healthy
@@ -243,9 +250,7 @@ services:
     volumes:
       - ../docs/api/swagger.json:/usr/share/nginx/html/docs/swagger.json:ro
     environment:
-      URLS: '[
-        { "url": "/docs/swagger.json", "name": "RepoNotifier-service" }
-      ]'
+      URLS: '[{ "url": "/docs/swagger.json", "name": "RepoNotifier-service" }]'
     networks:
       - internal
 
