@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -28,6 +28,7 @@ func NewHandler(userUC usecase.UserUseCase, apiKey string) *Handler {
 }
 
 func (h *Handler) InitRoutes(router *gin.Engine) {
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})

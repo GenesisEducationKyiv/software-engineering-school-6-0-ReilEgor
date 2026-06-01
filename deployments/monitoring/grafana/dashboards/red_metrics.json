@@ -76,8 +76,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(gin_requests_total[$__rate_interval])) by (method, url)",
-          "legendFormat": "{{method}} {{url}}",
+          "expr": "sum(rate(app_http_requests_total[$__rate_interval])) by (method, route)",
+          "legendFormat": "{{method}} {{route}}",
           "refId": "A"
         }
       ],
@@ -137,8 +137,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(gin_requests_total{code=~\"[45]..\"}[$__rate_interval])) by (url) / sum(rate(gin_requests_total[$__rate_interval])) by (url) * 100",
-          "legendFormat": "{{url}}",
+          "expr": "sum(rate(app_http_requests_total{status_code=~\"[45]..\"}[$__rate_interval])) by (route) / sum(rate(app_http_requests_total[$__rate_interval])) by (route) * 100",
+          "legendFormat": "{{route}}",
           "refId": "A"
         }
       ],
@@ -192,8 +192,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(gin_request_duration_seconds_sum[$__rate_interval])) by (method, url) / sum(rate(gin_request_duration_seconds_count[$__rate_interval])) by (method, url)",
-          "legendFormat": "avg — {{method}} {{url}}",
+          "expr": "sum(rate(app_http_request_duration_seconds_sum[$__rate_interval])) by (method, route) / sum(rate(app_http_request_duration_seconds_count[$__rate_interval])) by (method, route)",
+          "legendFormat": "avg — {{method}} {{route}}",
           "refId": "A"
         }
       ],
@@ -263,8 +263,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(gin_requests_total[$__rate_interval])) by (code, method)",
-          "legendFormat": "{{code}} {{method}}",
+          "expr": "sum(rate(app_http_requests_total[$__rate_interval])) by (status_code, method)",
+          "legendFormat": "{{status_code}} {{method}}",
           "refId": "A"
         }
       ],
@@ -304,8 +304,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(gin_requests_total) by (code)",
-          "legendFormat": "{{code}}",
+          "expr": "sum(app_http_requests_total) by (status_code)",
+          "legendFormat": "{{status_code}}",
           "refId": "A"
         }
       ],

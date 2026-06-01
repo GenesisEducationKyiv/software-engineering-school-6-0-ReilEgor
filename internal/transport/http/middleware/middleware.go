@@ -9,8 +9,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-
-	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
 func SetupMiddleware(
@@ -21,9 +19,6 @@ func SetupMiddleware(
 	requestTimeout time.Duration,
 ) {
 	router.Use(customCORS())
-	p := ginprometheus.NewPrometheus("gin")
-	p.Use(router)
-
 	router.Use(PrometheusMiddleware())
 	router.Use(gin.Recovery())
 	router.Use(slogMiddleware(logger))
