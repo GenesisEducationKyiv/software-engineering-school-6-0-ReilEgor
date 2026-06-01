@@ -31,7 +31,7 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	// router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.StaticFile("/", "./static/index.html")
 
