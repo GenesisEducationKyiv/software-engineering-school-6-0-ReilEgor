@@ -99,7 +99,7 @@ cp deployments/.env.example deployments/.env
 # Edit deployments/.env - see Configuration section below
  
 # Build and start all services
-docker-compose -f deployments/docker-compose.yml up --build
+docker compose --profile observability --profile docs -f deployments/docker-compose.yml up --build
 ```
  
 Once running, verify the services are healthy:
@@ -195,7 +195,21 @@ RepoNotifier exposes Prometheus metrics at `/metrics`. Recommended Grafana dashb
 - Background scanner cycle duration
 - Circuit breaker state transitions
 - Redis cache hit/miss ratio
- 
+
+```bash
+Core only
+docker compose up -d
+
+With monitoring
+docker compose --profile observability up -d
+
+With documentation
+docker compose --profile docs up -d
+
+All at once
+docker compose --profile observability --profile docs up -d
+```
+
 ---
  
 ## Tech Stack
