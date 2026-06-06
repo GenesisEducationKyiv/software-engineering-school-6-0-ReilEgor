@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/dto"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/dto"
 )
 
 func (s *APITestSuite) TestSubscribe_Success() {

@@ -10,18 +10,25 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/infrastructure/clients/github"
-	repositoryRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
+	email2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
+	usecaseRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/usecase"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/email"
 	repository "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
-	grpcTransport "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http"
-	usecaseRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/usecase"
+	repository4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
+	usecase3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	grpc2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
+	usecase5 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
+	repository3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
+	service2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
+	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
+	github2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
+	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 )
 
 func ProvideDBConfig(cfg config.Config) config.DBConfig         { return cfg.DB }
@@ -34,34 +41,34 @@ func ProvideWorkerConfig(cfg config.Config) config.WorkerConfig { return cfg.Wor
 func ProvideBaseURL(cfg config.AppConfig) string                { return cfg.BaseURL }
 
 var UseCaseSet = wire.NewSet(
-	usecaseRealization.NewRepositoryUseCase,
+	usecase2.NewRepositoryUseCase,
 	usecaseRealization.NewNotificationUseCase,
-	usecaseRealization.NewUserUseCase,
-	wire.Bind(new(usecase.RepositoryUseCase), new(*usecaseRealization.RepositoryUseCase)),
+	usecase5.NewUserUseCase,
+	wire.Bind(new(usecase4.RepositoryUseCase), new(*usecase2.RepositoryUseCase)),
 	wire.Bind(new(usecase.NotificationUseCase), new(*usecaseRealization.NotificationUseCase)),
-	wire.Bind(new(usecase.UserUseCase), new(*usecaseRealization.UserUseCase)),
+	wire.Bind(new(usecase3.UserUseCase), new(*usecase5.UserUseCase)),
 )
 
 var RepositorySet = wire.NewSet(
 	repository.New,
-	repositoryRealization.NewRepositoryRepository,
-	repositoryRealization.NewSubscriptionRepository,
-	repositoryRealization.NewUserRepository,
+	postgres.NewRepositoryRepository,
+	postgres2.NewSubscriptionRepository,
+	postgres2.NewUserRepository,
 	wire.Bind(new(repository.PgxInterface), new(*pgxpool.Pool)),
-	wire.Bind(new(repository2.RepositoryRepository), new(*repositoryRealization.RepositoryRepository)),
-	wire.Bind(new(repository2.SubscriptionRepository), new(*repositoryRealization.SubscriptionRepository)),
-	wire.Bind(new(repository2.UserRepository), new(*repositoryRealization.UserRepository)),
+	wire.Bind(new(repository3.RepositoryRepository), new(*postgres.RepositoryRepository)),
+	wire.Bind(new(repository4.SubscriptionRepository), new(*postgres2.SubscriptionRepository)),
+	wire.Bind(new(repository4.UserRepository), new(*postgres2.UserRepository)),
 )
 
 func ProvideCachedClient(
-	c *github.GitHubClient,
-	cache service.Cache,
-) service.GitHubClient {
-	return github.NewCachedGitHubClient(c, cache)
+	c *github2.GitHubClient,
+	cache service2.Cache,
+) service2.GitHubClient {
+	return github2.NewCachedGitHubClient(c, cache)
 }
 
 var GitHubSet = wire.NewSet(
-	github.NewGitHubClient,
+	github2.NewGitHubClient,
 	ProvideCachedClient,
 )
 
@@ -72,14 +79,14 @@ var RestSet = wire.NewSet(
 var CacheSet = wire.NewSet(
 	redis.NewRedisClient,
 	redis.NewCache,
-	wire.Bind(new(service.Cache), new(*redis.Cache)),
+	wire.Bind(new(service2.Cache), new(*redis.Cache)),
 )
 
 var EmailSet = wire.NewSet(
-	email.NewSMTPClient,
-	email.NewEmailManager,
-	wire.Bind(new(service.EmailService), new(*email.EmailManager)),
-	wire.Bind(new(service.EmailSender), new(*email.SMTPClient)),
+	email2.NewSMTPClient,
+	email2.NewEmailManager,
+	wire.Bind(new(service.EmailService), new(*email2.EmailManager)),
+	wire.Bind(new(service.EmailSender), new(*email2.SMTPClient)),
 )
 
 var ServicesSet = wire.NewSet(
@@ -88,8 +95,8 @@ var ServicesSet = wire.NewSet(
 )
 
 var GrpcSet = wire.NewSet(
-	grpcTransport.NewSubscriptionHandler,
-	grpcTransport.NewGrpcServer,
+	grpc2.NewSubscriptionHandler,
+	grpc2.NewGrpcServer,
 )
 
 type App struct {
