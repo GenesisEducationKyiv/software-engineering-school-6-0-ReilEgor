@@ -9,16 +9,14 @@ package main
 import (
 	"context"
 	service2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
+	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
+	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
 	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
-	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
-	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
 	usecase3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
@@ -27,7 +25,6 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
-	grpc2 "google.golang.org/grpc"
 )
 
 // Injectors from wire.go:
@@ -39,7 +36,6 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	subscriptionRepository := postgres2.NewSubscriptionRepository(pool)
-	userRepository := postgres2.NewUserRepository(pool)
 	repositoryRepository := postgres3.NewRepositoryRepository(pool)
 	gitHubConfig := ProvideGitHubConfig(cfg)
 	gitHubClient := github.NewGitHubClient(gitHubConfig)
@@ -57,17 +53,12 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	appConfig := ProvideAppConfig(cfg)
 	string2 := ProvideBaseURL(appConfig)
 	emailManager := email.NewEmailManager(smtpClient, string2)
-	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, emailManager)
-	httpConfig := ProvideHTTPConfig(cfg)
-	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
-	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
-	server := grpc.NewGrpcServer(subscriptionHandler, appConfig)
+	workerConfig := ProvideWorkerConfig(cfg)
+	notificationUseCase := usecase2.NewNotificationUseCase(subscriptionRepository, repositoryRepository, repositoryUseCase, emailManager, workerConfig)
 	app := &App{
-		HTTPServer: ginServer,
-		GrpcServer: server,
+		NotificationUseCase: notificationUseCase,
 	}
 	return app, func() {
-		cleanup2()
 		cleanup()
 	}, nil
 }
@@ -82,15 +73,15 @@ func ProvideEmailConfig(cfg Config) config.EmailConfig { return cfg.Email }
 
 func ProvideGitHubConfig(cfg Config) config.GitHubConfig { return cfg.GitHub }
 
-func ProvideHTTPConfig(cfg Config) config.HTTPConfig { return cfg.HTTP }
-
 func ProvideAppConfig(cfg Config) config.AppConfig { return cfg.App }
+
+func ProvideWorkerConfig(cfg Config) config.WorkerConfig { return cfg.Worker }
 
 func ProvideBaseURL(cfg config.AppConfig) string { return cfg.BaseURL }
 
-var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase2.NewUserUseCase, wire.Bind(new(usecase3.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase4.UserUseCase), new(*usecase2.UserUseCase)))
+var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase2.NewNotificationUseCase, wire.Bind(new(usecase3.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase4.NotificationUseCase), new(*usecase2.NotificationUseCase)))
 
-var RepositorySet = wire.NewSet(postgres.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, postgres2.NewUserRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(repository2.UserRepository), new(*postgres2.UserRepository)))
+var RepositorySet = wire.NewSet(postgres.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)))
 
 func ProvideCachedClient(
 	c *github.GitHubClient,
@@ -105,9 +96,6 @@ var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(s
 
 var EmailSet = wire.NewSet(email.NewSMTPClient, email.NewEmailManager, wire.Bind(new(service2.EmailService), new(*email.EmailManager)), wire.Bind(new(service2.EmailSender), new(*email.SMTPClient)))
 
-var GrpcSet = wire.NewSet(grpc.NewSubscriptionHandler, grpc.NewGrpcServer)
-
 type App struct {
-	HTTPServer *http.GinServer
-	GrpcServer *grpc2.Server
+	NotificationUseCase usecase4.NotificationUseCase
 }

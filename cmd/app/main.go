@@ -10,13 +10,22 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/caarlos0/env/v11"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
+	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
 )
+
+type Config struct {
+	DB     sharedConfig.DBConfig
+	HTTP   sharedConfig.HTTPConfig
+	GRPC   sharedConfig.GRPCConfig
+	Redis  sharedConfig.RedisConfig
+	Email  sharedConfig.EmailConfig
+	GitHub sharedConfig.GitHubConfig
+	App    sharedConfig.AppConfig
+}
 
 // Swagger Metadata for API Documentation
 //
@@ -60,11 +69,6 @@ func main() {
 		return startGRPCServer(ctx, app, cfg, myLogger)
 	})
 
-	g.Go(func() error {
-		startNotificationWorker(ctx, app, myLogger)
-		return nil
-	})
-
 	if err := g.Wait(); err != nil {
 		myLogger.Error("server stopped", slog.Any("error", err))
 	}
@@ -76,8 +80,8 @@ func setupLogger() *slog.Logger {
 	return myLogger
 }
 
-func loadConfig(l *slog.Logger) (config.Config, error) {
-	var cfg config.Config
+func loadConfig(l *slog.Logger) (Config, error) {
+	var cfg Config
 	if err := env.Parse(&cfg); err != nil {
 		wrapErr := fmt.Errorf("failed to parse environment variables: %w", err)
 		l.Error("config load error", slog.Any("error", wrapErr))
@@ -86,7 +90,7 @@ func loadConfig(l *slog.Logger) (config.Config, error) {
 	return cfg, nil
 }
 
-func startHTTPServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger) error {
+func startHTTPServer(ctx context.Context, app *App, cfg Config, l *slog.Logger) error {
 	addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
 	l.Info("HTTP server starting", slog.String("addr", addr))
 	if err := app.HTTPServer.Run(ctx, addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -95,7 +99,7 @@ func startHTTPServer(ctx context.Context, app *App, cfg config.Config, l *slog.L
 	return nil
 }
 
-func startGRPCServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger) error {
+func startGRPCServer(ctx context.Context, app *App, cfg Config, l *slog.Logger) error {
 	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 	lc := net.ListenConfig{}
 	lis, err := lc.Listen(ctx, "tcp", addr)
@@ -115,19 +119,3 @@ func startGRPCServer(ctx context.Context, app *App, cfg config.Config, l *slog.L
 	return nil
 }
 
-func startNotificationWorker(ctx context.Context, app *App, l *slog.Logger) {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			l.Info("notification worker stopped")
-			return
-		case <-ticker.C:
-			if err := app.NotificationUseCase.ProcessNotifications(ctx); err != nil {
-				l.Error("worker check failed", slog.Any("error", err))
-			}
-		}
-	}
-}

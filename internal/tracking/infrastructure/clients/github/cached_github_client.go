@@ -69,7 +69,7 @@ func (c *CachedGitHubClient) GetLatestRelease(ctx context.Context, fullName stri
 	}
 
 	if jsonData, err := json.Marshal(info); err == nil {
-		err = c.cache.Set(ctx, key, jsonData, time.Minute)
+		err = c.cache.Set(ctx, key, jsonData, 5*time.Minute)
 		if err != nil {
 			return nil, fmt.Errorf("%s: cache set: %w", op, err)
 		}
