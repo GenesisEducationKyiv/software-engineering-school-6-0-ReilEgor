@@ -11,11 +11,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/metrics"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/repository"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/metrics"
 )
 
 const (
@@ -31,8 +31,8 @@ const (
 type UserUseCase struct {
 	appCtx       context.Context
 	logger       *slog.Logger
-	subsRepo     repository.SubscriptionRepository
-	userRepo     repository.UserRepository
+	subsRepo     repository2.SubscriptionRepository
+	userRepo     repository2.UserRepository
 	repoUC       usecase.RepositoryUseCase
 	emailService service.EmailService
 	wg           sync.WaitGroup
@@ -40,8 +40,8 @@ type UserUseCase struct {
 
 func NewUserUseCase(
 	appCtx context.Context,
-	sr repository.SubscriptionRepository,
-	ur repository.UserRepository,
+	sr repository2.SubscriptionRepository,
+	ur repository2.UserRepository,
 	ru usecase.RepositoryUseCase,
 	es service.EmailService,
 ) (*UserUseCase, func()) {
@@ -82,11 +82,11 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if !errors.Is(err, model.ErrUserNotFound) {
+		if !errors.Is(err, model2.ErrUserNotFound) {
 			return fmt.Errorf("%s: get user: %w", op, err)
 		}
 
-		user = model.User{Email: email}
+		user = model2.User{Email: email}
 		if err := uc.userRepo.Create(ctx, &user); err != nil {
 			return fmt.Errorf("%s: create user: %w", op, err)
 		}
@@ -94,7 +94,7 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 	}
 
 	token := uuid.NewString()
-	sub := &model.Subscription{
+	sub := &model2.Subscription{
 		UserID:         user.ID,
 		RepositoryID:   repo.ID,
 		RepositoryName: repo.FullName,
@@ -134,7 +134,7 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, model.ErrUserNotFound) {
+		if errors.Is(err, model2.ErrUserNotFound) {
 			log.DebugContext(ctx, "user not found, nothing to unsubscribe")
 			return nil
 		}
@@ -151,7 +151,7 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 	return nil
 }
 
-func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model.Subscription, err error) {
+func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model2.Subscription, err error) {
 	const op = "UserUseCase.ListByEmail"
 
 	start := time.Now()
@@ -195,12 +195,12 @@ func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
-		return model.ErrInvalidToken
+		return model2.ErrInvalidToken
 	}
 
 	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, model.ErrInvalidToken) {
+		if errors.Is(err, model2.ErrInvalidToken) {
 			log.WarnContext(ctx, "attempt to confirm with invalid token")
 		}
 		return fmt.Errorf("%s: %w", op, err)
@@ -233,12 +233,12 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (er
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
-		return model.ErrInvalidToken
+		return model2.ErrInvalidToken
 	}
 
 	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, model.ErrInvalidToken) {
+		if errors.Is(err, model2.ErrInvalidToken) {
 			log.WarnContext(ctx, "invalid unsubscribe token", slog.String("token", token))
 		}
 		return fmt.Errorf("%s: get by token: %w", op, err)

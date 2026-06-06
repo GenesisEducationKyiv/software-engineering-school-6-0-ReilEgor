@@ -10,9 +10,9 @@ import (
 
 	"github.com/sony/gobreaker"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/service"
 )
 
 const (

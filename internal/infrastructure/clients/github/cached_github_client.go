@@ -7,17 +7,17 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	service2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/service"
 )
 
 type CachedGitHubClient struct {
-	client service.GitHubClient
-	cache  service.Cache
+	client service2.GitHubClient
+	cache  service2.Cache
 	logger *slog.Logger
 }
 
-func NewCachedGitHubClient(client service.GitHubClient, cache service.Cache) *CachedGitHubClient {
+func NewCachedGitHubClient(client service2.GitHubClient, cache service2.Cache) *CachedGitHubClient {
 	return &CachedGitHubClient{
 		client: client,
 		cache:  cache,

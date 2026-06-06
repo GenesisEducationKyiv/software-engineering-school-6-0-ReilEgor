@@ -25,10 +25,10 @@ import (
 
 	redisClient "github.com/redis/go-redis/v9"
 
-	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/infrastructure/cache/redis"
 	servicesRealizationGitHub "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/infrastructure/clients/github"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/mocks"
 	repositoryRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/repository/postgres"
+	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/http/handlers"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/usecase"
 )
@@ -52,8 +52,8 @@ type APITestSuite struct {
 	redisClient    *redisClient.Client
 	router         *gin.Engine
 
-	mockGitHub *mocks.GitHubClient
-	mockSMTP   *mocks.EmailService
+	mockGitHub *mocks2.GitHubClient
+	mockSMTP   *mocks2.EmailService
 }
 
 func TestAPISuite(t *testing.T) {
@@ -129,8 +129,8 @@ func (s *APITestSuite) SetupTest() {
 	s.truncateTables()
 	s.Require().NoError(s.redisClient.FlushAll(s.ctx).Err())
 
-	s.mockGitHub = new(mocks.GitHubClient)
-	s.mockSMTP = new(mocks.EmailService)
+	s.mockGitHub = new(mocks2.GitHubClient)
+	s.mockSMTP = new(mocks2.EmailService)
 
 	s.buildRouter()
 }

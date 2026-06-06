@@ -9,25 +9,25 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/mocks"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
 )
 
 type notifMockFields struct {
-	subsRepo     *mocks.SubscriptionRepository
-	repoRepo     *mocks.RepositoryRepository
-	repoUC       *mocks.RepositoryUseCase
-	emailService *mocks.EmailService
+	subsRepo     *mocks2.SubscriptionRepository
+	repoRepo     *mocks2.RepositoryRepository
+	repoUC       *mocks2.RepositoryUseCase
+	emailService *mocks2.EmailService
 }
 
 func newNotifMockFields(t *testing.T) notifMockFields {
 	t.Helper()
 	return notifMockFields{
-		subsRepo:     mocks.NewSubscriptionRepository(t),
-		repoRepo:     mocks.NewRepositoryRepository(t),
-		repoUC:       mocks.NewRepositoryUseCase(t),
-		emailService: mocks.NewEmailService(t),
+		subsRepo:     mocks2.NewSubscriptionRepository(t),
+		repoRepo:     mocks2.NewRepositoryRepository(t),
+		repoUC:       mocks2.NewRepositoryUseCase(t),
+		emailService: mocks2.NewEmailService(t),
 	}
 }
 
@@ -49,18 +49,18 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - no repos",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{}, nil).Once()
+					Return([]model2.Repository{}, nil).Once()
 			},
 		},
 		{
 			name: "success - repo has no new release",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 					}, nil).Once()
-				f.repoUC.On("CheckForUpdates", mock.Anything, model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}).
-					Return((*model.Repository)(nil), nil).
+				f.repoUC.On("CheckForUpdates", mock.Anything, model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}).
+					Return((*model2.Repository)(nil), nil).
 					Once()
 			},
 		},
@@ -68,14 +68,14 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - new release, notifications sent",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 					}, nil).Once()
-				f.repoUC.On("CheckForUpdates", mock.Anything, model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
+				f.repoUC.On("CheckForUpdates", mock.Anything, model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
 					Once()
 				f.subsRepo.On("GetByRepoID", mock.Anything, int64(1)).
-					Return([]model.Subscriber{
+					Return([]model2.Subscriber{
 						{Email: "alice@example.com", Token: "tok-a"},
 						{Email: "bob@example.com", Token: "tok-b"},
 					}, nil).Once()
@@ -91,14 +91,14 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - email send fails, continues without error",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 					}, nil).Once()
-				f.repoUC.On("CheckForUpdates", mock.Anything, model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
+				f.repoUC.On("CheckForUpdates", mock.Anything, model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
 					Once()
 				f.subsRepo.On("GetByRepoID", mock.Anything, int64(1)).
-					Return([]model.Subscriber{
+					Return([]model2.Subscriber{
 						{Email: "alice@example.com", Token: "tok-a"},
 					}, nil).Once()
 				f.emailService.On("SendNotification", mock.Anything, "alice@example.com", "golang/go", "v1.22.0", "tok-a").
@@ -110,11 +110,11 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - CheckForUpdates fails, skips repo",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 					}, nil).Once()
-				f.repoUC.On("CheckForUpdates", mock.Anything, model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
-					Return((*model.Repository)(nil), errors.New("github error")).
+				f.repoUC.On("CheckForUpdates", mock.Anything, model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
+					Return((*model2.Repository)(nil), errors.New("github error")).
 					Once()
 			},
 		},
@@ -122,11 +122,11 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - GetByRepoID fails, skips repo",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 					}, nil).Once()
-				f.repoUC.On("CheckForUpdates", mock.Anything, model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
+				f.repoUC.On("CheckForUpdates", mock.Anything, model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
 					Once()
 				f.subsRepo.On("GetByRepoID", mock.Anything, int64(1)).
 					Return(nil, errors.New("db error")).Once()
@@ -144,18 +144,18 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - multiple repos, partial failures skipped",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 						{ID: 2, FullName: "torvalds/linux", LastSeenTag: "v6.8"},
 					}, nil).Once()
-				f.repoUC.On("CheckForUpdates", mock.Anything, model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
+				f.repoUC.On("CheckForUpdates", mock.Anything, model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).
 					Once()
-				f.repoUC.On("CheckForUpdates", mock.Anything, model.Repository{ID: 2, FullName: "torvalds/linux", LastSeenTag: "v6.8"}).
-					Return((*model.Repository)(nil), errors.New("api error")).
+				f.repoUC.On("CheckForUpdates", mock.Anything, model2.Repository{ID: 2, FullName: "torvalds/linux", LastSeenTag: "v6.8"}).
+					Return((*model2.Repository)(nil), errors.New("api error")).
 					Once()
 				f.subsRepo.On("GetByRepoID", mock.Anything, int64(1)).
-					Return([]model.Subscriber{
+					Return([]model2.Subscriber{
 						{Email: "alice@example.com", Token: "tok-a"},
 					}, nil).Once()
 				f.emailService.On("SendNotification", mock.Anything, "alice@example.com", "golang/go", "v1.22.0", "tok-a").
@@ -167,13 +167,13 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - send respects context timeout",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 					}, nil).Once()
 				f.repoUC.On("CheckForUpdates", mock.Anything, mock.Anything).
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
 				f.subsRepo.On("GetByRepoID", mock.Anything, int64(1)).
-					Return([]model.Subscriber{
+					Return([]model2.Subscriber{
 						{Email: "alice@example.com", Token: "tok-a"},
 					}, nil).Once()
 
@@ -190,14 +190,14 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - email send fails, warn logged, continues",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 					}, nil).Once()
 				f.repoUC.On("CheckForUpdates", mock.Anything,
-					model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
+					model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
 				f.subsRepo.On("GetByRepoID", mock.Anything, int64(1)).
-					Return([]model.Subscriber{
+					Return([]model2.Subscriber{
 						{Email: "alice@example.com", Token: "tok-a"},
 					}, nil).Once()
 				f.emailService.On("SendNotification",
@@ -214,14 +214,14 @@ func TestNotificationUseCase_ProcessNotifications(t *testing.T) {
 			name: "success - send succeeds, no warn logged",
 			setup: func(f notifMockFields) {
 				f.repoRepo.On("GetAll", mock.Anything).
-					Return([]model.Repository{
+					Return([]model2.Repository{
 						{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 					}, nil).Once()
 				f.repoUC.On("CheckForUpdates", mock.Anything,
-					model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
+					model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"}).
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
 				f.subsRepo.On("GetByRepoID", mock.Anything, int64(1)).
-					Return([]model.Subscriber{
+					Return([]model2.Subscriber{
 						{Email: "alice@example.com", Token: "tok-a"},
 					}, nil).Once()
 
@@ -290,7 +290,7 @@ func TestNotificationUseCase_sendNotificationEmail(t *testing.T) {
 			).Return(tt.mockErr).Once()
 
 			uc := newNotifUC(f)
-			sub := model.Subscriber{Email: "alice@example.com", Token: "tok-a"}
+			sub := model2.Subscriber{Email: "alice@example.com", Token: "tok-a"}
 
 			err := uc.sendNotificationEmail(context.Background(), sub, "golang/go", "v1.22.0")
 

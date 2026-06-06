@@ -8,7 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
 )
 
 const (
@@ -16,11 +17,11 @@ const (
 )
 
 type SubscriptionRepository struct {
-	db     PgxInterface
+	db     postgres2.PgxInterface
 	logger *slog.Logger
 }
 
-func NewSubscriptionRepository(db PgxInterface) *SubscriptionRepository {
+func NewSubscriptionRepository(db postgres2.PgxInterface) *SubscriptionRepository {
 	return &SubscriptionRepository{
 		db:     db,
 		logger: slog.With(slog.String("component", componentSubscriptionRepository)),

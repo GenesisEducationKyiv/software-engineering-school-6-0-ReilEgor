@@ -8,12 +8,12 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/metrics"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/repository"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/metrics"
 )
 
 const (
@@ -25,16 +25,16 @@ const (
 
 type NotificationUseCase struct {
 	logger       *slog.Logger
-	subsRepo     repository.SubscriptionRepository
-	repoRepo     repository.RepositoryRepository
+	subsRepo     repository2.SubscriptionRepository
+	repoRepo     repository2.RepositoryRepository
 	repoUC       usecase.RepositoryUseCase
 	emailService service.EmailService
 	workerCfg    config.WorkerConfig
 }
 
 func NewNotificationUseCase(
-	sr repository.SubscriptionRepository,
-	rr repository.RepositoryRepository,
+	sr repository2.SubscriptionRepository,
+	rr repository2.RepositoryRepository,
 	ru usecase.RepositoryUseCase,
 	es service.EmailService,
 	workerCfg config.WorkerConfig,

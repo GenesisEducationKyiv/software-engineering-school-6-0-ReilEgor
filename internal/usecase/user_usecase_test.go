@@ -11,24 +11,24 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/mocks"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
 )
 
 type userMockFields struct {
-	subsRepo     *mocks.SubscriptionRepository
-	userRepo     *mocks.UserRepository
-	repoUC       *mocks.RepositoryUseCase
-	emailService *mocks.EmailService
+	subsRepo     *mocks2.SubscriptionRepository
+	userRepo     *mocks2.UserRepository
+	repoUC       *mocks2.RepositoryUseCase
+	emailService *mocks2.EmailService
 }
 
 func newUserMockFields(t *testing.T) userMockFields {
 	t.Helper()
 	return userMockFields{
-		subsRepo:     mocks.NewSubscriptionRepository(t),
-		userRepo:     mocks.NewUserRepository(t),
-		repoUC:       mocks.NewRepositoryUseCase(t),
-		emailService: mocks.NewEmailService(t),
+		subsRepo:     mocks2.NewSubscriptionRepository(t),
+		userRepo:     mocks2.NewUserRepository(t),
+		repoUC:       mocks2.NewRepositoryUseCase(t),
+		emailService: mocks2.NewEmailService(t),
 	}
 }
 
@@ -51,9 +51,9 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&model.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&model2.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
-					Return(model.User{ID: 10, Email: "user@example.com"}, nil).Once()
+					Return(model2.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
 				f.emailService.On("SendConfirmation", mock.Anything, "user@example.com", "golang/go", mock.AnythingOfType("string")).
@@ -67,12 +67,12 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&model.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&model2.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "new@example.com").
-					Return(model.User{}, model.ErrUserNotFound).Once()
+					Return(model2.User{}, model2.ErrUserNotFound).Once()
 				f.userRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.User")).
 					Run(func(args mock.Arguments) {
-						u, ok := args.Get(1).(*model.User)
+						u, ok := args.Get(1).(*model2.User)
 						if !ok {
 							return
 						}
@@ -91,7 +91,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "unknown/repo",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "unknown/repo").
-					Return((*model.Repository)(nil), errors.New("repo not found")).Once()
+					Return((*model2.Repository)(nil), errors.New("repo not found")).Once()
 			},
 			expectErr: true,
 		},
@@ -101,9 +101,9 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&model.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&model2.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
-					Return(model.User{}, errors.New("db error")).Once()
+					Return(model2.User{}, errors.New("db error")).Once()
 			},
 			expectErr: true,
 		},
@@ -113,9 +113,9 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&model.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&model2.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "new@example.com").
-					Return(model.User{}, model.ErrUserNotFound).Once()
+					Return(model2.User{}, model2.ErrUserNotFound).Once()
 				f.userRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.User")).
 					Return(errors.New("db write error")).Once()
 			},
@@ -127,9 +127,9 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&model.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&model2.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
-					Return(model.User{ID: 10, Email: "user@example.com"}, nil).Once()
+					Return(model2.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(errors.New("save error")).Once()
 			},
@@ -168,7 +168,7 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
-					Return(model.User{ID: 10, Email: "user@example.com"}, nil).Once()
+					Return(model2.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				f.subsRepo.On("Delete", mock.Anything, int64(10), "golang/go").
 					Return(nil).Once()
 			},
@@ -179,7 +179,7 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.userRepo.On("GetByEmail", mock.Anything, "ghost@example.com").
-					Return(model.User{}, model.ErrUserNotFound).Once()
+					Return(model2.User{}, model2.ErrUserNotFound).Once()
 			},
 		},
 		{
@@ -188,7 +188,7 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
-					Return(model.User{}, errors.New("db error")).Once()
+					Return(model2.User{}, errors.New("db error")).Once()
 			},
 			expectErr: true,
 		},
@@ -198,7 +198,7 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
-					Return(model.User{ID: 10, Email: "user@example.com"}, nil).Once()
+					Return(model2.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				f.subsRepo.On("Delete", mock.Anything, int64(10), "golang/go").
 					Return(errors.New("delete error")).Once()
 			},
@@ -228,7 +228,7 @@ func TestUserUseCase_ListByEmail(t *testing.T) {
 		name      string
 		email     string
 		setup     func(f userMockFields)
-		wantSubs  []model.Subscription
+		wantSubs  []model2.Subscription
 		expectErr bool
 	}{
 		{
@@ -236,12 +236,12 @@ func TestUserUseCase_ListByEmail(t *testing.T) {
 			email: "user@example.com",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByEmail", mock.Anything, "user@example.com").
-					Return([]model.Subscription{
+					Return([]model2.Subscription{
 						{UserID: 1, RepositoryName: "golang/go"},
 						{UserID: 1, RepositoryName: "torvalds/linux"},
 					}, nil).Once()
 			},
-			wantSubs: []model.Subscription{
+			wantSubs: []model2.Subscription{
 				{UserID: 1, RepositoryName: "golang/go"},
 				{UserID: 1, RepositoryName: "torvalds/linux"},
 			},
@@ -251,9 +251,9 @@ func TestUserUseCase_ListByEmail(t *testing.T) {
 			email: "empty@example.com",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByEmail", mock.Anything, "empty@example.com").
-					Return([]model.Subscription{}, nil).Once()
+					Return([]model2.Subscription{}, nil).Once()
 			},
-			wantSubs: []model.Subscription{},
+			wantSubs: []model2.Subscription{},
 		},
 		{
 			name:  "error - repo fails",
@@ -297,7 +297,7 @@ func TestUserUseCase_Confirm(t *testing.T) {
 			name:  "success - subscription confirmed",
 			token: "valid-token",
 			setup: func(f userMockFields) {
-				sub := &model.Subscription{
+				sub := &model2.Subscription{
 					UserID:         1,
 					RepositoryName: "golang/go",
 					Token:          "valid-token",
@@ -305,7 +305,7 @@ func TestUserUseCase_Confirm(t *testing.T) {
 				}
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
 					Return(sub, nil).Once()
-				f.subsRepo.On("Save", mock.Anything, mock.MatchedBy(func(s *model.Subscription) bool {
+				f.subsRepo.On("Save", mock.Anything, mock.MatchedBy(func(s *model2.Subscription) bool {
 					return s.Confirmed == true
 				})).Return(nil).Once()
 			},
@@ -314,22 +314,22 @@ func TestUserUseCase_Confirm(t *testing.T) {
 			name:    "error - empty token",
 			token:   "",
 			setup:   func(_ userMockFields) {},
-			wantErr: model.ErrInvalidToken,
+			wantErr: model2.ErrInvalidToken,
 		},
 		{
 			name:  "error - token not found",
 			token: "bad-token",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByToken", mock.Anything, "bad-token").
-					Return((*model.Subscription)(nil), model.ErrInvalidToken).Once()
+					Return((*model2.Subscription)(nil), model2.ErrInvalidToken).Once()
 			},
-			wantErr: model.ErrInvalidToken,
+			wantErr: model2.ErrInvalidToken,
 		},
 		{
 			name:  "error - Save fails after confirm",
 			token: "valid-token",
 			setup: func(f userMockFields) {
-				sub := &model.Subscription{
+				sub := &model2.Subscription{
 					UserID:         1,
 					RepositoryName: "golang/go",
 					Token:          "valid-token",
@@ -377,7 +377,7 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			token: "valid-token",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
-					Return(&model.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
+					Return(&model2.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
 					Once()
 				f.subsRepo.On("Delete", mock.Anything, int64(5), "golang/go").
 					Return(nil).Once()
@@ -387,23 +387,23 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			name:    "error - empty token",
 			token:   "",
 			setup:   func(_ userMockFields) {},
-			wantErr: model.ErrInvalidToken,
+			wantErr: model2.ErrInvalidToken,
 		},
 		{
 			name:  "error - token not found",
 			token: "bad-token",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByToken", mock.Anything, "bad-token").
-					Return((*model.Subscription)(nil), model.ErrInvalidToken).Once()
+					Return((*model2.Subscription)(nil), model2.ErrInvalidToken).Once()
 			},
-			wantErr: model.ErrInvalidToken,
+			wantErr: model2.ErrInvalidToken,
 		},
 		{
 			name:  "error - Delete fails",
 			token: "valid-token",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
-					Return(&model.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
+					Return(&model2.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
 					Once()
 				f.subsRepo.On("Delete", mock.Anything, int64(5), "golang/go").
 					Return(errors.New("delete error")).Once()

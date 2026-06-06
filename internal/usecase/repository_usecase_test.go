@@ -10,21 +10,21 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/mocks"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/service"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
 )
 
 type repoMockFields struct {
-	repoRepo *mocks.RepositoryRepository
-	ghClient *mocks.GitHubClient
+	repoRepo *mocks2.RepositoryRepository
+	ghClient *mocks2.GitHubClient
 }
 
 func newRepoMockFields(t *testing.T) repoMockFields {
 	t.Helper()
 	return repoMockFields{
-		repoRepo: mocks.NewRepositoryRepository(t),
-		ghClient: mocks.NewGitHubClient(t),
+		repoRepo: mocks2.NewRepositoryRepository(t),
+		ghClient: mocks2.NewGitHubClient(t),
 	}
 }
 
@@ -37,7 +37,7 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 		name      string
 		repoName  string
 		setup     func(f repoMockFields)
-		wantRepo  *model.Repository
+		wantRepo  *model2.Repository
 		wantErr   error
 		expectErr bool
 	}{
@@ -46,37 +46,37 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f repoMockFields) {
 				f.repoRepo.On("GetByName", mock.Anything, "golang/go").
-					Return(&model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
+					Return(&model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"}, nil).Once()
 			},
-			wantRepo: &model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
+			wantRepo: &model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 		},
 		{
 			name:     "success - repo not in DB, created from GitHub",
 			repoName: "golang/go",
 			setup: func(f repoMockFields) {
 				f.repoRepo.On("GetByName", mock.Anything, "golang/go").
-					Return((*model.Repository)(nil), model.ErrRepositoryNotFound).Once()
+					Return((*model2.Repository)(nil), model2.ErrRepositoryNotFound).Once()
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
-					Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
+					Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 				f.repoRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Repository")).
 					Run(func(args mock.Arguments) {
-						repo, ok := args.Get(1).(*model.Repository)
+						repo, ok := args.Get(1).(*model2.Repository)
 						if !ok {
 							return
 						}
 						repo.ID = 10
 					}).Return(nil).Once()
 			},
-			wantRepo: &model.Repository{ID: 10, FullName: "golang/go", LastSeenTag: "v1.22.0"},
+			wantRepo: &model2.Repository{ID: 10, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 		},
 		{
 			name:     "error - repo not found on GitHub",
 			repoName: "unknown/repo",
 			setup: func(f repoMockFields) {
 				f.repoRepo.On("GetByName", mock.Anything, "unknown/repo").
-					Return((*model.Repository)(nil), model.ErrRepositoryNotFound).Once()
+					Return((*model2.Repository)(nil), model2.ErrRepositoryNotFound).Once()
 				f.ghClient.On("RepoExists", mock.Anything, "unknown/repo").
 					Return(false, nil).Once()
 			},
@@ -87,7 +87,7 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f repoMockFields) {
 				f.repoRepo.On("GetByName", mock.Anything, "golang/go").
-					Return((*model.Repository)(nil), errors.New("db error")).Once()
+					Return((*model2.Repository)(nil), errors.New("db error")).Once()
 			},
 			expectErr: true,
 		},
@@ -96,7 +96,7 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f repoMockFields) {
 				f.repoRepo.On("GetByName", mock.Anything, "golang/go").
-					Return((*model.Repository)(nil), model.ErrRepositoryNotFound).Once()
+					Return((*model2.Repository)(nil), model2.ErrRepositoryNotFound).Once()
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(false, errors.New("api error")).Once()
 			},
@@ -107,7 +107,7 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f repoMockFields) {
 				f.repoRepo.On("GetByName", mock.Anything, "golang/go").
-					Return((*model.Repository)(nil), model.ErrRepositoryNotFound).Once()
+					Return((*model2.Repository)(nil), model2.ErrRepositoryNotFound).Once()
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
@@ -120,11 +120,11 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f repoMockFields) {
 				f.repoRepo.On("GetByName", mock.Anything, "golang/go").
-					Return((*model.Repository)(nil), model.ErrRepositoryNotFound).Once()
+					Return((*model2.Repository)(nil), model2.ErrRepositoryNotFound).Once()
 				f.ghClient.On("RepoExists", mock.Anything, "golang/go").
 					Return(true, nil).Once()
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
-					Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
+					Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 				f.repoRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Repository")).
 					Return(errors.New("db write error")).Once()
 			},
@@ -158,14 +158,14 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 	tests := []struct {
 		name      string
-		repo      model.Repository
+		repo      model2.Repository
 		setup     func(f repoMockFields)
-		wantRepo  *model.Repository
+		wantRepo  *model2.Repository
 		expectErr bool
 	}{
 		{
 			name: "success - context has deadline (10s timeout)",
-			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
+			repo: model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease",
 					mock.MatchedBy(func(ctx context.Context) bool {
@@ -178,35 +178,35 @@ func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 							remaining <= checkForUpdatesCtxTimeout*time.Second
 					}),
 					"golang/go",
-				).Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
+				).Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 				f.repoRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Repository")).
 					Return(nil).Once()
 			},
-			wantRepo: &model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
+			wantRepo: &model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 		},
 		{
 			name: "success - new release detected, repo updated",
-			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
+			repo: model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
-					Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
+					Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 				f.repoRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Repository")).
 					Return(nil).Once()
 			},
-			wantRepo: &model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
+			wantRepo: &model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 		},
 		{
 			name: "success - tag unchanged, returns nil",
-			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
+			repo: model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
-					Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
+					Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 			},
 			wantRepo: nil,
 		},
 		{
 			name: "success - nil release, returns nil",
-			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
+			repo: model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
 					Return(nil, nil).Once()
@@ -215,7 +215,7 @@ func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 		},
 		{
 			name: "error - GetLatestRelease fails",
-			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
+			repo: model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
 					Return(nil, errors.New("api error")).Once()
@@ -224,10 +224,10 @@ func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 		},
 		{
 			name: "error - Update in DB fails",
-			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
+			repo: model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
-					Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
+					Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 				f.repoRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Repository")).
 					Return(errors.New("db error")).Once()
 			},

@@ -15,7 +15,7 @@ import (
 	"github.com/caarlos0/env/v11"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
 )
 
 // Swagger Metadata for API Documentation
