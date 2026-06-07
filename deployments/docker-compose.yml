@@ -169,6 +169,7 @@ services:
         condition: service_completed_successfully
     networks:
       - internal
+      - monitoring
     logging:
       driver: "json-file"
       options:

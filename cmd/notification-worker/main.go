@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"os/signal"
 	"syscall"
 	"time"
@@ -98,6 +100,7 @@ func startNotificationWorker(ctx context.Context, app *App, cfg Config, l *slog.
 
 func startHealthServer(ctx context.Context, addr string, l *slog.Logger) error {
 	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
