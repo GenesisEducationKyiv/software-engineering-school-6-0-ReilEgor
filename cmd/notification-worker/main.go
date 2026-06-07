@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -49,6 +50,14 @@ func main() {
 		return nil
 	})
 
+	if cfg.Worker.HealthPort != "" {
+		g.Go(func() error {
+			addr := fmt.Sprintf(":%s", cfg.Worker.HealthPort)
+			myLogger.Info("health server starting", slog.String("addr", addr))
+			return startHealthServer(ctx, addr, myLogger)
+		})
+	}
+
 	if err := g.Wait(); err != nil {
 		myLogger.Error("worker stopped", slog.Any("error", err))
 	}
@@ -85,4 +94,31 @@ func startNotificationWorker(ctx context.Context, app *App, cfg Config, l *slog.
 			}
 		}
 	}
+}
+
+func startHealthServer(ctx context.Context, addr string, l *slog.Logger) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			l.Debug("health response write failed", slog.Any("error", err))
+		}
+	})
+
+	srv := &http.Server{Addr: addr, Handler: mux}
+
+	go func() {
+		<-ctx.Done()
+		l.Info("health server shutting down")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			l.Error("health server shutdown error", slog.Any("error", err))
+		}
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("health server error: %w", err)
+	}
+	return nil
 }

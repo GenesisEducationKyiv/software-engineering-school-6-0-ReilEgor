@@ -58,6 +58,7 @@ type WorkerConfig struct {
 	NotificationInterval time.Duration `env:"NOTIFICATION_INTERVAL"`
 	MaxSendWorkers       int           `env:"WORKER_MAX_SEND_WORKERS"`
 	SendTimeout          time.Duration `env:"WORKER_SEND_TIMEOUT"`
+	HealthPort           string        `env:"WORKER_HEALTH_PORT"`
 }
 
 type AppConfig struct {

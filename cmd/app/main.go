@@ -118,4 +118,3 @@ func startGRPCServer(ctx context.Context, app *App, cfg Config, l *slog.Logger) 
 	}
 	return nil
 }
-
