@@ -15,18 +15,18 @@ import (
 )
 
 type notifMockFields struct {
-	subsRepo     *mocks2.SubscriptionRepository
-	repoRepo     *mocks2.RepositoryRepository
-	repoUC       *mocks2.RepositoryUseCase
+	subsRepo     *mocks2.SubscriptionReader
+	repoRepo     *mocks2.RepositoryReader
+	repoUC       *mocks2.UpdateChecker
 	emailService *mocks2.EmailService
 }
 
 func newNotifMockFields(t *testing.T) notifMockFields {
 	t.Helper()
 	return notifMockFields{
-		subsRepo:     mocks2.NewSubscriptionRepository(t),
-		repoRepo:     mocks2.NewRepositoryRepository(t),
-		repoUC:       mocks2.NewRepositoryUseCase(t),
+		subsRepo:     mocks2.NewSubscriptionReader(t),
+		repoRepo:     mocks2.NewRepositoryReader(t),
+		repoUC:       mocks2.NewUpdateChecker(t),
 		emailService: mocks2.NewEmailService(t),
 	}
 }

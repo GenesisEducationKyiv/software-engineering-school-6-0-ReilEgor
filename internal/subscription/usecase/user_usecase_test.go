@@ -19,7 +19,7 @@ type userMockFields struct {
 	subsRepo     *mocks2.SubscriptionRepository
 	userRepo     *mocks2.UserRepository
 	repoUC       *mocks2.RepositoryUseCase
-	emailService *mocks2.EmailService
+	emailService *mocks2.ConfirmationSender
 }
 
 func newUserMockFields(t *testing.T) userMockFields {
@@ -28,7 +28,7 @@ func newUserMockFields(t *testing.T) userMockFields {
 		subsRepo:     mocks2.NewSubscriptionRepository(t),
 		userRepo:     mocks2.NewUserRepository(t),
 		repoUC:       mocks2.NewRepositoryUseCase(t),
-		emailService: mocks2.NewEmailService(t),
+		emailService: mocks2.NewConfirmationSender(t),
 	}
 }
 

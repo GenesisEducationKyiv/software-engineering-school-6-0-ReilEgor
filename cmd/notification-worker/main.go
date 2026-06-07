@@ -6,13 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
 
 	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"

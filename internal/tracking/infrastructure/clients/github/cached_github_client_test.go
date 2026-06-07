@@ -21,6 +21,7 @@ const (
 	repoExistsKey    = "repo_exists:" + testRepo
 	latestReleaseKey = "release:" + testRepo
 	cacheTTL         = time.Minute
+	releaseCacheTTL  = 5 * time.Minute
 )
 
 var (
@@ -198,7 +199,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 					mock.MatchedBy(func(b []byte) bool {
 						var r model.ReleaseInfo
 						return json.Unmarshal(b, &r) == nil && r.TagName == baseRelease.TagName
-					}), cacheTTL).
+					}), releaseCacheTTL).
 					Return(nil).Once()
 			},
 			wantTag: "v1.2.3",
@@ -222,7 +223,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 					mock.MatchedBy(func(b []byte) bool {
 						var r model.ReleaseInfo
 						return json.Unmarshal(b, &r) == nil && r.TagName == baseRelease.TagName
-					}), cacheTTL).
+					}), releaseCacheTTL).
 					Return(nil).Once()
 			},
 			wantTag: "v1.2.3",
@@ -235,7 +236,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
 					Return(baseRelease, nil).Once()
 				mCache.On("Set", mock.Anything, latestReleaseKey,
-					mock.Anything, cacheTTL).
+					mock.Anything, releaseCacheTTL).
 					Return(nil).Once()
 			},
 			wantTag: "v1.2.3",
@@ -260,7 +261,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
 					Return(baseRelease, nil).Once()
 				mCache.On("Set", mock.Anything, latestReleaseKey,
-					mock.Anything, cacheTTL).
+					mock.Anything, releaseCacheTTL).
 					Return(ErrCacheSet).Once()
 			},
 			wantErr:         true,
@@ -275,7 +276,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
 					Return(baseRelease, nil).Once()
 				mCache.On("Set", mock.Anything, latestReleaseKey,
-					mock.Anything, cacheTTL).
+					mock.Anything, releaseCacheTTL).
 					Return(ErrCacheSet).Once()
 			},
 			wantErr:         true,
