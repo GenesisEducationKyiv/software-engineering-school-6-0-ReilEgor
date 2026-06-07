@@ -14,6 +14,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
 	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
+	service3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/service"
 	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
@@ -103,7 +104,7 @@ var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
 
 var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(service.Cache), new(*redis.Cache)))
 
-var EmailSet = wire.NewSet(email.NewSMTPClient, email.NewEmailManager, wire.Bind(new(service2.EmailService), new(*email.EmailManager)), wire.Bind(new(service2.EmailSender), new(*email.SMTPClient)))
+var EmailSet = wire.NewSet(email.NewSMTPClient, email.NewEmailManager, wire.Bind(new(service2.EmailService), new(*email.EmailManager)), wire.Bind(new(service2.EmailSender), new(*email.SMTPClient)), wire.Bind(new(service3.ConfirmationSender), new(*email.EmailManager)))
 
 var GrpcSet = wire.NewSet(grpc.NewSubscriptionHandler, grpc.NewGrpcServer)
 

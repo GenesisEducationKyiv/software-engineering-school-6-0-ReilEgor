@@ -8,13 +8,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/metrics"
-	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 )
 
 const (
@@ -26,17 +24,17 @@ const (
 
 type NotificationUseCase struct {
 	logger       *slog.Logger
-	subsRepo     repository2.SubscriptionRepository
-	repoRepo     repository.RepositoryRepository
-	repoUC       usecase.RepositoryUseCase
+	subsRepo     port.SubscriberReader
+	repoRepo     port.RepositoryReader
+	repoUC       port.UpdateChecker
 	emailService service.EmailService
 	workerCfg    config.WorkerConfig
 }
 
 func NewNotificationUseCase(
-	sr repository2.SubscriptionRepository,
-	rr repository.RepositoryRepository,
-	ru usecase.RepositoryUseCase,
+	sr port.SubscriberReader,
+	rr port.RepositoryReader,
+	ru port.UpdateChecker,
 	es service.EmailService,
 	workerCfg config.WorkerConfig,
 ) *NotificationUseCase {

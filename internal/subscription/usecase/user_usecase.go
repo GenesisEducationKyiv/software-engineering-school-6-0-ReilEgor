@@ -11,10 +11,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/metrics"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
+	subscriptionService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 )
 
@@ -34,7 +34,7 @@ type UserUseCase struct {
 	subsRepo     repository.SubscriptionRepository
 	userRepo     repository.UserRepository
 	repoUC       usecase.RepositoryUseCase
-	emailService service.EmailService
+	emailService subscriptionService.ConfirmationSender
 	wg           sync.WaitGroup
 }
 
@@ -43,7 +43,7 @@ func NewUserUseCase(
 	sr repository.SubscriptionRepository,
 	ur repository.UserRepository,
 	ru usecase.RepositoryUseCase,
-	es service.EmailService,
+	es subscriptionService.ConfirmationSender,
 ) (*UserUseCase, func()) {
 	uc := &UserUseCase{
 		logger:       slog.With(slog.String("useCase", componentUserUseCase)),

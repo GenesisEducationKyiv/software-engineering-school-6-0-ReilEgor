@@ -12,6 +12,7 @@ import (
 
 	notifService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	email2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
+	subscriptionService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
@@ -78,6 +79,7 @@ var EmailSet = wire.NewSet(
 	email2.NewEmailManager,
 	wire.Bind(new(notifService.EmailService), new(*email2.EmailManager)),
 	wire.Bind(new(notifService.EmailSender), new(*email2.SMTPClient)),
+	wire.Bind(new(subscriptionService.ConfirmationSender), new(*email2.EmailManager)),
 )
 
 var GrpcSet = wire.NewSet(

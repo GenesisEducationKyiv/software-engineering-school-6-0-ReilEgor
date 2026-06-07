@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/port"
 	service2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
@@ -79,9 +80,9 @@ func ProvideWorkerConfig(cfg Config) config.WorkerConfig { return cfg.Worker }
 
 func ProvideBaseURL(cfg config.AppConfig) string { return cfg.BaseURL }
 
-var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase2.NewNotificationUseCase, wire.Bind(new(usecase3.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase4.NotificationUseCase), new(*usecase2.NotificationUseCase)))
+var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase2.NewNotificationUseCase, wire.Bind(new(usecase3.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase4.NotificationUseCase), new(*usecase2.NotificationUseCase)), wire.Bind(new(port.UpdateChecker), new(*usecase.RepositoryUseCase)))
 
-var RepositorySet = wire.NewSet(postgres.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)))
+var RepositorySet = wire.NewSet(postgres.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(port.RepositoryReader), new(*postgres3.RepositoryRepository)), wire.Bind(new(port.SubscriberReader), new(*postgres2.SubscriptionRepository)))
 
 func ProvideCachedClient(
 	c *github.GitHubClient,

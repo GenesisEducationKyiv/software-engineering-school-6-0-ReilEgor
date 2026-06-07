@@ -9,6 +9,7 @@ import (
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
 	email2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
@@ -39,6 +40,7 @@ var UseCaseSet = wire.NewSet(
 	usecaseRealization.NewNotificationUseCase,
 	wire.Bind(new(usecase4.RepositoryUseCase), new(*usecase2.RepositoryUseCase)),
 	wire.Bind(new(usecase.NotificationUseCase), new(*usecaseRealization.NotificationUseCase)),
+	wire.Bind(new(port.UpdateChecker), new(*usecase2.RepositoryUseCase)),
 )
 
 var RepositorySet = wire.NewSet(
@@ -48,6 +50,8 @@ var RepositorySet = wire.NewSet(
 	wire.Bind(new(sharedPostgres.PgxInterface), new(*pgxpool.Pool)),
 	wire.Bind(new(repository3.RepositoryRepository), new(*postgres.RepositoryRepository)),
 	wire.Bind(new(repository4.SubscriptionRepository), new(*postgres2.SubscriptionRepository)),
+	wire.Bind(new(port.RepositoryReader), new(*postgres.RepositoryRepository)),
+	wire.Bind(new(port.SubscriberReader), new(*postgres2.SubscriptionRepository)),
 )
 
 func ProvideCachedClient(
