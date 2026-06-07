@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o bin/repo_notifier ./cmd/app/
+RUN go build -o bin/repo_notifier ./cmd/api/
 
 
 FROM alpine:3.18
