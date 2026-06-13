@@ -13,6 +13,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/pashagolub/pgxmock/v3 v3.4.0
 	github.com/prometheus/client_golang v1.22.0
+	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
