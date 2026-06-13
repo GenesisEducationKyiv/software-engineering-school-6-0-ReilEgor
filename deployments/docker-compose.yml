@@ -1,5 +1,28 @@
 services:
 # ============================
+# MESSAGE BROKER
+# ============================
+  rabbitmq:
+    image: rabbitmq:4.2-management-alpine
+    container_name: rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+# ============================
 # DATABASES
 # ============================
   postgres:
@@ -138,12 +161,6 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: ${REDIS_DB}
-      # Email
-      EMAIL_HOST: ${EMAIL_HOST}
-      EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      EMAIL_FROM: ${EMAIL_FROM}
       # GitHub
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_HTTP_TIMEOUT: ${GITHUB_HTTP_TIMEOUT}
@@ -154,8 +171,9 @@ services:
       # Worker
       NOTIFICATION_INTERVAL: ${NOTIFICATION_INTERVAL}
       WORKER_MAX_SEND_WORKERS: ${WORKER_MAX_SEND_WORKERS}
-      WORKER_SEND_TIMEOUT: ${WORKER_SEND_TIMEOUT}
       WORKER_HEALTH_PORT: ${WORKER_HEALTH_PORT}
+      # RabbitMQ
+      RABBITMQ_URL: ${RABBITMQ_URL}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${WORKER_HEALTH_PORT}/healthz || exit 1"]
       interval: 30s
@@ -167,6 +185,46 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notification-sender:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.notification-sender
+    container_name: notification-sender
+    restart: always
+    environment:
+      # Application
+      APP_BASE_URL: ${APP_BASE_URL}
+      # Email
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      # Sender
+      SENDER_HEALTH_PORT: ${SENDER_HEALTH_PORT}
+      WORKER_SEND_TIMEOUT: ${WORKER_SEND_TIMEOUT}
+      # RabbitMQ
+      RABBITMQ_URL: ${RABBITMQ_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${SENDER_HEALTH_PORT}/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - internal
       - monitoring
@@ -316,6 +374,7 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq_data:
   grafana_data:
   prometheus_data:
   elasticsearch_data:

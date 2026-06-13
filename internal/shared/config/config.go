@@ -66,3 +66,12 @@ type AppConfig struct {
 	BaseURL   string `env:"APP_BASE_URL"`
 	RateLimit string `env:"RATE_LIMIT"`
 }
+
+type RabbitMQConfig struct {
+	URL string `env:"RABBITMQ_URL"`
+}
+
+type SenderConfig struct {
+	SendTimeout time.Duration `env:"WORKER_SEND_TIMEOUT"`
+	HealthPort  string        `env:"SENDER_HEALTH_PORT"`
+}
