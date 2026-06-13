@@ -12,22 +12,22 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
 	notifRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/broker/rabbitmq"
-	email2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
 	notifUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/usecase"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
 )
 
-func ProvideEmailConfig(cfg Config) config.EmailConfig      { return cfg.Email }
-func ProvideSenderConfig(cfg Config) config.SenderConfig    { return cfg.Sender }
+func ProvideEmailConfig(cfg Config) config.EmailConfig       { return cfg.Email }
+func ProvideSenderConfig(cfg Config) config.SenderConfig     { return cfg.Sender }
 func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
 
 func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Connection, func(), error) {
 	return sharedRabbitmq.NewConnection(cfg.URL)
 }
 
-func ProvideEmailService(sender service.EmailSender, cfg Config) *email2.EmailService {
-	return email2.NewEmailService(sender, cfg.App.BaseURL)
+func ProvideEmailService(sender service.EmailSender, cfg Config) *email.EmailService {
+	return email.NewEmailService(sender, cfg.App.BaseURL)
 }
 
 func ProvideSendTimeout(cfg config.SenderConfig) time.Duration {
@@ -35,10 +35,10 @@ func ProvideSendTimeout(cfg config.SenderConfig) time.Duration {
 }
 
 var EmailSet = wire.NewSet(
-	email2.NewSMTPClient,
+	email.NewSMTPClient,
 	ProvideEmailService,
-	wire.Bind(new(service.EmailSender), new(*email2.SMTPClient)),
-	wire.Bind(new(service.EmailService), new(*email2.EmailService)),
+	wire.Bind(new(service.EmailSender), new(*email.SMTPClient)),
+	wire.Bind(new(service.EmailService), new(*email.EmailService)),
 )
 
 var NotificationSet = wire.NewSet(

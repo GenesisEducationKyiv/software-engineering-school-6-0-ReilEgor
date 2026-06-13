@@ -8,28 +8,28 @@ package main
 
 import (
 	"context"
-	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
-	subDomainRepo "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
-	subDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
+	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
+	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
-	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
-	subUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
+	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
-	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
+	usecase3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
-	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
+	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
-	grpcLib "google.golang.org/grpc"
+	grpc2 "google.golang.org/grpc"
 )
 
 // Injectors from wire.go:
@@ -40,9 +40,9 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	subscriptionRepository := subPostgres.NewSubscriptionRepository(pool)
-	userRepository := subPostgres.NewUserRepository(pool)
-	repositoryRepository := trackingPostgres.NewRepositoryRepository(pool)
+	subscriptionRepository := postgres2.NewSubscriptionRepository(pool)
+	userRepository := postgres2.NewUserRepository(pool)
+	repositoryRepository := postgres3.NewRepositoryRepository(pool)
 	gitHubConfig := ProvideGitHubConfig(cfg)
 	gitHubClient := github.NewGitHubClient(gitHubConfig)
 	redisConfig := ProvideRedisConfig(cfg)
@@ -66,7 +66,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	userUseCase, cleanup3 := subUsecase.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, publisher)
+	userUseCase, cleanup3 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, publisher)
 	httpConfig := ProvideHTTPConfig(cfg)
 	appConfig := ProvideAppConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
@@ -97,24 +97,24 @@ func ProvideAppConfig(cfg Config) config.AppConfig { return cfg.App }
 
 func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
 
-func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Connection, func(), error) {
-	return sharedRabbitmq.NewConnection(cfg.URL)
+func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection, func(), error) {
+	return rabbitmq2.NewConnection(cfg.URL)
 }
 
-var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, subUsecase.NewUserUseCase, wire.Bind(new(trackingDomainUsecase.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(port.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(subDomainUsecase.UserUseCase), new(*subUsecase.UserUseCase)))
+var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase2.NewUserUseCase, wire.Bind(new(usecase3.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(port.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase4.UserUseCase), new(*usecase2.UserUseCase)))
 
-var RepositorySet = wire.NewSet(postgres.New, trackingPostgres.NewRepositoryRepository, subPostgres.NewSubscriptionRepository, subPostgres.NewUserRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*trackingPostgres.RepositoryRepository)), wire.Bind(new(subDomainRepo.SubscriptionRepository), new(*subPostgres.SubscriptionRepository)), wire.Bind(new(subDomainRepo.UserRepository), new(*subPostgres.UserRepository)))
+var RepositorySet = wire.NewSet(postgres.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, postgres2.NewUserRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(repository2.UserRepository), new(*postgres2.UserRepository)))
 
 func ProvideCachedClient(
-	c *github.GitHubClient,
-	cache sharedcache.Cache,
+	c *github.GitHubClient, cache2 cache.Cache,
+
 ) service.GitHubClient {
-	return github.NewCachedGitHubClient(c, cache)
+	return github.NewCachedGitHubClient(c, cache2)
 }
 
 var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
 
-var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(sharedcache.Cache), new(*redis.Cache)))
+var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(cache.Cache), new(*redis.Cache)))
 
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection, rabbitmq.NewPublisher, wire.Bind(new(port.ConfirmationSender), new(*rabbitmq.Publisher)),

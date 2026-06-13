@@ -11,7 +11,7 @@ import (
 	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
 	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
@@ -84,13 +84,13 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection
 	return rabbitmq2.NewConnection(cfg.URL)
 }
 
-func ProvideCachedClient(c *github.GitHubClient, cache sharedcache.Cache) service.GitHubClient {
-	return github.NewCachedGitHubClient(c, cache)
+func ProvideCachedClient(c *github.GitHubClient, cache2 cache.Cache) service.GitHubClient {
+	return github.NewCachedGitHubClient(c, cache2)
 }
 
 var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
 
-var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(sharedcache.Cache), new(*redis.Cache)))
+var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(cache.Cache), new(*redis.Cache)))
 
 var RepositorySet = wire.NewSet(postgres.New, postgres2.NewRepositoryRepository, postgres3.NewSubscriptionRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres2.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres3.SubscriptionRepository)), wire.Bind(new(port.RepositoryReader), new(*postgres2.RepositoryRepository)), wire.Bind(new(port.SubscriberReader), new(*postgres3.SubscriptionRepository)))
 
