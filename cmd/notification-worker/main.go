@@ -18,12 +18,12 @@ import (
 )
 
 type Config struct {
-	DB     sharedConfig.DBConfig
-	Redis  sharedConfig.RedisConfig
-	Email  sharedConfig.EmailConfig
-	GitHub sharedConfig.GitHubConfig
-	Worker sharedConfig.WorkerConfig
-	App    sharedConfig.AppConfig
+	DB       sharedConfig.DBConfig
+	Redis    sharedConfig.RedisConfig
+	GitHub   sharedConfig.GitHubConfig
+	Worker   sharedConfig.WorkerConfig
+	App      sharedConfig.AppConfig
+	RabbitMQ sharedConfig.RabbitMQConfig
 }
 
 func main() {
@@ -90,7 +90,7 @@ func startNotificationWorker(ctx context.Context, app *App, cfg Config, l *slog.
 			l.Info("notification worker stopped")
 			return
 		case <-ticker.C:
-			if err := app.NotificationUseCase.ProcessNotifications(ctx); err != nil {
+			if err := app.ReleaseProcessor.ProcessReleases(ctx); err != nil {
 				l.Error("worker check failed", slog.Any("error", err))
 			}
 		}
@@ -100,7 +100,7 @@ func startNotificationWorker(ctx context.Context, app *App, cfg Config, l *slog.
 func startHealthServer(ctx context.Context, addr string, l *slog.Logger) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
 			l.Debug("health response write failed", slog.Any("error", err))

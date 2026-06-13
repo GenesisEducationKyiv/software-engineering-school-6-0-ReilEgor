@@ -9,7 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
+	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
 )
 
 type Cache struct {
@@ -38,7 +38,7 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 	value, err := c.client.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return nil, service.ErrCacheMiss
+			return nil, sharedcache.ErrCacheMiss
 		}
 		log.ErrorContext(ctx, errMsgCacheGet,
 			slog.String("key", key),

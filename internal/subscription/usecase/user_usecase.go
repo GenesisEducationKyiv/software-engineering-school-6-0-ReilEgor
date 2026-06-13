@@ -6,54 +6,59 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/metrics"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
-	subscriptionService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 )
 
-const (
-	componentUserUseCase            = "UserUseCase"
-	sendConfirmationEmailctxTimeout = 10
-)
+const componentUserUseCase = "UserUseCase"
+
+const sendConfirmationEmailctxTimeout = 30
 
 const (
-	ErrMsgGetUser   = "get user"
-	ErrMsgDeleteSub = "delete subscription"
+	errMsgGetUser   = "get user"
+	errMsgDeleteSub = "delete subscription"
 )
 
 type UserUseCase struct {
-	appCtx       context.Context
-	logger       *slog.Logger
-	subsRepo     repository.SubscriptionRepository
-	userRepo     repository.UserRepository
-	repoUC       usecase.RepositoryUseCase
-	emailService subscriptionService.ConfirmationSender
-	wg           sync.WaitGroup
+	logger        *slog.Logger
+	subsRepo      repository.SubscriptionRepository
+	userRepo      repository.UserRepository
+	repoUC        port.RepositoryUseCase
+	confirmSender port.ConfirmationSender
 }
 
 func NewUserUseCase(
-	appCtx context.Context,
+	_ context.Context,
 	sr repository.SubscriptionRepository,
 	ur repository.UserRepository,
-	ru usecase.RepositoryUseCase,
-	es subscriptionService.ConfirmationSender,
+	ru port.RepositoryUseCase,
+	cs port.ConfirmationSender,
 ) (*UserUseCase, func()) {
 	uc := &UserUseCase{
-		logger:       slog.With(slog.String("useCase", componentUserUseCase)),
-		subsRepo:     sr,
-		userRepo:     ur,
-		repoUC:       ru,
-		emailService: es,
-		appCtx:       appCtx,
+		logger:        slog.With(slog.String("component", componentUserUseCase)),
+		subsRepo:      sr,
+		userRepo:      ur,
+		repoUC:        ru,
+		confirmSender: cs,
 	}
-	return uc, func() { uc.wg.Wait() }
+	return uc, func() {}
+}
+
+func (uc *UserUseCase) sendConfirmationEmail(to, repoName, token string) {
+	ctx, cancel := context.WithTimeout(context.Background(), sendConfirmationEmailctxTimeout*time.Second)
+	defer cancel()
+	if err := uc.confirmSender.SendConfirmation(ctx, to, repoName, token); err != nil {
+		uc.logger.Warn("failed to send confirmation email",
+			slog.String("to", to),
+			slog.Any("error", err),
+		)
+	}
 }
 
 func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (err error) {
@@ -82,11 +87,11 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if !errors.Is(err, model2.ErrUserNotFound) {
+		if !errors.Is(err, model.ErrUserNotFound) {
 			return fmt.Errorf("%s: get user: %w", op, err)
 		}
 
-		user = model2.User{Email: email}
+		user = model.User{Email: email}
 		if err := uc.userRepo.Create(ctx, &user); err != nil {
 			return fmt.Errorf("%s: create user: %w", op, err)
 		}
@@ -94,7 +99,7 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 	}
 
 	token := uuid.NewString()
-	sub := &model2.Subscription{
+	sub := &model.Subscription{
 		UserID:         user.ID,
 		RepositoryID:   repo.ID,
 		RepositoryName: repo.FullName,
@@ -107,11 +112,7 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 		return fmt.Errorf("%s: save pending: %w", op, err)
 	}
 
-	uc.wg.Add(1)
-	go func() {
-		defer uc.wg.Done()
-		uc.sendConfirmationEmail(email, repoName, token)
-	}()
+	uc.sendConfirmationEmail(email, repoName, token)
 
 	return nil
 }
@@ -134,24 +135,24 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, model2.ErrUserNotFound) {
+		if errors.Is(err, model.ErrUserNotFound) {
 			log.DebugContext(ctx, "user not found, nothing to unsubscribe")
 			return nil
 		}
-		log.ErrorContext(ctx, ErrMsgGetUser, slog.String("error", err.Error()))
-		return fmt.Errorf("%s: %s: %w", op, ErrMsgGetUser, err)
+		log.ErrorContext(ctx, errMsgGetUser, slog.String("error", err.Error()))
+		return fmt.Errorf("%s: %s: %w", op, errMsgGetUser, err)
 	}
 
 	if err = uc.subsRepo.Delete(ctx, user.ID, repoName); err != nil {
-		log.ErrorContext(ctx, ErrMsgDeleteSub, slog.String("error", err.Error()))
-		return fmt.Errorf("%s: %s: %w", op, ErrMsgDeleteSub, err)
+		log.ErrorContext(ctx, errMsgDeleteSub, slog.String("error", err.Error()))
+		return fmt.Errorf("%s: %s: %w", op, errMsgDeleteSub, err)
 	}
 
 	log.InfoContext(ctx, "unsubscribed successfully")
 	return nil
 }
 
-func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model2.Subscription, err error) {
+func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model.Subscription, err error) {
 	const op = "UserUseCase.ListByEmail"
 
 	start := time.Now()
@@ -195,12 +196,12 @@ func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
-		return model2.ErrInvalidToken
+		return model.ErrInvalidToken
 	}
 
 	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, model2.ErrInvalidToken) {
+		if errors.Is(err, model.ErrInvalidToken) {
 			log.WarnContext(ctx, "attempt to confirm with invalid token")
 		}
 		return fmt.Errorf("%s: %w", op, err)
@@ -233,12 +234,12 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (er
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
-		return model2.ErrInvalidToken
+		return model.ErrInvalidToken
 	}
 
 	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, model2.ErrInvalidToken) {
+		if errors.Is(err, model.ErrInvalidToken) {
 			log.WarnContext(ctx, "invalid unsubscribe token", slog.String("token", token))
 		}
 		return fmt.Errorf("%s: get by token: %w", op, err)
@@ -250,20 +251,4 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (er
 
 	log.InfoContext(ctx, "unsubscribed by token successfully")
 	return nil
-}
-
-func (uc *UserUseCase) sendConfirmationEmail(email, repo, token string) {
-	ctx, cancel := context.WithTimeout(uc.appCtx, sendConfirmationEmailctxTimeout*time.Second)
-	defer cancel()
-
-	err := uc.emailService.SendConfirmation(ctx, email, repo, token)
-	status := "success"
-	if err != nil {
-		status = "error"
-		uc.logger.Error("failed to send confirmation email",
-			slog.String("to", email),
-			slog.Any("error", err),
-		)
-	}
-	metrics.ConfirmationEmailsSentTotal.WithLabelValues(status).Inc()
 }

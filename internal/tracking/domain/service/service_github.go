@@ -7,12 +7,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 )
 
-var (
-	ErrRateLimitExceeded  = errors.New("github api rate limit exceeded")
-	ErrRepositoryNotFound = errors.New("repository not found")
-	ErrReleaseNotFound    = errors.New("no releases found for this repository")
-	ErrGitHubUnavailable  = errors.New("github service is temporarily unavailable")
-)
+var ErrReleaseNotFound = errors.New("no releases found for this repository")
 
 //go:generate mockery --name GitHubClient --output ../../mocks --case underscore --outpkg mocks
 type GitHubClient interface {

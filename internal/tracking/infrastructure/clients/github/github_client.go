@@ -99,7 +99,7 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*
 func (c *GitHubClient) handleCBError(ctx context.Context, op string, err error) error {
 	if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
 		c.logger.WarnContext(ctx, "circuit breaker open", slog.String("op", op))
-		return service.ErrGitHubUnavailable
+		return model.ErrGitHubUnavailable
 	}
 	return fmt.Errorf("%s: %w", op, err)
 }
@@ -123,7 +123,7 @@ func (c *GitHubClient) repoExistsRequest(ctx context.Context, fullName string) (
 		return false, nil
 	case http.StatusForbidden:
 		c.logger.WarnContext(ctx, "github rate limit exceeded", slog.String("repo", fullName))
-		return false, service.ErrRateLimitExceeded
+		return false, model.ErrRateLimitExceeded
 	default:
 		return false, fmt.Errorf("%w: %s", ErrUnexpectedStatus, resp.Status)
 	}

@@ -9,22 +9,22 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 )
 
-type EmailManager struct {
+type EmailService struct {
 	sender  service.EmailSender
 	baseURL string
 	logger  *slog.Logger
 }
 
-func NewEmailManager(sender service.EmailSender, baseURL string) *EmailManager {
-	return &EmailManager{
+func NewEmailService(sender service.EmailSender, baseURL string) *EmailService {
+	return &EmailService{
 		sender:  sender,
 		baseURL: baseURL,
-		logger:  slog.With(slog.String("component", "EmailManager")),
+		logger:  slog.With(slog.String("component", "EmailService")),
 	}
 }
 
-func (s *EmailManager) SendConfirmation(ctx context.Context, to, repoName, token string) error {
-	const op = "EmailManager.SendConfirmation"
+func (s *EmailService) SendConfirmation(ctx context.Context, to, repoName, token string) error {
+	const op = "EmailService.SendConfirmation"
 
 	msg := model.EmailMessage{
 		To:      to,
@@ -44,8 +44,8 @@ func (s *EmailManager) SendConfirmation(ctx context.Context, to, repoName, token
 	return nil
 }
 
-func (s *EmailManager) SendNotification(ctx context.Context, to, repoName, tag, token string) error {
-	const op = "EmailManager.SendNotification"
+func (s *EmailService) SendNotification(ctx context.Context, to, repoName, tag, token string) error {
+	const op = "EmailService.SendNotification"
 
 	msg := model.EmailMessage{
 		To:      to,

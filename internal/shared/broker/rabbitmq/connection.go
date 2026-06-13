@@ -29,7 +29,11 @@ func NewConnection(url string) (*Connection, func(), error) {
 	if err := c.connect(); err != nil {
 		return nil, nil, fmt.Errorf("rabbitmq: initial connect: %w", err)
 	}
-	cleanup := func() { _ = c.conn.Close() }
+	cleanup := func() {
+		if err := c.conn.Close(); err != nil {
+			c.logger.Warn("rabbitmq: close connection", slog.Any("error", err))
+		}
+	}
 	return c, cleanup, nil
 }
 
@@ -40,13 +44,17 @@ func (c *Connection) Channel() (*amqp.Channel, error) {
 	if c.conn == nil || c.conn.IsClosed() {
 		c.reconnect()
 	}
-	return c.conn.Channel()
+	ch, err := c.conn.Channel()
+	if err != nil {
+		return nil, fmt.Errorf("open channel: %w", err)
+	}
+	return ch, nil
 }
 
 func (c *Connection) connect() error {
 	conn, err := amqp.Dial(c.url)
 	if err != nil {
-		return err
+		return fmt.Errorf("dial: %w", err)
 	}
 	c.conn = conn
 	return nil

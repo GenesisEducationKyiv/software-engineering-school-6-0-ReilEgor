@@ -8,14 +8,39 @@ package main
 
 import (
 	"context"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
+	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/usecase"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
+	"github.com/google/wire"
+	"time"
 )
 
 // Injectors from wire.go:
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
-	app := &App{}
+	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
+	connection, cleanup, err := ProvideRabbitMQConnection(rabbitMQConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	emailConfig := ProvideEmailConfig(cfg)
+	smtpClient := email.NewSMTPClient(emailConfig)
+	emailService := ProvideEmailService(smtpClient, cfg)
+	notificationUseCase := usecase.NewNotificationUseCase(emailService)
+	senderConfig := ProvideSenderConfig(cfg)
+	duration := ProvideSendTimeout(senderConfig)
+	consumer := rabbitmq.NewConsumer(connection, notificationUseCase, duration)
+	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, emailService, duration)
+	app := &App{
+		NotificationConsumer: consumer,
+		ConfirmationConsumer: confirmationConsumer,
+	}
 	return app, func() {
+		cleanup()
 	}, nil
 }
 
@@ -23,5 +48,31 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 
 func ProvideEmailConfig(cfg Config) config.EmailConfig { return cfg.Email }
 
+func ProvideSenderConfig(cfg Config) config.SenderConfig { return cfg.Sender }
+
+func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
+
+func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection, func(), error) {
+	return rabbitmq2.NewConnection(cfg.URL)
+}
+
+func ProvideEmailService(sender service.EmailSender, cfg Config) *email.EmailService {
+	return email.NewEmailService(sender, cfg.App.BaseURL)
+}
+
+func ProvideSendTimeout(cfg config.SenderConfig) time.Duration {
+	return cfg.SendTimeout
+}
+
+var EmailSet = wire.NewSet(email.NewSMTPClient, ProvideEmailService, wire.Bind(new(service.EmailSender), new(*email.SMTPClient)), wire.Bind(new(service.EmailService), new(*email.EmailService)))
+
+var NotificationSet = wire.NewSet(usecase.NewNotificationUseCase, wire.Bind(new(usecase2.NotificationUseCase), new(*usecase.NotificationUseCase)))
+
+var BrokerSet = wire.NewSet(
+	ProvideRabbitMQConnection, rabbitmq.NewConsumer, rabbitmq.NewConfirmationConsumer,
+)
+
 type App struct {
+	NotificationConsumer *rabbitmq.Consumer
+	ConfirmationConsumer *rabbitmq.ConfirmationConsumer
 }

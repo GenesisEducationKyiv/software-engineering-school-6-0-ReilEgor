@@ -26,13 +26,13 @@ import (
 	redisClient "github.com/redis/go-redis/v9"
 
 	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
-	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
-	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
+	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/handlers"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
 	servicesRealizationGitHub "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
-	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
+	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
+	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 )
 
 const testAPIKey = "test-api-key"
@@ -54,8 +54,8 @@ type APITestSuite struct {
 	redisClient    *redisClient.Client
 	router         *gin.Engine
 
-	mockGitHub *mocks2.GitHubClient
-	mockSMTP   *mocks2.EmailService
+	mockGitHub *mocks.GitHubClient
+	mockSMTP   *mocks.EmailService
 }
 
 func TestAPISuite(t *testing.T) {
@@ -131,8 +131,8 @@ func (s *APITestSuite) SetupTest() {
 	s.truncateTables()
 	s.Require().NoError(s.redisClient.FlushAll(s.ctx).Err())
 
-	s.mockGitHub = new(mocks2.GitHubClient)
-	s.mockSMTP = new(mocks2.EmailService)
+	s.mockGitHub = new(mocks.GitHubClient)
+	s.mockSMTP = new(mocks.EmailService)
 
 	s.buildRouter()
 }
@@ -146,11 +146,11 @@ func (s *APITestSuite) buildRouter() {
 	cache := cacheRealization.NewCache(s.redisClient)
 	cachedGitHub := servicesRealizationGitHub.NewCachedGitHubClient(s.mockGitHub, cache)
 
-	repoRepo := postgres2.NewRepositoryRepository(s.dbPool)
-	userRepo := postgres3.NewUserRepository(s.dbPool)
-	subsRepo := postgres3.NewSubscriptionRepository(s.dbPool)
+	repoRepo := trackingPostgres.NewRepositoryRepository(s.dbPool)
+	userRepo := subPostgres.NewUserRepository(s.dbPool)
+	subsRepo := subPostgres.NewSubscriptionRepository(s.dbPool)
 
-	repoUseCase := usecase2.NewRepositoryUseCase(repoRepo, cachedGitHub)
+	repoUseCase := trackingUsecase.NewRepositoryUseCase(repoRepo, cachedGitHub)
 	userUseCase, _ := usecase.NewUserUseCase(context.Background(), subsRepo, userRepo, repoUseCase, s.mockSMTP)
 
 	handler := handlers.NewHandler(userUseCase, testAPIKey)

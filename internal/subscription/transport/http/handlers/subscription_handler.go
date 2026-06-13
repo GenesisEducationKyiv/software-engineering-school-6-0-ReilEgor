@@ -15,7 +15,6 @@ import (
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/dto"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
 )
 
 const (
@@ -124,13 +123,13 @@ func (h *Handler) Subscribe(c *gin.Context) {
 
 	if err := h.userUC.Subscribe(ctx, req.Email, req.Repository); err != nil {
 		switch {
-		case errors.Is(err, service.ErrRepositoryNotFound):
+		case errors.Is(err, model.ErrRepositoryNotFound):
 			log.WarnContext(ctx, "repository not found",
 				slog.String("email", req.Email),
 				slog.String("repo", req.Repository),
 			)
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		case errors.Is(err, service.ErrGitHubUnavailable), errors.Is(err, service.ErrRateLimitExceeded):
+		case errors.Is(err, model.ErrGitHubUnavailable), errors.Is(err, model.ErrRateLimitExceeded):
 			c.JSON(
 				http.StatusServiceUnavailable,
 				gin.H{"error": "GitHub API is currently unavailable, please try again later"},

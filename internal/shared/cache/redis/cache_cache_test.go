@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
+	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
 )
 
 func cancelledCtx() context.Context {
@@ -66,14 +66,14 @@ func TestCache_Get(t *testing.T) {
 			wantVal: nil,
 		},
 		{
-			name: "miss: redis.Nil mapped to service.ErrCacheMiss",
+			name: "miss: redis.Nil mapped to sharedcache.ErrCacheMiss",
 			ctx:  context.Background(),
 			key:  "missing-key",
 			mockSetup: func(m redismock.ClientMock) {
 				m.ExpectGet("missing-key").RedisNil()
 			},
-			wantErr:   service.ErrCacheMiss,
-			wantErrIs: service.ErrCacheMiss,
+			wantErr:   sharedcache.ErrCacheMiss,
+			wantErrIs: sharedcache.ErrCacheMiss,
 		},
 		{
 			name: "error: redis internal error is wrapped and propagated",
@@ -102,8 +102,8 @@ func TestCache_Get(t *testing.T) {
 			mockSetup: func(m redismock.ClientMock) {
 				m.ExpectGet("").RedisNil()
 			},
-			wantErr:   service.ErrCacheMiss,
-			wantErrIs: service.ErrCacheMiss,
+			wantErr:   sharedcache.ErrCacheMiss,
+			wantErrIs: sharedcache.ErrCacheMiss,
 		},
 		{
 			name: "boundary: very long key — success",
