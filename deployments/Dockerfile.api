@@ -7,7 +7,11 @@ RUN apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY cmd/api/ ./cmd/api/
+COPY internal/shared/ ./internal/shared/
+COPY internal/subscription/ ./internal/subscription/
+COPY internal/tracking/ ./internal/tracking/
+COPY static/ ./static/
 
 RUN go build -o bin/repo_notifier ./cmd/api/
 

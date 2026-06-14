@@ -7,7 +7,9 @@ RUN apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY cmd/notification-sender/ ./cmd/notification-sender/
+COPY internal/shared/ ./internal/shared/
+COPY internal/notification/ ./internal/notification/
 
 RUN go build -o bin/notification_sender ./cmd/notification-sender/
 
