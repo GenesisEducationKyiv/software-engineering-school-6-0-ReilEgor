@@ -132,7 +132,7 @@ func TestEmailManager_SendConfirmation(t *testing.T) {
 			mockReturn:      Errsender,
 			wantErr:         true,
 			wantErrIs:       Errsender,
-			wantErrContains: []string{"EmailManager.SendConfirmation", Errsender.Error()},
+			wantErrContains: []string{"EmailService.SendConfirmation", Errsender.Error()},
 		},
 		{
 			name:    "error: cancelled context propagated and wrapped",
@@ -146,7 +146,7 @@ func TestEmailManager_SendConfirmation(t *testing.T) {
 			mockReturn:      context.Canceled,
 			wantErr:         true,
 			wantErrIs:       context.Canceled,
-			wantErrContains: []string{"EmailManager.SendConfirmation"},
+			wantErrContains: []string{"EmailService.SendConfirmation"},
 		},
 	}
 
@@ -167,7 +167,7 @@ func TestEmailManager_SendConfirmation(t *testing.T) {
 				Return(tc.mockReturn).
 				Once()
 
-			manager := NewEmailManager(mockSender, tc.baseURL)
+			manager := NewEmailService(mockSender, tc.baseURL)
 			err := manager.SendConfirmation(tc.args.ctx, tc.args.to, tc.args.repoName, tc.args.token)
 
 			if tc.wantErr {
@@ -338,7 +338,7 @@ func TestEmailManager_SendNotification(t *testing.T) {
 			mockReturn:      Errsender,
 			wantErr:         true,
 			wantErrIs:       Errsender,
-			wantErrContains: []string{"EmailManager.SendNotification", Errsender.Error()},
+			wantErrContains: []string{"EmailService.SendNotification", Errsender.Error()},
 		},
 		{
 			name:    "error: cancelled context propagated and wrapped",
@@ -353,7 +353,7 @@ func TestEmailManager_SendNotification(t *testing.T) {
 			mockReturn:      context.Canceled,
 			wantErr:         true,
 			wantErrIs:       context.Canceled,
-			wantErrContains: []string{"EmailManager.SendNotification"},
+			wantErrContains: []string{"EmailService.SendNotification"},
 		},
 		{
 			name:    "error: custom sentinel survives error wrapping",
@@ -368,7 +368,7 @@ func TestEmailManager_SendNotification(t *testing.T) {
 			mockReturn:      fmt.Errorf("quota exceeded: %w", Errsender),
 			wantErr:         true,
 			wantErrIs:       Errsender,
-			wantErrContains: []string{"EmailManager.SendNotification", "quota exceeded"},
+			wantErrContains: []string{"EmailService.SendNotification", "quota exceeded"},
 		},
 	}
 
@@ -389,7 +389,7 @@ func TestEmailManager_SendNotification(t *testing.T) {
 				Return(tc.mockReturn).
 				Once()
 
-			manager := NewEmailManager(mockSender, tc.baseURL)
+			manager := NewEmailService(mockSender, tc.baseURL)
 			err := manager.SendNotification(
 				tc.args.ctx,
 				tc.args.to,
