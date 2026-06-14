@@ -15,7 +15,7 @@ func (s *APITestSuite) TestSubscribe_WritesRepoExistsToRedis() {
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, "golang/go").
 		Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 	s.mockSMTP.On("SendConfirmation", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).Maybe()
+		Return(nil).Once()
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))
@@ -31,7 +31,7 @@ func (s *APITestSuite) TestSubscribe_WritesLatestReleaseToRedis() {
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, "golang/go").
 		Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 	s.mockSMTP.On("SendConfirmation", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).Maybe()
+		Return(nil).Once()
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))
@@ -50,7 +50,7 @@ func (s *APITestSuite) TestSubscribe_SecondCall_HitsCache() {
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, "golang/go").
 		Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
 	s.mockSMTP.On("SendConfirmation", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).Maybe()
+		Return(nil).Twice()
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"first@example.com","repository":"golang/go"}`))
