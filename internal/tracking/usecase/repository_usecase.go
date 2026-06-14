@@ -141,4 +141,3 @@ func (uc *RepositoryUseCase) CheckForUpdates(
 	log.InfoContext(ctx, "new release detected", slog.String("tag", repo.LastSeenTag))
 	return &repo, nil
 }
-

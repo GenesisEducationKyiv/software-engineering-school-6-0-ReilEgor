@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
@@ -35,7 +36,7 @@ func NewReleaseProcessor(
 func (rp *ReleaseProcessor) ProcessReleases(ctx context.Context) error {
 	repos, err := rp.repoReader.GetAll(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("ReleaseProcessor.ProcessReleases: get all repos: %w", err)
 	}
 
 	for _, repo := range repos {
