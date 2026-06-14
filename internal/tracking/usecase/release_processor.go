@@ -7,7 +7,7 @@ import (
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/port"
 	domainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type ReleaseProcessor struct {
@@ -63,7 +63,7 @@ func (rp *ReleaseProcessor) ProcessReleases(ctx context.Context) error {
 		}
 
 		for _, sub := range subs {
-			cmd := model.SendNotificationCommand{
+			cmd := sharedModel.SendNotificationCommand{
 				Email:    sub.Email,
 				RepoName: updatedRepo.FullName,
 				Tag:      updatedRepo.LastSeenTag,

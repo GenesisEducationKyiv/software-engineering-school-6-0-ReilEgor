@@ -10,9 +10,9 @@ import (
 
 	"github.com/sony/gobreaker"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 const (
@@ -79,7 +79,7 @@ func (c *GitHubClient) RepoExists(ctx context.Context, fullName string) (bool, e
 	return exists, nil
 }
 
-func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*model2.ReleaseInfo, error) {
+func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*model.ReleaseInfo, error) {
 	const op = "GitHubClient.GetLatestRelease"
 
 	result, err := c.cb.Execute(func() (any, error) {
@@ -89,7 +89,7 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*
 		return nil, c.handleCBError(ctx, op, err)
 	}
 
-	info, ok := result.(*model2.ReleaseInfo)
+	info, ok := result.(*model.ReleaseInfo)
 	if !ok {
 		return nil, fmt.Errorf("%s: unexpected result type: %T", op, result)
 	}
@@ -99,7 +99,7 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*
 func (c *GitHubClient) handleCBError(ctx context.Context, op string, err error) error {
 	if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
 		c.logger.WarnContext(ctx, "circuit breaker open", slog.String("op", op))
-		return model2.ErrGitHubUnavailable
+		return model.ErrGitHubUnavailable
 	}
 	return fmt.Errorf("%s: %w", op, err)
 }
@@ -123,13 +123,13 @@ func (c *GitHubClient) repoExistsRequest(ctx context.Context, fullName string) (
 		return false, nil
 	case http.StatusForbidden:
 		c.logger.WarnContext(ctx, "github rate limit exceeded", slog.String("repo", fullName))
-		return false, model2.ErrRateLimitExceeded
+		return false, model.ErrRateLimitExceeded
 	default:
 		return false, fmt.Errorf("%w: %s", ErrUnexpectedStatus, resp.Status)
 	}
 }
 
-func (c *GitHubClient) latestReleaseRequest(ctx context.Context, fullName string) (*model2.ReleaseInfo, error) {
+func (c *GitHubClient) latestReleaseRequest(ctx context.Context, fullName string) (*model.ReleaseInfo, error) {
 	url := fmt.Sprintf("%s/repos/%s/releases/latest", c.apiBase, fullName)
 	resp, err := c.doRequest(ctx, http.MethodGet, url)
 	if err != nil {
@@ -148,7 +148,7 @@ func (c *GitHubClient) latestReleaseRequest(ctx context.Context, fullName string
 		return nil, fmt.Errorf("%w: %s", ErrUnexpectedStatus, resp.Status)
 	}
 
-	var info model2.ReleaseInfo
+	var info model.ReleaseInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}

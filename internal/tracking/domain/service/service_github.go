@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 )
 
 var ErrReleaseNotFound = errors.New("no releases found for this repository")

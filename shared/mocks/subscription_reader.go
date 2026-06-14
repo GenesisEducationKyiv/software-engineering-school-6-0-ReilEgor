@@ -5,7 +5,8 @@ package mocks
 import (
 	context "context"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
+	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,23 +16,23 @@ type SubscriptionReader struct {
 }
 
 // GetByEmail provides a mock function with given fields: ctx, email
-func (_m *SubscriptionReader) GetByEmail(ctx context.Context, email string) ([]model.Subscription, error) {
+func (_m *SubscriptionReader) GetByEmail(ctx context.Context, email string) ([]subModel.Subscription, error) {
 	ret := _m.Called(ctx, email)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByEmail")
 	}
 
-	var r0 []model.Subscription
+	var r0 []subModel.Subscription
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.Subscription, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]subModel.Subscription, error)); ok {
 		return rf(ctx, email)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []model.Subscription); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) []subModel.Subscription); ok {
 		r0 = rf(ctx, email)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]model.Subscription)
+			r0 = ret.Get(0).([]subModel.Subscription)
 		}
 	}
 
@@ -45,23 +46,23 @@ func (_m *SubscriptionReader) GetByEmail(ctx context.Context, email string) ([]m
 }
 
 // GetByRepoID provides a mock function with given fields: ctx, repoID
-func (_m *SubscriptionReader) GetByRepoID(ctx context.Context, repoID int64) ([]model.Subscriber, error) {
+func (_m *SubscriptionReader) GetByRepoID(ctx context.Context, repoID int64) ([]trackingModel.Subscriber, error) {
 	ret := _m.Called(ctx, repoID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByRepoID")
 	}
 
-	var r0 []model.Subscriber
+	var r0 []trackingModel.Subscriber
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]model.Subscriber, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]trackingModel.Subscriber, error)); ok {
 		return rf(ctx, repoID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64) []model.Subscriber); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) []trackingModel.Subscriber); ok {
 		r0 = rf(ctx, repoID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]model.Subscriber)
+			r0 = ret.Get(0).([]trackingModel.Subscriber)
 		}
 	}
 
@@ -75,23 +76,23 @@ func (_m *SubscriptionReader) GetByRepoID(ctx context.Context, repoID int64) ([]
 }
 
 // GetByToken provides a mock function with given fields: ctx, token
-func (_m *SubscriptionReader) GetByToken(ctx context.Context, token string) (*model.Subscription, error) {
+func (_m *SubscriptionReader) GetByToken(ctx context.Context, token string) (*subModel.Subscription, error) {
 	ret := _m.Called(ctx, token)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByToken")
 	}
 
-	var r0 *model.Subscription
+	var r0 *subModel.Subscription
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.Subscription, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*subModel.Subscription, error)); ok {
 		return rf(ctx, token)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *model.Subscription); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) *subModel.Subscription); ok {
 		r0 = rf(ctx, token)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.Subscription)
+			r0 = ret.Get(0).(*subModel.Subscription)
 		}
 	}
 

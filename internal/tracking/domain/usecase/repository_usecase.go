@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 )
 
 //go:generate mockery --name RepositoryUseCase --output ../../mocks --case underscore --outpkg mocks

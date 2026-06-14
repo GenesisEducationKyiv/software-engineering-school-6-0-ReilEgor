@@ -8,8 +8,6 @@ package main
 
 import (
 	"context"
-	"time"
-
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/broker/rabbitmq"
@@ -18,6 +16,7 @@ import (
 	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/google/wire"
+	"time"
 )
 
 // Injectors from wire.go:

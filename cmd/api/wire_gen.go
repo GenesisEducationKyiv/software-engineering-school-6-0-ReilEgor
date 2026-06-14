@@ -8,7 +8,6 @@ package main
 
 import (
 	"context"
-
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
 	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
@@ -24,10 +23,10 @@ import (
 	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
-	redis2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
-	postgres4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
 	grpc2 "google.golang.org/grpc"
@@ -37,7 +36,7 @@ import (
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	dbConfig := ProvideDBConfig(cfg)
-	pool, cleanup, err := postgres4.New(ctx, dbConfig)
+	pool, cleanup, err := postgres.New(ctx, dbConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -47,12 +46,12 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	gitHubConfig := ProvideGitHubConfig(cfg)
 	gitHubClient := github.NewGitHubClient(gitHubConfig)
 	redisConfig := ProvideRedisConfig(cfg)
-	client, err := redis2.NewRedisClient(redisConfig)
+	client, err := redis.NewRedisClient(redisConfig)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	cache := redis2.NewCache(client)
+	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
 	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
@@ -104,7 +103,7 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection
 
 var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase2.NewUserUseCase, wire.Bind(new(usecase3.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(port.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase4.UserUseCase), new(*usecase2.UserUseCase)))
 
-var RepositorySet = wire.NewSet(postgres4.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, postgres2.NewUserRepository, wire.Bind(new(postgres4.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(repository2.UserRepository), new(*postgres2.UserRepository)))
+var RepositorySet = wire.NewSet(postgres.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, postgres2.NewUserRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(repository2.UserRepository), new(*postgres2.UserRepository)))
 
 func ProvideCachedClient(
 	c *github.GitHubClient, cache2 cache.Cache,
@@ -115,7 +114,7 @@ func ProvideCachedClient(
 
 var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
 
-var CacheSet = wire.NewSet(redis2.NewRedisClient, redis2.NewCache, wire.Bind(new(cache.Cache), new(*redis2.Cache)))
+var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(cache.Cache), new(*redis.Cache)))
 
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection, rabbitmq.NewPublisher, wire.Bind(new(port.ConfirmationSender), new(*rabbitmq.Publisher)),

@@ -3,13 +3,12 @@ package repository
 import (
 	"context"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
 )
 
 //go:generate mockery --name SubscriptionReader --output ../../mocks --case underscore --outpkg mocks
 type SubscriptionReader interface {
 	GetByToken(ctx context.Context, token string) (*model.Subscription, error)
-	GetByRepoID(ctx context.Context, repoID int64) ([]model.Subscriber, error)
 	GetByEmail(ctx context.Context, email string) ([]model.Subscription, error)
 }
 

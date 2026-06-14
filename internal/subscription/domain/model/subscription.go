@@ -17,7 +17,3 @@ type Subscription struct {
 	RepositoryName string
 	Confirmed      bool `json:"confirmed"`
 }
-type Subscriber struct {
-	Email string
-	Token string
-}

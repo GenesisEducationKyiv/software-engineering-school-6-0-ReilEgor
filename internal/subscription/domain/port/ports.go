@@ -3,12 +3,12 @@ package port
 import (
 	"context"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 )
 
 //go:generate mockery --name RepositoryUseCase --output ../../../shared/mocks --case underscore --outpkg mocks
 type RepositoryUseCase interface {
-	GetOrCreate(ctx context.Context, repoName string) (*model.Repository, error)
+	GetOrCreate(ctx context.Context, repoName string) (*trackingModel.Repository, error)
 }
 
 //go:generate mockery --name ConfirmationSender --output ../../../shared/mocks --case underscore --outpkg mocks

@@ -9,7 +9,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type Publisher struct {
@@ -24,7 +24,7 @@ func NewPublisher(conn *rabbitmq2.Connection) (*Publisher, error) {
 	return p, nil
 }
 
-func (p *Publisher) Publish(ctx context.Context, cmd model.SendNotificationCommand) error {
+func (p *Publisher) Publish(ctx context.Context, cmd sharedModel.SendNotificationCommand) error {
 	body, err := json.Marshal(cmd)
 	if err != nil {
 		return fmt.Errorf("rabbitmq: marshal: %w", err)

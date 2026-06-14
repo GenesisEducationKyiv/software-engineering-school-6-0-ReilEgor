@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	notifModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type EmailService struct {
@@ -26,7 +26,7 @@ func NewEmailService(sender service.EmailSender, baseURL string) *EmailService {
 func (s *EmailService) SendConfirmation(ctx context.Context, to, repoName, token string) error {
 	const op = "EmailService.SendConfirmation"
 
-	msg := model.EmailMessage{
+	msg := notifModel.EmailMessage{
 		To:      to,
 		Subject: fmt.Sprintf("Confirm subscription to %s", repoName),
 		Body: fmt.Sprintf("Hello!\n\nTo confirm your subscription to %s, click here: %s/api/v1/confirm/%s",
@@ -47,7 +47,7 @@ func (s *EmailService) SendConfirmation(ctx context.Context, to, repoName, token
 func (s *EmailService) SendNotification(ctx context.Context, to, repoName, tag, token string) error {
 	const op = "EmailService.SendNotification"
 
-	msg := model.EmailMessage{
+	msg := notifModel.EmailMessage{
 		To:      to,
 		Subject: fmt.Sprintf("New release: %s", repoName),
 		Body: fmt.Sprintf(

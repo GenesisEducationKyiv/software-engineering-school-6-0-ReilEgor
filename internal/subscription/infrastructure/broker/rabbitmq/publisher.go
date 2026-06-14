@@ -9,7 +9,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type Publisher struct {
@@ -36,14 +36,14 @@ func NewPublisher(conn *rabbitmq2.Connection) (*Publisher, error) {
 }
 
 func (p *Publisher) SendConfirmation(ctx context.Context, to, repoName, token string) error {
-	return p.Publish(ctx, model.SendConfirmationCommand{
+	return p.Publish(ctx, sharedModel.SendConfirmationCommand{
 		Email:    to,
 		RepoName: repoName,
 		Token:    token,
 	})
 }
 
-func (p *Publisher) Publish(ctx context.Context, cmd model.SendConfirmationCommand) error {
+func (p *Publisher) Publish(ctx context.Context, cmd sharedModel.SendConfirmationCommand) error {
 	ch, err := p.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("open channel: %w", err)
