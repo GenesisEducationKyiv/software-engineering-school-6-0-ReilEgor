@@ -8,15 +8,15 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type Publisher struct {
-	conn *sharedRabbitmq.Connection
+	conn *rabbitmq2.Connection
 }
 
-func NewPublisher(conn *sharedRabbitmq.Connection) (*Publisher, error) {
+func NewPublisher(conn *rabbitmq2.Connection) (*Publisher, error) {
 	p := &Publisher{conn: conn}
 	if err := p.declareQueue(); err != nil {
 		return nil, fmt.Errorf("rabbitmq: declare queue: %w", err)
@@ -40,7 +40,7 @@ func (p *Publisher) Publish(ctx context.Context, cmd model.SendNotificationComma
 		}
 	}()
 
-	if err := ch.PublishWithContext(ctx, "", sharedRabbitmq.QueueNotifications, false, false, amqp.Publishing{
+	if err := ch.PublishWithContext(ctx, "", rabbitmq2.QueueNotifications, false, false, amqp.Publishing{
 		ContentType:  "application/json",
 		DeliveryMode: amqp.Persistent,
 		Body:         body,
@@ -61,7 +61,7 @@ func (p *Publisher) declareQueue() error {
 		}
 	}()
 
-	if _, err = ch.QueueDeclare(sharedRabbitmq.QueueNotifications, true, false, false, false, nil); err != nil {
+	if _, err = ch.QueueDeclare(rabbitmq2.QueueNotifications, true, false, false, false, nil); err != nil {
 		return fmt.Errorf("declare queue: %w", err)
 	}
 	return nil

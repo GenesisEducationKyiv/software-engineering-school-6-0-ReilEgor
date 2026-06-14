@@ -10,13 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
-	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
-	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
-	subscriptionRepo "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	subscriptionPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
+	subscriptionRepo "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	subscriptionUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
 	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
@@ -29,13 +24,18 @@ import (
 	githubInfra "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
 	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
+	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	redis2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
-func ProvideDBConfig(cfg Config) config.DBConfig         { return cfg.DB }
-func ProvideRedisConfig(cfg Config) config.RedisConfig   { return cfg.Redis }
-func ProvideGitHubConfig(cfg Config) config.GitHubConfig { return cfg.GitHub }
-func ProvideHTTPConfig(cfg Config) config.HTTPConfig     { return cfg.HTTP }
-func ProvideAppConfig(cfg Config) config.AppConfig       { return cfg.App }
+func ProvideDBConfig(cfg Config) config.DBConfig             { return cfg.DB }
+func ProvideRedisConfig(cfg Config) config.RedisConfig       { return cfg.Redis }
+func ProvideGitHubConfig(cfg Config) config.GitHubConfig     { return cfg.GitHub }
+func ProvideHTTPConfig(cfg Config) config.HTTPConfig         { return cfg.HTTP }
+func ProvideAppConfig(cfg Config) config.AppConfig           { return cfg.App }
 func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
 
 func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Connection, func(), error) {
@@ -51,11 +51,11 @@ var UseCaseSet = wire.NewSet(
 )
 
 var RepositorySet = wire.NewSet(
-	sharedPostgres.New,
+	postgres.New,
 	trackingPostgres.NewRepositoryRepository,
 	subPostgres.NewSubscriptionRepository,
 	subPostgres.NewUserRepository,
-	wire.Bind(new(sharedPostgres.PgxInterface), new(*pgxpool.Pool)),
+	wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)),
 	wire.Bind(new(trackingRepo.RepositoryRepository), new(*trackingPostgres.RepositoryRepository)),
 	wire.Bind(new(subscriptionRepo.SubscriptionRepository), new(*subPostgres.SubscriptionRepository)),
 	wire.Bind(new(subscriptionRepo.UserRepository), new(*subPostgres.UserRepository)),
@@ -74,9 +74,9 @@ var GitHubSet = wire.NewSet(
 )
 
 var CacheSet = wire.NewSet(
-	redis.NewRedisClient,
-	redis.NewCache,
-	wire.Bind(new(sharedcache.Cache), new(*redis.Cache)),
+	redis2.NewRedisClient,
+	redis2.NewCache,
+	wire.Bind(new(sharedcache.Cache), new(*redis2.Cache)),
 )
 
 var BrokerSet = wire.NewSet(

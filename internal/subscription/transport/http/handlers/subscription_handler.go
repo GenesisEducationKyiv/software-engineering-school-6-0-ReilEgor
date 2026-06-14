@@ -13,8 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/dto"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 const (
@@ -74,7 +74,7 @@ func (h *Handler) handleTokenAction(
 	defer cancel()
 
 	if err := action(ctx, token); err != nil {
-		if errors.Is(err, model.ErrInvalidToken) {
+		if errors.Is(err, model2.ErrInvalidToken) {
 			c.JSON(http.StatusNotFound, gin.H{"error": notFoundMsg})
 			return
 		}
@@ -123,13 +123,13 @@ func (h *Handler) Subscribe(c *gin.Context) {
 
 	if err := h.userUC.Subscribe(ctx, req.Email, req.Repository); err != nil {
 		switch {
-		case errors.Is(err, model.ErrRepositoryNotFound):
+		case errors.Is(err, model2.ErrRepositoryNotFound):
 			log.WarnContext(ctx, "repository not found",
 				slog.String("email", req.Email),
 				slog.String("repo", req.Repository),
 			)
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		case errors.Is(err, model.ErrGitHubUnavailable), errors.Is(err, model.ErrRateLimitExceeded):
+		case errors.Is(err, model2.ErrGitHubUnavailable), errors.Is(err, model2.ErrRateLimitExceeded):
 			c.JSON(
 				http.StatusServiceUnavailable,
 				gin.H{"error": "GitHub API is currently unavailable, please try again later"},

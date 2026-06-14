@@ -8,11 +8,7 @@ package main
 
 import (
 	"context"
-	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
+
 	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/port"
@@ -23,6 +19,11 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	redis2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
+	postgres4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -31,7 +32,7 @@ import (
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	dbConfig := ProvideDBConfig(cfg)
-	pool, cleanup, err := postgres.New(ctx, dbConfig)
+	pool, cleanup, err := postgres4.New(ctx, dbConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -39,12 +40,12 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	gitHubConfig := ProvideGitHubConfig(cfg)
 	gitHubClient := github.NewGitHubClient(gitHubConfig)
 	redisConfig := ProvideRedisConfig(cfg)
-	client, err := redis.NewRedisClient(redisConfig)
+	client, err := redis2.NewRedisClient(redisConfig)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	cache := redis.NewCache(client)
+	cache := redis2.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
 	subscriptionRepository := postgres3.NewSubscriptionRepository(pool)
@@ -90,9 +91,9 @@ func ProvideCachedClient(c *github.GitHubClient, cache2 cache.Cache) service.Git
 
 var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
 
-var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(cache.Cache), new(*redis.Cache)))
+var CacheSet = wire.NewSet(redis2.NewRedisClient, redis2.NewCache, wire.Bind(new(cache.Cache), new(*redis2.Cache)))
 
-var RepositorySet = wire.NewSet(postgres.New, postgres2.NewRepositoryRepository, postgres3.NewSubscriptionRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres2.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres3.SubscriptionRepository)), wire.Bind(new(port.RepositoryReader), new(*postgres2.RepositoryRepository)), wire.Bind(new(port.SubscriberReader), new(*postgres3.SubscriptionRepository)))
+var RepositorySet = wire.NewSet(postgres4.New, postgres2.NewRepositoryRepository, postgres3.NewSubscriptionRepository, wire.Bind(new(postgres4.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres2.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres3.SubscriptionRepository)), wire.Bind(new(port.RepositoryReader), new(*postgres2.RepositoryRepository)), wire.Bind(new(port.SubscriberReader), new(*postgres3.SubscriptionRepository)))
 
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection, rabbitmq.NewPublisher, wire.Bind(new(port.NotificationPublisher), new(*rabbitmq.Publisher)),

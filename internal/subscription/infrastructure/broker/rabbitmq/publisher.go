@@ -8,15 +8,15 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type Publisher struct {
-	conn *sharedRabbitmq.Connection
+	conn *rabbitmq2.Connection
 }
 
-func NewPublisher(conn *sharedRabbitmq.Connection) (*Publisher, error) {
+func NewPublisher(conn *rabbitmq2.Connection) (*Publisher, error) {
 	ch, err := conn.Channel()
 	if err != nil {
 		return nil, fmt.Errorf("open channel: %w", err)
@@ -27,7 +27,7 @@ func NewPublisher(conn *sharedRabbitmq.Connection) (*Publisher, error) {
 		}
 	}()
 
-	_, err = ch.QueueDeclare(sharedRabbitmq.QueueConfirmations, true, false, false, false, nil)
+	_, err = ch.QueueDeclare(rabbitmq2.QueueConfirmations, true, false, false, false, nil)
 	if err != nil {
 		return nil, fmt.Errorf("declare queue: %w", err)
 	}
@@ -59,7 +59,7 @@ func (p *Publisher) Publish(ctx context.Context, cmd model.SendConfirmationComma
 		return fmt.Errorf("marshal command: %w", err)
 	}
 
-	if err := ch.PublishWithContext(ctx, "", sharedRabbitmq.QueueConfirmations, false, false, amqp.Publishing{
+	if err := ch.PublishWithContext(ctx, "", rabbitmq2.QueueConfirmations, false, false, amqp.Publishing{
 		ContentType:  "application/json",
 		DeliveryMode: amqp.Persistent,
 		Body:         body,

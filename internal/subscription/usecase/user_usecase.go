@@ -10,10 +10,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/metrics"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/metrics"
 )
 
 const componentUserUseCase = "UserUseCase"
@@ -87,11 +87,11 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if !errors.Is(err, model.ErrUserNotFound) {
+		if !errors.Is(err, model2.ErrUserNotFound) {
 			return fmt.Errorf("%s: get user: %w", op, err)
 		}
 
-		user = model.User{Email: email}
+		user = model2.User{Email: email}
 		if err := uc.userRepo.Create(ctx, &user); err != nil {
 			return fmt.Errorf("%s: create user: %w", op, err)
 		}
@@ -99,7 +99,7 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 	}
 
 	token := uuid.NewString()
-	sub := &model.Subscription{
+	sub := &model2.Subscription{
 		UserID:         user.ID,
 		RepositoryID:   repo.ID,
 		RepositoryName: repo.FullName,
@@ -135,7 +135,7 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, model.ErrUserNotFound) {
+		if errors.Is(err, model2.ErrUserNotFound) {
 			log.DebugContext(ctx, "user not found, nothing to unsubscribe")
 			return nil
 		}
@@ -152,7 +152,7 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 	return nil
 }
 
-func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model.Subscription, err error) {
+func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model2.Subscription, err error) {
 	const op = "UserUseCase.ListByEmail"
 
 	start := time.Now()
@@ -196,12 +196,12 @@ func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
-		return model.ErrInvalidToken
+		return model2.ErrInvalidToken
 	}
 
 	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, model.ErrInvalidToken) {
+		if errors.Is(err, model2.ErrInvalidToken) {
 			log.WarnContext(ctx, "attempt to confirm with invalid token")
 		}
 		return fmt.Errorf("%s: %w", op, err)
@@ -234,12 +234,12 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (er
 	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
-		return model.ErrInvalidToken
+		return model2.ErrInvalidToken
 	}
 
 	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, model.ErrInvalidToken) {
+		if errors.Is(err, model2.ErrInvalidToken) {
 			log.WarnContext(ctx, "invalid unsubscribe token", slog.String("token", token))
 		}
 		return fmt.Errorf("%s: get by token: %w", op, err)

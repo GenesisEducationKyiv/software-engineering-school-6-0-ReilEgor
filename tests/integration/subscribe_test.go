@@ -8,14 +8,14 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/dto"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 func (s *APITestSuite) TestSubscribe_Success() {
 	s.mockGitHub.On("RepoExists", mock.Anything, testRepo).Return(true, nil)
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, testRepo).
-		Return(&model.ReleaseInfo{TagName: testTag}, nil)
+		Return(&model2.ReleaseInfo{TagName: testTag}, nil)
 	s.mockSMTP.On("SendConfirmation", mock.Anything, testEmail, testRepo, mock.AnythingOfType("string")).
 		Return(nil).Maybe()
 
@@ -76,7 +76,7 @@ func (s *APITestSuite) TestSubscribe_RepoNotFoundOnGitHub() {
 
 func (s *APITestSuite) TestSubscribe_GitHubUnavailable() {
 	s.mockGitHub.On("RepoExists", mock.Anything, testRepo).
-		Return(false, fmt.Errorf("wrapped: %w", model.ErrRepositoryNotFound))
+		Return(false, fmt.Errorf("wrapped: %w", model2.ErrRepositoryNotFound))
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))

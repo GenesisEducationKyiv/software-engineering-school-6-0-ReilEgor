@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/cache"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
+	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
 
 const (
@@ -34,7 +34,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		setupMock       func(mClient *mocks.GitHubClient, mCache *mocks.Cache)
+		setupMock       func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache)
 		wantResult      bool
 		wantErr         bool
 		wantErrIs       error
@@ -42,7 +42,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 	}{
 		{
 			name: "cache hit: value 'true' returns true",
-			setupMock: func(_ *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(_ *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return([]byte("true"), nil).Once()
 			},
@@ -50,7 +50,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		},
 		{
 			name: "cache hit: value 'false' returns false",
-			setupMock: func(_ *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(_ *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return([]byte("false"), nil).Once()
 			},
@@ -58,7 +58,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		},
 		{
 			name: "cache hit: garbage bytes treated as false",
-			setupMock: func(_ *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(_ *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return([]byte("yes"), nil).Once()
 			},
@@ -66,7 +66,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		},
 		{
 			name: "cache miss: client returns true, stores 'true' in cache",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
@@ -78,7 +78,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		},
 		{
 			name: "cache miss: client returns false, stores 'false' in cache",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
@@ -90,7 +90,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		},
 		{
 			name: "cache generic error: falls back to client successfully",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return(nil, errors.New("redis: connection refused")).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
@@ -102,7 +102,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		},
 		{
 			name: "client error: wrapped and propagated",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
@@ -115,7 +115,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		},
 		{
 			name: "cache set error: wrapped and propagated after client success",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
 					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
@@ -135,8 +135,8 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mClient := mocks.NewGitHubClient(t)
-			mCache := mocks.NewCache(t)
+			mClient := mocks2.NewGitHubClient(t)
+			mCache := mocks2.NewCache(t)
 			tc.setupMock(mClient, mCache)
 
 			c := NewCachedGitHubClient(mClient, mCache)
@@ -174,7 +174,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		setupMock       func(mClient *mocks.GitHubClient, mCache *mocks.Cache)
+		setupMock       func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache)
 		wantTag         string
 		wantErr         bool
 		wantErrIs       error
@@ -182,7 +182,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 	}{
 		{
 			name: "cache hit: valid JSON returns release without client call",
-			setupMock: func(_ *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(_ *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return(baseReleaseJSON, nil).Once()
 			},
@@ -190,7 +190,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		},
 		{
 			name: "cache hit: corrupted JSON falls back to client",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return([]byte("{invalid-json}"), nil).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
@@ -206,7 +206,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		},
 		{
 			name: "cache hit: empty JSON object returns zero-value release",
-			setupMock: func(_ *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(_ *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return([]byte("{}"), nil).Once()
 			},
@@ -214,7 +214,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		},
 		{
 			name: "cache miss: client called and result stored in cache",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
@@ -230,7 +230,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		},
 		{
 			name: "cache generic error: falls back to client successfully",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return(nil, errors.New("redis: i/o timeout")).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
@@ -243,7 +243,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		},
 		{
 			name: "client error: wrapped and propagated",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
@@ -255,7 +255,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		},
 		{
 			name: "cache set error: wrapped and propagated after client success",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
@@ -270,7 +270,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		},
 		{
 			name: "cache set error after corrupted-cache fallback: wrapped and propagated",
-			setupMock: func(mClient *mocks.GitHubClient, mCache *mocks.Cache) {
+			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
 					Return([]byte("!!!"), nil).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
@@ -290,8 +290,8 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mClient := mocks.NewGitHubClient(t)
-			mCache := mocks.NewCache(t)
+			mClient := mocks2.NewGitHubClient(t)
+			mCache := mocks2.NewCache(t)
 			tc.setupMock(mClient, mCache)
 
 			c := NewCachedGitHubClient(mClient, mCache)

@@ -10,19 +10,19 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
-	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type ConfirmationConsumer struct {
-	conn        *sharedRabbitmq.Connection
+	conn        *rabbitmq2.Connection
 	emailSvc    service.EmailService
 	sendTimeout time.Duration
 	logger      *slog.Logger
 }
 
 func NewConfirmationConsumer(
-	conn *sharedRabbitmq.Connection,
+	conn *rabbitmq2.Connection,
 	emailSvc service.EmailService,
 	sendTimeout time.Duration,
 ) *ConfirmationConsumer {
@@ -59,12 +59,12 @@ func (c *ConfirmationConsumer) consume(ctx context.Context) error {
 		}
 	}()
 
-	_, err = ch.QueueDeclare(sharedRabbitmq.QueueConfirmations, true, false, false, false, nil)
+	_, err = ch.QueueDeclare(rabbitmq2.QueueConfirmations, true, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("declare queue: %w", err)
 	}
 
-	msgs, err := ch.Consume(sharedRabbitmq.QueueConfirmations, "", false, false, false, false, nil)
+	msgs, err := ch.Consume(rabbitmq2.QueueConfirmations, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("consume: %w", err)
 	}

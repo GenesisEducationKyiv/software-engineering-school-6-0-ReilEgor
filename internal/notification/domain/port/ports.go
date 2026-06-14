@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 //go:generate mockery --name MessagePublisher --output ../../../shared/mocks --case underscore --outpkg mocks
