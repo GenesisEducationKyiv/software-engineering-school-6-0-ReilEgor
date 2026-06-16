@@ -18,13 +18,14 @@ import (
 )
 
 type Config struct {
-	DB       sharedConfig.DBConfig
-	HTTP     sharedConfig.HTTPConfig
-	GRPC     sharedConfig.GRPCConfig
-	Redis    sharedConfig.RedisConfig
-	GitHub   sharedConfig.GitHubConfig
-	App      sharedConfig.AppConfig
-	RabbitMQ sharedConfig.RabbitMQConfig
+	SubscriptionDB sharedConfig.SubscriptionDBConfig
+	TrackingDB     sharedConfig.TrackingDBConfig
+	HTTP           sharedConfig.HTTPConfig
+	GRPC           sharedConfig.GRPCConfig
+	Redis          sharedConfig.RedisConfig
+	GitHub         sharedConfig.GitHubConfig
+	App            sharedConfig.AppConfig
+	RabbitMQ       sharedConfig.RabbitMQConfig
 }
 
 // Swagger Metadata for API Documentation

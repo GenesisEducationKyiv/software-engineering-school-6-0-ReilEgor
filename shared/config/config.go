@@ -3,21 +3,29 @@ package config
 import "time"
 
 type Config struct {
-	DB     DBConfig
-	HTTP   HTTPConfig
-	GRPC   GRPCConfig
-	Redis  RedisConfig
-	Email  EmailConfig
-	GitHub GitHubConfig
-	Worker WorkerConfig
-	App    AppConfig
+	SubscriptionDB SubscriptionDBConfig
+	TrackingDB     TrackingDBConfig
+	HTTP           HTTPConfig
+	GRPC           GRPCConfig
+	Redis          RedisConfig
+	Email          EmailConfig
+	GitHub         GitHubConfig
+	Worker         WorkerConfig
+	App            AppConfig
 }
 
-type DBConfig struct {
-	DSN               string        `env:"DB_SOURCE"`
-	MaxOpenConns      int32         `env:"DB_MAX_OPEN_CONNS"`
-	MaxConnIdleTime   time.Duration `env:"DB_MAX_CONN_IDLE_TIME"`
-	HealthCheckPeriod time.Duration `env:"DB_HEALTH_CHECK_PERIOD"`
+type SubscriptionDBConfig struct {
+	DSN               string        `env:"SUBSCRIPTION_DB_SOURCE"`
+	MaxOpenConns      int32         `env:"SUBSCRIPTION_DB_MAX_OPEN_CONNS"`
+	MaxConnIdleTime   time.Duration `env:"SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME"`
+	HealthCheckPeriod time.Duration `env:"SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD"`
+}
+
+type TrackingDBConfig struct {
+	DSN               string        `env:"TRACKING_DB_SOURCE"`
+	MaxOpenConns      int32         `env:"TRACKING_DB_MAX_OPEN_CONNS"`
+	MaxConnIdleTime   time.Duration `env:"TRACKING_DB_MAX_CONN_IDLE_TIME"`
+	HealthCheckPeriod time.Duration `env:"TRACKING_DB_HEALTH_CHECK_PERIOD"`
 }
 
 type HTTPConfig struct {

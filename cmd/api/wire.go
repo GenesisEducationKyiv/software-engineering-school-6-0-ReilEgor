@@ -16,12 +16,12 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
-func ProvideDBConfig(cfg Config) config.DBConfig             { return cfg.DB }
-func ProvideRedisConfig(cfg Config) config.RedisConfig       { return cfg.Redis }
-func ProvideGitHubConfig(cfg Config) config.GitHubConfig     { return cfg.GitHub }
-func ProvideHTTPConfig(cfg Config) config.HTTPConfig         { return cfg.HTTP }
-func ProvideAppConfig(cfg Config) config.AppConfig           { return cfg.App }
-func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
+func ProvideSubscriptionDBConfig(cfg Config) config.SubscriptionDBConfig { return cfg.SubscriptionDB }
+func ProvideRedisConfig(cfg Config) config.RedisConfig                   { return cfg.Redis }
+func ProvideGitHubConfig(cfg Config) config.GitHubConfig                 { return cfg.GitHub }
+func ProvideHTTPConfig(cfg Config) config.HTTPConfig                     { return cfg.HTTP }
+func ProvideAppConfig(cfg Config) config.AppConfig                       { return cfg.App }
+func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig             { return cfg.RabbitMQ }
 
 func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Connection, func(), error) {
 	return sharedRabbitmq.NewConnection(cfg.URL)
@@ -34,7 +34,7 @@ type App struct {
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	wire.Build(
-		ProvideDBConfig,
+		ProvideSubscriptionDBConfig,
 		ProvideRedisConfig,
 		ProvideGitHubConfig,
 		ProvideHTTPConfig,

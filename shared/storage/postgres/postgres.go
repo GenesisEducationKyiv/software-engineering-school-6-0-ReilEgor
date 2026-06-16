@@ -8,11 +8,16 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
-func New(ctx context.Context, cfg config.DBConfig) (*pgxpool.Pool, func(), error) {
+type PoolConfig struct {
+	DSN               string
+	MaxOpenConns      int32
+	MaxConnIdleTime   time.Duration
+	HealthCheckPeriod time.Duration
+}
+
+func New(ctx context.Context, cfg PoolConfig) (*pgxpool.Pool, func(), error) {
 	slog.Info("connecting to database",
 		slog.String("dsn", maskDSN(cfg.DSN)),
 	)

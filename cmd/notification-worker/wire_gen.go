@@ -23,8 +23,9 @@ import (
 // Injectors from wire.go:
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
-	dbConfig := ProvideDBConfig(cfg)
-	pool, cleanup, err := postgres.New(ctx, dbConfig)
+	trackingDBConfig := ProvideTrackingDBConfig(cfg)
+	poolConfig := ProvideTrackingPoolConfig(trackingDBConfig)
+	pool, cleanup, err := postgres.New(ctx, poolConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -65,7 +66,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 
 // wire.go:
 
-func ProvideDBConfig(cfg Config) config.DBConfig { return cfg.DB }
+func ProvideTrackingDBConfig(cfg Config) config.TrackingDBConfig { return cfg.TrackingDB }
 
 func ProvideRedisConfig(cfg Config) config.RedisConfig { return cfg.Redis }
 

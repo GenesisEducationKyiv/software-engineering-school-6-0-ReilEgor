@@ -19,10 +19,15 @@ jobs:
           POSTGRES_DB=test_db
           POSTGRES_PORT=5432
 
-          DB_SOURCE=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
-          DB_MAX_OPEN_CONNS=10
-          DB_MAX_CONN_IDLE_TIME=30m
-          DB_HEALTH_CHECK_PERIOD=1m
+          SUBSCRIPTION_DB_SOURCE=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
+          SUBSCRIPTION_DB_MAX_OPEN_CONNS=10
+          SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME=30m
+          SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD=1m
+
+          TRACKING_DB_SOURCE=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
+          TRACKING_DB_MAX_OPEN_CONNS=10
+          TRACKING_DB_MAX_CONN_IDLE_TIME=30m
+          TRACKING_DB_HEALTH_CHECK_PERIOD=1m
 
           REDIS_PASSWORD=test_redis_pass
           REDIS_PORT=6379

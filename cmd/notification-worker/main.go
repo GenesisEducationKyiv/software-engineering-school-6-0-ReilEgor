@@ -18,12 +18,12 @@ import (
 )
 
 type Config struct {
-	DB       sharedConfig.DBConfig
-	Redis    sharedConfig.RedisConfig
-	GitHub   sharedConfig.GitHubConfig
-	Worker   sharedConfig.WorkerConfig
-	App      sharedConfig.AppConfig
-	RabbitMQ sharedConfig.RabbitMQConfig
+	TrackingDB sharedConfig.TrackingDBConfig
+	Redis      sharedConfig.RedisConfig
+	GitHub     sharedConfig.GitHubConfig
+	Worker     sharedConfig.WorkerConfig
+	App        sharedConfig.AppConfig
+	RabbitMQ   sharedConfig.RabbitMQConfig
 }
 
 func main() {
