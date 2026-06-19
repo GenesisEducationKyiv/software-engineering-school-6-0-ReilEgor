@@ -10,12 +10,14 @@ import (
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
+
 type ReleaseProcessor struct {
-	repoReader port.RepositoryReader
-	repoUC     domainUsecase.RepositoryUseCase
-	subReader  port.SubscriberReader
-	publisher  port.NotificationPublisher
-	logger     *slog.Logger
+	repoReader       port.RepositoryReader
+	repoUC           domainUsecase.RepositoryUseCase
+	subReader        port.SubscriberReader
+	publisher        port.NotificationPublisher
+	tagUpdatedPub    port.TagUpdatedPublisher
+	logger           *slog.Logger
 }
 
 func NewReleaseProcessor(
@@ -23,13 +25,15 @@ func NewReleaseProcessor(
 	repoUC domainUsecase.RepositoryUseCase,
 	subReader port.SubscriberReader,
 	publisher port.NotificationPublisher,
+	tagUpdatedPub port.TagUpdatedPublisher,
 ) *ReleaseProcessor {
 	return &ReleaseProcessor{
-		repoReader: repoReader,
-		repoUC:     repoUC,
-		subReader:  subReader,
-		publisher:  publisher,
-		logger:     slog.With(slog.String("component", "ReleaseProcessor")),
+		repoReader:    repoReader,
+		repoUC:        repoUC,
+		subReader:     subReader,
+		publisher:     publisher,
+		tagUpdatedPub: tagUpdatedPub,
+		logger:        slog.With(slog.String("component", "ReleaseProcessor")),
 	}
 }
 
@@ -51,6 +55,16 @@ func (rp *ReleaseProcessor) ProcessReleases(ctx context.Context) error {
 
 		if updatedRepo == nil {
 			continue
+		}
+
+		if err := rp.tagUpdatedPub.Publish(ctx, sharedModel.TagUpdatedEvent{
+			FullName: updatedRepo.FullName,
+			Tag:      updatedRepo.LastSeenTag,
+		}); err != nil {
+			rp.logger.WarnContext(ctx, "publish tag updated event failed",
+				slog.String("repo", updatedRepo.FullName),
+				slog.Any("error", err),
+			)
 		}
 
 		subs, err := rp.subReader.GetByRepoID(ctx, updatedRepo.ID)

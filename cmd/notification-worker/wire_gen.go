@@ -8,7 +8,6 @@ package main
 
 import (
 	"context"
-	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
 	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
@@ -41,7 +40,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
-	subscriptionRepository := postgres3.NewSubscriptionRepository(pool)
+	subscriptionRepository := postgres2.NewTrackerSubscriptionRepository(pool)
 	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
 	connection, cleanup2, err := ProvideRabbitMQConnection(rabbitMQConfig)
 	if err != nil {
@@ -54,9 +53,19 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher)
+	tagUpdatedPublisher, err := rabbitmq.NewTagUpdatedPublisher(connection)
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher, tagUpdatedPublisher)
+	subscriptionActivatedConsumer := rabbitmq.NewSubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
+	unsubscriptionActivatedConsumer := rabbitmq.NewUnsubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
 	app := &App{
-		ReleaseProcessor: releaseProcessor,
+		ReleaseProcessor:                releaseProcessor,
+		SubscriptionActivatedConsumer:   subscriptionActivatedConsumer,
+		UnsubscriptionActivatedConsumer: unsubscriptionActivatedConsumer,
 	}
 	return app, func() {
 		cleanup2()
@@ -79,5 +88,7 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection
 }
 
 type App struct {
-	ReleaseProcessor usecase2.ReleaseProcessorUseCase
+	ReleaseProcessor                usecase2.ReleaseProcessorUseCase
+	SubscriptionActivatedConsumer   *rabbitmq.SubscriptionActivatedConsumer
+	UnsubscriptionActivatedConsumer *rabbitmq.UnsubscriptionActivatedConsumer
 }

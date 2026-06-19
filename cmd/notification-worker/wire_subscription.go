@@ -4,10 +4,12 @@ import (
 	"github.com/google/wire"
 
 	trackingPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/port"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/noop"
+	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 )
 
 var SubscriptionRepositorySet = wire.NewSet(
-	noop.NewSubscriberReader,
-	wire.Bind(new(trackingPort.SubscriberReader), new(*noop.SubscriberReader)),
+	trackingPostgres.NewTrackerSubscriptionRepository,
+	wire.Bind(new(trackingPort.SubscriberReader), new(*trackingPostgres.SubscriptionRepository)),
+	wire.Bind(new(trackingPort.TrackerSubscriptionWriter), new(*trackingPostgres.SubscriptionRepository)),
+	wire.Bind(new(trackingPort.TrackerSubscriptionDeleter), new(*trackingPostgres.SubscriptionRepository)),
 )

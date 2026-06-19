@@ -14,23 +14,30 @@ import (
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
+type subscriptionActivatedPublisher interface {
+	Publish(ctx context.Context, event sharedModel.SubscriptionActivatedEvent) error
+}
+
 type SagaResultConsumer struct {
-	conn     *rabbitmq.Connection
-	subsRepo repository.SubscriptionWriter
-	sagaRepo repository.SagaRepository
-	logger   *slog.Logger
+	conn        *rabbitmq.Connection
+	subsRepo    repository.SubscriptionWriter
+	sagaRepo    repository.SagaRepository
+	activatedPub subscriptionActivatedPublisher
+	logger      *slog.Logger
 }
 
 func NewSagaResultConsumer(
 	conn *rabbitmq.Connection,
 	subsRepo repository.SubscriptionWriter,
 	sagaRepo repository.SagaRepository,
+	activatedPub *SubscriptionActivatedPublisher,
 ) *SagaResultConsumer {
 	return &SagaResultConsumer{
-		conn:     conn,
-		subsRepo: subsRepo,
-		sagaRepo: sagaRepo,
-		logger:   slog.With(slog.String("component", "SagaResultConsumer")),
+		conn:         conn,
+		subsRepo:     subsRepo,
+		sagaRepo:     sagaRepo,
+		activatedPub: activatedPub,
+		logger:       slog.With(slog.String("component", "SagaResultConsumer")),
 	}
 }
 
@@ -107,6 +114,15 @@ func (c *SagaResultConsumer) handleSuccess(
 		c.nack(d, true)
 		return
 	}
+
+	if err := c.activatedPub.Publish(ctx, sharedModel.SubscriptionActivatedEvent{
+		FullName: event.RepoName,
+		Email:    event.Email,
+		Token:    event.Token,
+	}); err != nil {
+		c.logger.Warn("saga: publish subscription.activated failed", slog.Any("error", err))
+	}
+
 	c.ack(d)
 }
 

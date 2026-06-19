@@ -65,11 +65,21 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
 	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
 	server := grpc.NewGrpcServer(subscriptionHandler, appConfig)
-	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, subscriptionRepository, sagaRepository)
+	subscriptionActivatedPublisher, err := rabbitmq.NewSubscriptionActivatedPublisher(connection)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, subscriptionRepository, sagaRepository, subscriptionActivatedPublisher)
+	postgresRepositoryRepository := postgres2.NewRepositoryRepository(pool)
+	tagUpdatedConsumer := rabbitmq.NewTagUpdatedConsumer(connection, postgresRepositoryRepository)
 	app := &App{
 		HTTPServer:         ginServer,
 		GrpcServer:         server,
 		SagaResultConsumer: sagaResultConsumer,
+		TagUpdatedConsumer: tagUpdatedConsumer,
 	}
 	return app, func() {
 		cleanup3()
@@ -100,4 +110,5 @@ type App struct {
 	HTTPServer         *http.GinServer
 	GrpcServer         *grpc2.Server
 	SagaResultConsumer *rabbitmq.SagaResultConsumer
+	TagUpdatedConsumer *rabbitmq.TagUpdatedConsumer
 }

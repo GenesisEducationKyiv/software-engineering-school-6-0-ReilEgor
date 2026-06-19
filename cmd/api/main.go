@@ -75,6 +75,11 @@ func main() {
 		return app.SagaResultConsumer.Start(ctx)
 	})
 
+	g.Go(func() error {
+		myLogger.Info("tag updated consumer starting")
+		return app.TagUpdatedConsumer.Start(ctx)
+	})
+
 	if err := g.Wait(); err != nil {
 		myLogger.Error("server stopped", slog.Any("error", err))
 	}

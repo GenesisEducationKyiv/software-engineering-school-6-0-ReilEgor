@@ -16,6 +16,7 @@ type RepositoryReader interface {
 type RepositoryWriter interface {
 	Create(ctx context.Context, repo *model.Repository) error
 	Update(ctx context.Context, repo *model.Repository) error
+	Delete(ctx context.Context, name string) error
 }
 
 //go:generate mockery --name RepositoryRepository --output ../../mocks --case underscore --outpkg mocks

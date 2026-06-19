@@ -32,7 +32,11 @@ var TrackingRepositorySet = wire.NewSet(
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
 	trackingRabbitmq.NewPublisher,
+	trackingRabbitmq.NewTagUpdatedPublisher,
+	trackingRabbitmq.NewSubscriptionActivatedConsumer,
+	trackingRabbitmq.NewUnsubscriptionActivatedConsumer,
 	wire.Bind(new(trackingPort.NotificationPublisher), new(*trackingRabbitmq.Publisher)),
+	wire.Bind(new(trackingPort.TagUpdatedPublisher), new(*trackingRabbitmq.TagUpdatedPublisher)),
 )
 
 var UseCaseSet = wire.NewSet(

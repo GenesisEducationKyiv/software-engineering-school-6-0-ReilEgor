@@ -141,3 +141,14 @@ func (uc *RepositoryUseCase) CheckForUpdates(
 	log.InfoContext(ctx, "new release detected", slog.String("tag", repo.LastSeenTag))
 	return &repo, nil
 }
+
+func (uc *RepositoryUseCase) Delete(ctx context.Context, repoName string) error {
+	const op = "RepositoryUseCase.Delete"
+	log := uc.logger.With(slog.String("op", op), slog.String("repo", repoName))
+
+	if err := uc.repoRepo.Delete(ctx, repoName); err != nil {
+		log.ErrorContext(ctx, "delete repository failed", slog.Any("error", err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}

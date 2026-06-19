@@ -9,6 +9,7 @@ import (
 	"github.com/google/wire"
 
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
+	trackingRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/broker/rabbitmq"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
@@ -23,7 +24,9 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Conne
 }
 
 type App struct {
-	ReleaseProcessor trackingDomainUsecase.ReleaseProcessorUseCase
+	ReleaseProcessor              trackingDomainUsecase.ReleaseProcessorUseCase
+	SubscriptionActivatedConsumer *trackingRabbitmq.SubscriptionActivatedConsumer
+	UnsubscriptionActivatedConsumer *trackingRabbitmq.UnsubscriptionActivatedConsumer
 }
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {

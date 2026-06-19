@@ -32,6 +32,7 @@ type App struct {
 	HTTPServer         *http.GinServer
 	GrpcServer         *grpc.Server
 	SagaResultConsumer *subRabbitmq.SagaResultConsumer
+	TagUpdatedConsumer *subRabbitmq.TagUpdatedConsumer
 }
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {

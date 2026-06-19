@@ -21,3 +21,19 @@ type SubscriberReader interface {
 type NotificationPublisher interface {
 	Publish(ctx context.Context, cmd sharedModel.SendNotificationCommand) error
 }
+
+//go:generate mockery --name TagUpdatedPublisher --output ../../mocks --case underscore --outpkg mocks
+type TagUpdatedPublisher interface {
+	Publish(ctx context.Context, event sharedModel.TagUpdatedEvent) error
+}
+
+//go:generate mockery --name TrackerSubscriptionWriter --output ../../mocks --case underscore --outpkg mocks
+type TrackerSubscriptionWriter interface {
+	Upsert(ctx context.Context, repoID int64, email, token string) error
+}
+
+//go:generate mockery --name TrackerSubscriptionDeleter --output ../../mocks --case underscore --outpkg mocks
+type TrackerSubscriptionDeleter interface {
+	DeleteByEmailAndRepo(ctx context.Context, email, repoName string) error
+	HasSubscriptions(ctx context.Context, repoName string) (bool, error)
+}

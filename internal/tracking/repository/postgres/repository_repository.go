@@ -121,9 +121,25 @@ func (r *RepositoryRepository) Create(ctx context.Context, repo *model.Repositor
 	return nil
 }
 
+const deleteRepositoryQuery = `DELETE FROM repositories WHERE full_name = $1`
+
+func (r *RepositoryRepository) Delete(ctx context.Context, name string) error {
+	const op = "RepositoryRepository.Delete"
+	log := r.logger.With(slog.String("op", op), slog.String("name", name))
+
+	_, err := r.db.Exec(ctx, deleteRepositoryQuery, name)
+	if err != nil {
+		log.ErrorContext(ctx, "delete failed", slog.String("error", err.Error()))
+		return fmt.Errorf("%s: exec: %w", op, err)
+	}
+
+	log.DebugContext(ctx, "repository deleted")
+	return nil
+}
+
 const updateRepositoryQuery = `
-	UPDATE repositories 
-	SET last_seen_tag = $1, updated_at = CURRENT_TIMESTAMP 
+	UPDATE repositories
+	SET last_seen_tag = $1, updated_at = CURRENT_TIMESTAMP
 	WHERE id = $2
 `
 

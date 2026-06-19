@@ -108,6 +108,9 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 			SagaID:         cmd.SagaID,
 			SubscriptionID: cmd.SubscriptionID,
 			Success:        false,
+			Email:          cmd.Email,
+			RepoName:       cmd.RepoName,
+			Token:          cmd.Token,
 		}); pubErr != nil {
 			c.logger.Error("rabbitmq: publish saga result failed", slog.Any("error", pubErr))
 		}
@@ -121,6 +124,9 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 		SagaID:         cmd.SagaID,
 		SubscriptionID: cmd.SubscriptionID,
 		Success:        true,
+		Email:          cmd.Email,
+		RepoName:       cmd.RepoName,
+		Token:          cmd.Token,
 	}); pubErr != nil {
 		c.logger.Error("rabbitmq: publish saga result failed", slog.Any("error", pubErr))
 	}
