@@ -32,29 +32,43 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${SUBSCRIPTION_POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${SUBSCRIPTION_POSTGRES_PORT}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_subscription_data:/var/lib/postgresql/data
       - ./scripts/init.sh:/docker-entrypoint-initdb.d/init.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${SUBSCRIPTION_POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
       - internal
-  migrate:
+  migrate-subscription:
     image: migrate/migrate
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ../migrations:/migrations
+      - ../migrations/subscription:/migrations
     command: [
       "-path", "/migrations",
-      "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable",
+      "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${SUBSCRIPTION_POSTGRES_DB}?sslmode=disable",
+      "up"
+    ]
+    networks:
+      - internal
+  migrate-tracker:
+    image: migrate/migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../migrations/tracker:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${TRACKER_POSTGRES_DB}?sslmode=disable",
       "up"
     ]
     networks:
@@ -91,10 +105,6 @@ services:
       SUBSCRIPTION_DB_MAX_OPEN_CONNS: ${SUBSCRIPTION_DB_MAX_OPEN_CONNS}
       SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME: ${SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME}
       SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD: ${SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD}
-      TRACKING_DB_SOURCE: ${TRACKING_DB_SOURCE}
-      TRACKING_DB_MAX_OPEN_CONNS: ${TRACKING_DB_MAX_OPEN_CONNS}
-      TRACKING_DB_MAX_CONN_IDLE_TIME: ${TRACKING_DB_MAX_CONN_IDLE_TIME}
-      TRACKING_DB_HEALTH_CHECK_PERIOD: ${TRACKING_DB_HEALTH_CHECK_PERIOD}
       # Application
       APP_HTTP_PORT: ${APP_HTTP_PORT}
       APP_GRPC_PORT: ${APP_GRPC_PORT}
@@ -125,7 +135,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      migrate:
+      migrate-subscription:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
@@ -185,7 +195,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      migrate:
+      migrate-tracker:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
@@ -374,9 +384,10 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_subscription_data:
   redis_data:
   rabbitmq_data:
   grafana_data:
   prometheus_data:
   elasticsearch_data:
+  postgres_tracker_data:
