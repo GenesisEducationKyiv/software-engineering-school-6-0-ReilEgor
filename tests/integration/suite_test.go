@@ -33,6 +33,7 @@ import (
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
 	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
+	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
 const testAPIKey = "test-api-key"
@@ -151,7 +152,18 @@ func (s *APITestSuite) buildRouter() {
 	subsRepo := subPostgres.NewSubscriptionRepository(s.dbPool)
 
 	repoUseCase := trackingUsecase.NewRepositoryUseCase(repoRepo, cachedGitHub)
-	userUseCase, _ := usecase.NewUserUseCase(context.Background(), subsRepo, userRepo, repoUseCase, s.mockSMTP)
+	sagaRepo := subPostgres.NewSagaRepository(s.dbPool)
+	outboxRepo := subPostgres.NewOutboxRepository(s.dbPool)
+	transactor := sharedPostgres.NewTransactor(s.dbPool)
+	userUseCase, _ := usecase.NewUserUseCase(
+		context.Background(),
+		subsRepo,
+		userRepo,
+		repoUseCase,
+		sagaRepo,
+		outboxRepo,
+		transactor,
+	)
 
 	handler := handlers.NewHandler(userUseCase, testAPIKey)
 

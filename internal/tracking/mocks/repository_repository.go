@@ -92,6 +92,24 @@ func (_m *RepositoryRepository) GetByName(ctx context.Context, name string) (*mo
 	return r0, r1
 }
 
+// Delete provides a mock function with given fields: ctx, name
+func (_m *RepositoryRepository) Delete(ctx context.Context, name string) error {
+	ret := _m.Called(ctx, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, name)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Update provides a mock function with given fields: ctx, repo
 func (_m *RepositoryRepository) Update(ctx context.Context, repo *model.Repository) error {
 	ret := _m.Called(ctx, repo)

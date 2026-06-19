@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -22,7 +23,9 @@ func (t *Transactor) WithinTransaction(ctx context.Context, fn func(ctx context.
 	}
 	defer func() {
 		if p := recover(); p != nil {
-			_ = tx.Rollback(ctx)
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				slog.Error("transactor: rollback on panic failed", slog.Any("error", rbErr))
+			}
 			panic(p)
 		}
 	}()

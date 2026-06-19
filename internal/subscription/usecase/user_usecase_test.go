@@ -17,23 +17,23 @@ import (
 )
 
 type userMockFields struct {
-	subsRepo     *subMocks.SubscriptionRepository
-	userRepo     *mocks2.UserRepository
-	repoUC       *mocks2.RepositoryUseCase
-	emailService *mocks2.ConfirmationSender
-	sagaRepo     *subMocks.SagaRepository
-	transactor   *subMocks.Transactor
+	subsRepo   *subMocks.SubscriptionRepository
+	userRepo   *mocks2.UserRepository
+	repoUC     *mocks2.RepositoryUseCase
+	sagaRepo   *subMocks.SagaRepository
+	outboxRepo *subMocks.OutboxRepository
+	transactor *subMocks.Transactor
 }
 
 func newUserMockFields(t *testing.T) userMockFields {
 	t.Helper()
 	return userMockFields{
-		subsRepo:     subMocks.NewSubscriptionRepository(t),
-		userRepo:     mocks2.NewUserRepository(t),
-		repoUC:       mocks2.NewRepositoryUseCase(t),
-		emailService: mocks2.NewConfirmationSender(t),
-		sagaRepo:     subMocks.NewSagaRepository(t),
-		transactor:   subMocks.NewTransactor(t),
+		subsRepo:   subMocks.NewSubscriptionRepository(t),
+		userRepo:   mocks2.NewUserRepository(t),
+		repoUC:     mocks2.NewRepositoryUseCase(t),
+		sagaRepo:   subMocks.NewSagaRepository(t),
+		outboxRepo: subMocks.NewOutboxRepository(t),
+		transactor: subMocks.NewTransactor(t),
 	}
 }
 
@@ -43,8 +43,8 @@ func newUserUC(f userMockFields) *UserUseCase {
 		f.subsRepo,
 		f.userRepo,
 		f.repoUC,
-		f.emailService,
 		f.sagaRepo,
+		f.outboxRepo,
 		f.transactor,
 	)
 	return newUseUsecase
@@ -54,8 +54,13 @@ func newUserUC(f userMockFields) *UserUseCase {
 func setupTransactorOK(f userMockFields) {
 	f.transactor.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
 		Run(func(args mock.Arguments) {
-			fn := args.Get(1).(func(context.Context) error)
-			_ = fn(context.Background())
+			fn, ok := args.Get(1).(func(context.Context) error)
+			if !ok {
+				panic("unexpected argument type in WithinTransaction mock")
+			}
+			if err := fn(context.Background()); err != nil {
+				return
+			}
 		}).
 		Return(nil).Once()
 }
@@ -64,8 +69,13 @@ func setupTransactorOK(f userMockFields) {
 func setupTransactorFail(f userMockFields, txErr error) {
 	f.transactor.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
 		Run(func(args mock.Arguments) {
-			fn := args.Get(1).(func(context.Context) error)
-			_ = fn(context.Background())
+			fn, ok := args.Get(1).(func(context.Context) error)
+			if !ok {
+				panic("unexpected argument type in WithinTransaction mock")
+			}
+			if err := fn(context.Background()); err != nil {
+				return
+			}
 		}).
 		Return(txErr).Once()
 }
@@ -92,7 +102,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					Return(nil).Once()
 				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
 					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
-				f.emailService.On("SendConfirmation", mock.Anything, "user@example.com", "golang/go", mock.AnythingOfType("string"), int64(1), mock.AnythingOfType("int64")).
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
 		},
@@ -118,7 +128,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					Return(nil).Once()
 				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
 					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
-				f.emailService.On("SendConfirmation", mock.Anything, "new@example.com", "golang/go", mock.AnythingOfType("string"), int64(1), mock.AnythingOfType("int64")).
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
 		},

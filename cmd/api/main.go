@@ -80,6 +80,11 @@ func main() {
 		return app.TagUpdatedConsumer.Start(ctx)
 	})
 
+	g.Go(func() error {
+		myLogger.Info("outbox relay starting")
+		return app.OutboxRelay.Run(ctx)
+	})
+
 	if err := g.Wait(); err != nil {
 		myLogger.Error("server stopped", slog.Any("error", err))
 	}

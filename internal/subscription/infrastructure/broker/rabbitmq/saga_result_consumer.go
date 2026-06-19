@@ -19,11 +19,11 @@ type subscriptionActivatedPublisher interface {
 }
 
 type SagaResultConsumer struct {
-	conn        *rabbitmq.Connection
-	subsRepo    repository.SubscriptionWriter
-	sagaRepo    repository.SagaRepository
+	conn         *rabbitmq.Connection
+	subsRepo     repository.SubscriptionWriter
+	sagaRepo     repository.SagaRepository
 	activatedPub subscriptionActivatedPublisher
-	logger      *slog.Logger
+	logger       *slog.Logger
 }
 
 func NewSagaResultConsumer(

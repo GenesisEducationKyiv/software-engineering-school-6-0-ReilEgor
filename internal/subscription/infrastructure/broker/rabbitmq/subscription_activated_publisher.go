@@ -34,7 +34,10 @@ func NewSubscriptionActivatedPublisher(conn *rabbitmq2.Connection) (*Subscriptio
 	return &SubscriptionActivatedPublisher{conn: conn}, nil
 }
 
-func (p *SubscriptionActivatedPublisher) Publish(ctx context.Context, event sharedModel.SubscriptionActivatedEvent) error {
+func (p *SubscriptionActivatedPublisher) Publish(
+	ctx context.Context,
+	event sharedModel.SubscriptionActivatedEvent,
+) error {
 	body, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("subscription activated publisher: marshal: %w", err)

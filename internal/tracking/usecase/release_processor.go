@@ -10,14 +10,13 @@ import (
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
-
 type ReleaseProcessor struct {
-	repoReader       port.RepositoryReader
-	repoUC           domainUsecase.RepositoryUseCase
-	subReader        port.SubscriberReader
-	publisher        port.NotificationPublisher
-	tagUpdatedPub    port.TagUpdatedPublisher
-	logger           *slog.Logger
+	repoReader    port.RepositoryReader
+	repoUC        domainUsecase.RepositoryUseCase
+	subReader     port.SubscriberReader
+	publisher     port.NotificationPublisher
+	tagUpdatedPub port.TagUpdatedPublisher
+	logger        *slog.Logger
 }
 
 func NewReleaseProcessor(
@@ -57,13 +56,13 @@ func (rp *ReleaseProcessor) ProcessReleases(ctx context.Context) error {
 			continue
 		}
 
-		if err := rp.tagUpdatedPub.Publish(ctx, sharedModel.TagUpdatedEvent{
+		if pubErr := rp.tagUpdatedPub.Publish(ctx, sharedModel.TagUpdatedEvent{
 			FullName: updatedRepo.FullName,
 			Tag:      updatedRepo.LastSeenTag,
-		}); err != nil {
+		}); pubErr != nil {
 			rp.logger.WarnContext(ctx, "publish tag updated event failed",
 				slog.String("repo", updatedRepo.FullName),
-				slog.Any("error", err),
+				slog.Any("error", pubErr),
 			)
 		}
 

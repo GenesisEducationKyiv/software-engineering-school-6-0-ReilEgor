@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/google/wire"
 
-	subscriptionPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
 	subscriptionRepo "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	subscriptionUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
@@ -18,11 +17,14 @@ var SubscriptionRepositorySet = wire.NewSet(
 	subPostgres.NewUserRepository,
 	subPostgres.NewSagaRepository,
 	subPostgres.NewRepositoryRepository,
+	subPostgres.NewOutboxRepository,
+	sharedPostgres.NewTransactor,
 	wire.Bind(new(subscriptionRepo.SubscriptionRepository), new(*subPostgres.SubscriptionRepository)),
 	wire.Bind(new(subscriptionRepo.SubscriptionWriter), new(*subPostgres.SubscriptionRepository)),
 	wire.Bind(new(subscriptionRepo.UserRepository), new(*subPostgres.UserRepository)),
 	wire.Bind(new(subscriptionRepo.SagaRepository), new(*subPostgres.SagaRepository)),
 	wire.Bind(new(subscriptionRepo.RepositoryUpdater), new(*subPostgres.RepositoryRepository)),
+	wire.Bind(new(subscriptionRepo.OutboxRepository), new(*subPostgres.OutboxRepository)),
 	wire.Bind(new(subscriptionRepo.Transactor), new(*sharedPostgres.Transactor)),
 )
 
@@ -33,11 +35,9 @@ var SubscriptionUseCaseSet = wire.NewSet(
 
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
-	subRabbitmq.NewPublisher,
 	subRabbitmq.NewSubscriptionActivatedPublisher,
 	subRabbitmq.NewSagaResultConsumer,
 	subRabbitmq.NewTagUpdatedConsumer,
-	wire.Bind(new(subscriptionPort.ConfirmationSender), new(*subRabbitmq.Publisher)),
 )
 
 var GrpcSet = wire.NewSet(

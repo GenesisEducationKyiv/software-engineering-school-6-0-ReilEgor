@@ -22,7 +22,6 @@ func ProvideSubscriptionPoolConfig(cfg sharedConfig.SubscriptionDBConfig) postgr
 var SharedSet = wire.NewSet(
 	ProvideSubscriptionPoolConfig,
 	postgres.New,
-	postgres.NewTransactor,
 	wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)),
 )
 
