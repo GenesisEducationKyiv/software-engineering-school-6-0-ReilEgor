@@ -22,6 +22,7 @@ type userMockFields struct {
 	repoUC       *mocks2.RepositoryUseCase
 	emailService *mocks2.ConfirmationSender
 	sagaRepo     *subMocks.SagaRepository
+	transactor   *subMocks.Transactor
 }
 
 func newUserMockFields(t *testing.T) userMockFields {
@@ -32,6 +33,7 @@ func newUserMockFields(t *testing.T) userMockFields {
 		repoUC:       mocks2.NewRepositoryUseCase(t),
 		emailService: mocks2.NewConfirmationSender(t),
 		sagaRepo:     subMocks.NewSagaRepository(t),
+		transactor:   subMocks.NewTransactor(t),
 	}
 }
 
@@ -43,8 +45,29 @@ func newUserUC(f userMockFields) *UserUseCase {
 		f.repoUC,
 		f.emailService,
 		f.sagaRepo,
+		f.transactor,
 	)
 	return newUseUsecase
+}
+
+// executes the callback directly, simulating a successful transaction.
+func setupTransactorOK(f userMockFields) {
+	f.transactor.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
+		Run(func(args mock.Arguments) {
+			fn := args.Get(1).(func(context.Context) error)
+			_ = fn(context.Background())
+		}).
+		Return(nil).Once()
+}
+
+// simulates a transaction that rolls back and returns an error.
+func setupTransactorFail(f userMockFields, txErr error) {
+	f.transactor.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
+		Run(func(args mock.Arguments) {
+			fn := args.Get(1).(func(context.Context) error)
+			_ = fn(context.Background())
+		}).
+		Return(txErr).Once()
 }
 
 func TestUserUseCase_Subscribe(t *testing.T) {
@@ -64,13 +87,13 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
 				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
 					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
 				f.emailService.On("SendConfirmation", mock.Anything, "user@example.com", "golang/go", mock.AnythingOfType("string"), int64(1), mock.AnythingOfType("int64")).
-					Return(nil).
-					Once()
+					Return(nil).Once()
 			},
 		},
 		{
@@ -90,13 +113,13 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 						}
 						u.ID = 99
 					}).Return(nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
 				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
 					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
 				f.emailService.On("SendConfirmation", mock.Anything, "new@example.com", "golang/go", mock.AnythingOfType("string"), int64(1), mock.AnythingOfType("int64")).
-					Return(nil).
-					Once()
+					Return(nil).Once()
 			},
 		},
 		{
@@ -136,7 +159,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:     "error - Save subscription fails",
+			name:     "error - Save subscription fails, transaction rolled back",
 			email:    "user@example.com",
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
@@ -144,8 +167,28 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				saveErr := errors.New("save error")
+				setupTransactorFail(f, saveErr)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
-					Return(errors.New("save error")).Once()
+					Return(saveErr).Once()
+			},
+			expectErr: true,
+		},
+		{
+			name:     "error - Create saga fails, subscription rolled back",
+			email:    "user@example.com",
+			repoName: "golang/go",
+			setup: func(f userMockFields) {
+				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
+					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
+					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				sagaErr := errors.New("saga create error")
+				setupTransactorFail(f, sagaErr)
+				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
+					Return(nil).Once()
+				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
+					Return((*sharedModel.SubscriptionSaga)(nil), sagaErr).Once()
 			},
 			expectErr: true,
 		},

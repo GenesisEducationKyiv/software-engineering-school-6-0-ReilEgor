@@ -30,6 +30,7 @@ type UserUseCase struct {
 	repoUC        port.RepositoryUseCase
 	confirmSender port.ConfirmationSender
 	sagaRepo      repository.SagaRepository
+	transactor    repository.Transactor
 }
 
 func NewUserUseCase(
@@ -39,6 +40,7 @@ func NewUserUseCase(
 	ru port.RepositoryUseCase,
 	cs port.ConfirmationSender,
 	sagaRepo repository.SagaRepository,
+	transactor repository.Transactor,
 ) (*UserUseCase, func()) {
 	uc := &UserUseCase{
 		logger:        slog.With(slog.String("component", componentUserUseCase)),
@@ -47,6 +49,7 @@ func NewUserUseCase(
 		repoUC:        ru,
 		confirmSender: cs,
 		sagaRepo:      sagaRepo,
+		transactor:    transactor,
 	}
 	return uc, func() {}
 }
@@ -97,17 +100,23 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 		Confirmed:      false,
 	}
 
-	if err = uc.subsRepo.Save(ctx, sub); err != nil {
-		log.ErrorContext(ctx, "failed to save pending subscription", slog.Any("error", err))
-		return fmt.Errorf("%s: save pending: %w", op, err)
+	var sagaID int64
+	if err = uc.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if txErr := uc.subsRepo.Save(txCtx, sub); txErr != nil {
+			log.ErrorContext(txCtx, "failed to save pending subscription", slog.Any("error", txErr))
+			return fmt.Errorf("save pending: %w", txErr)
+		}
+		saga, txErr := uc.sagaRepo.Create(txCtx, sub.ID)
+		if txErr != nil {
+			return fmt.Errorf("create saga: %w", txErr)
+		}
+		sagaID = saga.ID
+		return nil
+	}); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	saga, err := uc.sagaRepo.Create(ctx, sub.ID)
-	if err != nil {
-		return fmt.Errorf("%s: create saga: %w", op, err)
-	}
-
-	if err := uc.confirmSender.SendConfirmation(ctx, email, repoName, token, saga.ID, sub.ID); err != nil {
+	if err := uc.confirmSender.SendConfirmation(ctx, email, repoName, token, sagaID, sub.ID); err != nil {
 		log.ErrorContext(ctx, "failed to send confirmation", slog.Any("error", err))
 		return fmt.Errorf("%s: send confirmation: %w", op, err)
 	}

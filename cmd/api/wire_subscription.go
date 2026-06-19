@@ -10,6 +10,7 @@ import (
 	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
 	subGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
 	subUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
+	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
 var SubscriptionRepositorySet = wire.NewSet(
@@ -22,6 +23,7 @@ var SubscriptionRepositorySet = wire.NewSet(
 	wire.Bind(new(subscriptionRepo.UserRepository), new(*subPostgres.UserRepository)),
 	wire.Bind(new(subscriptionRepo.SagaRepository), new(*subPostgres.SagaRepository)),
 	wire.Bind(new(subscriptionRepo.RepositoryUpdater), new(*subPostgres.RepositoryRepository)),
+	wire.Bind(new(subscriptionRepo.Transactor), new(*sharedPostgres.Transactor)),
 )
 
 var SubscriptionUseCaseSet = wire.NewSet(

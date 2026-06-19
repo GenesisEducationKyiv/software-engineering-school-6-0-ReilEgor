@@ -196,7 +196,7 @@ const saveSubscriptionQuery = `
 func (r *SubscriptionRepository) Save(ctx context.Context, sub *subModel.Subscription) error {
 	const op = "SubscriptionRepository.Save"
 
-	err := r.db.QueryRow(
+	err := sharedPostgres.Extract(ctx, r.db).QueryRow(
 		ctx,
 		saveSubscriptionQuery,
 		sub.UserID,

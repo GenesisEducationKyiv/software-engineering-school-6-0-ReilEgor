@@ -31,7 +31,7 @@ func (sr *SagaRepository) Create(ctx context.Context, subscriptionID int64) (*sh
 	const op = "SagaRepository.Create"
 
 	saga := &sharedModel.SubscriptionSaga{}
-	err := sr.db.QueryRow(ctx, createSagaQuery, subscriptionID, sharedModel.SagaStatusStarted).
+	err := sharedPostgres.Extract(ctx, sr.db).QueryRow(ctx, createSagaQuery, subscriptionID, sharedModel.SagaStatusStarted).
 		Scan(&saga.ID, &saga.SubscriptionID, &saga.Status, &saga.CreatedAt, &saga.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
