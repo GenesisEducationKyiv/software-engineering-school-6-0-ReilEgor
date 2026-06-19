@@ -14,3 +14,8 @@ type MessagePublisher interface {
 type MessageConsumer interface {
 	Start(ctx context.Context) error
 }
+
+//go:generate mockery --name SagaResultPublisher --output ../../mocks --case underscore --outpkg mocks
+type SagaResultPublisher interface {
+	Publish(ctx context.Context, event model.ConfirmationResultEvent) error
+}

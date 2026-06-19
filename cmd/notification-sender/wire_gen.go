@@ -30,7 +30,12 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	senderConfig := ProvideSenderConfig(cfg)
 	duration := ProvideSendTimeout(senderConfig)
 	consumer := rabbitmq.NewConsumer(connection, notificationUseCase, duration)
-	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, emailService, duration)
+	sagaResultPublisher, err := rabbitmq.NewSagaResultPublisher(connection)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, emailService, duration, sagaResultPublisher)
 	app := &App{
 		NotificationConsumer: consumer,
 		ConfirmationConsumer: confirmationConsumer,

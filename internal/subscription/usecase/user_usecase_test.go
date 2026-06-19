@@ -3,38 +3,47 @@ package usecase
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
+	subMocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/mocks"
 	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
 
 type userMockFields struct {
-	subsRepo     *mocks2.SubscriptionRepository
+	subsRepo     *subMocks.SubscriptionRepository
 	userRepo     *mocks2.UserRepository
 	repoUC       *mocks2.RepositoryUseCase
 	emailService *mocks2.ConfirmationSender
+	sagaRepo     *subMocks.SagaRepository
 }
 
 func newUserMockFields(t *testing.T) userMockFields {
 	t.Helper()
 	return userMockFields{
-		subsRepo:     mocks2.NewSubscriptionRepository(t),
+		subsRepo:     subMocks.NewSubscriptionRepository(t),
 		userRepo:     mocks2.NewUserRepository(t),
 		repoUC:       mocks2.NewRepositoryUseCase(t),
 		emailService: mocks2.NewConfirmationSender(t),
+		sagaRepo:     subMocks.NewSagaRepository(t),
 	}
 }
 
 func newUserUC(f userMockFields) *UserUseCase {
-	newUseUsecase, _ := NewUserUseCase(context.Background(), f.subsRepo, f.userRepo, f.repoUC, f.emailService)
+	newUseUsecase, _ := NewUserUseCase(
+		context.Background(),
+		f.subsRepo,
+		f.userRepo,
+		f.repoUC,
+		f.emailService,
+		f.sagaRepo,
+	)
 	return newUseUsecase
 }
 
@@ -57,9 +66,11 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
-				f.emailService.On("SendConfirmation", mock.Anything, "user@example.com", "golang/go", mock.AnythingOfType("string")).
+				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
+					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
+				f.emailService.On("SendConfirmation", mock.Anything, "user@example.com", "golang/go", mock.AnythingOfType("string"), int64(1), mock.AnythingOfType("int64")).
 					Return(nil).
-					Maybe()
+					Once()
 			},
 		},
 		{
@@ -81,9 +92,11 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					}).Return(nil).Once()
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
-				f.emailService.On("SendConfirmation", mock.Anything, "new@example.com", "golang/go", mock.AnythingOfType("string")).
+				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
+					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
+				f.emailService.On("SendConfirmation", mock.Anything, "new@example.com", "golang/go", mock.AnythingOfType("string"), int64(1), mock.AnythingOfType("int64")).
 					Return(nil).
-					Maybe()
+					Once()
 			},
 		},
 		{
@@ -429,53 +442,6 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			default:
 				require.NoError(t, err)
 			}
-		})
-	}
-}
-
-func TestUserUseCase_sendConfirmationEmail(t *testing.T) {
-	tests := []struct {
-		name          string
-		mockErr       error
-		expectedCalls int
-	}{
-		{
-			name:          "send fails - error branch entered",
-			mockErr:       errors.New("smtp error"),
-			expectedCalls: 1,
-		},
-		{
-			name:          "send succeeds - no error branch",
-			mockErr:       nil,
-			expectedCalls: 1,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := newUserMockFields(t)
-
-			var callCount atomic.Int32
-
-			f.emailService.On("SendConfirmation",
-				mock.MatchedBy(func(ctx context.Context) bool {
-					deadline, hasDeadline := ctx.Deadline()
-					if !hasDeadline {
-						return false
-					}
-					remaining := time.Until(deadline)
-					return remaining > (sendConfirmationEmailctxTimeout-1)*time.Second &&
-						remaining <= sendConfirmationEmailctxTimeout*time.Second
-				}),
-				"user@example.com", "golang/go", "tok-123",
-			).Run(func(_ mock.Arguments) {
-				callCount.Add(1)
-			}).Return(tt.mockErr).Once()
-
-			uc := newUserUC(f)
-			uc.sendConfirmationEmail("user@example.com", "golang/go", "tok-123")
-			assert.Equal(t, int32(tt.expectedCalls), callCount.Load())
-			f.emailService.AssertExpectations(t)
 		})
 	}
 }

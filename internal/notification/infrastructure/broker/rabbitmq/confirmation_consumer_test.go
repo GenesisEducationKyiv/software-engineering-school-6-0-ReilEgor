@@ -16,10 +16,13 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
-func newTestConfirmationConsumer(t *testing.T) (*ConfirmationConsumer, *notificationmocks.EmailService) {
+func newTestConfirmationConsumer(
+	t *testing.T,
+) (*ConfirmationConsumer, *notificationmocks.EmailService, *notificationmocks.SagaResultPublisher) {
 	t.Helper()
 	emailSvc := notificationmocks.NewEmailService(t)
-	return NewConfirmationConsumer(nil, emailSvc, time.Second), emailSvc
+	sagaPub := notificationmocks.NewSagaResultPublisher(t)
+	return NewConfirmationConsumer(nil, emailSvc, time.Second, sagaPub), emailSvc, sagaPub
 }
 
 func TestConfirmationConsumer_handle(t *testing.T) {
@@ -35,6 +38,7 @@ func TestConfirmationConsumer_handle(t *testing.T) {
 		name       string
 		body       []byte
 		setupEmail func(svc *notificationmocks.EmailService)
+		setupSaga  func(pub *notificationmocks.SagaResultPublisher)
 		setupAck   func(ack *mockAck)
 	}{
 		{
@@ -42,6 +46,11 @@ func TestConfirmationConsumer_handle(t *testing.T) {
 			body: validBody,
 			setupEmail: func(svc *notificationmocks.EmailService) {
 				svc.On("SendConfirmation", mock.Anything, cmd.Email, cmd.RepoName, cmd.Token).Return(nil).Once()
+			},
+			setupSaga: func(pub *notificationmocks.SagaResultPublisher) {
+				pub.On("Publish", mock.Anything, mock.MatchedBy(func(e model.ConfirmationResultEvent) bool {
+					return e.Success == true
+				})).Return(nil).Once()
 			},
 			setupAck: func(ack *mockAck) {
 				ack.On("Ack", uint64(0), false).Return(nil).Once()
@@ -55,6 +64,11 @@ func TestConfirmationConsumer_handle(t *testing.T) {
 					Return(errors.New("smtp error")).
 					Once()
 			},
+			setupSaga: func(pub *notificationmocks.SagaResultPublisher) {
+				pub.On("Publish", mock.Anything, mock.MatchedBy(func(e model.ConfirmationResultEvent) bool {
+					return e.Success == false
+				})).Return(nil).Once()
+			},
 			setupAck: func(ack *mockAck) {
 				ack.On("Nack", uint64(0), false, true).Return(nil).Once()
 			},
@@ -63,6 +77,7 @@ func TestConfirmationConsumer_handle(t *testing.T) {
 			name:       "invalid JSON — nacks without requeue",
 			body:       []byte("not-json"),
 			setupEmail: func(_ *notificationmocks.EmailService) {},
+			setupSaga:  func(_ *notificationmocks.SagaResultPublisher) {},
 			setupAck: func(ack *mockAck) {
 				ack.On("Nack", uint64(0), false, false).Return(nil).Once()
 			},
@@ -71,10 +86,11 @@ func TestConfirmationConsumer_handle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, emailSvc := newTestConfirmationConsumer(t)
+			c, emailSvc, sagaPub := newTestConfirmationConsumer(t)
 			ack := newMockAck(t)
 
 			tt.setupEmail(emailSvc)
+			tt.setupSaga(sagaPub)
 			tt.setupAck(ack)
 
 			d := amqp.Delivery{Acknowledger: ack, Body: tt.body}

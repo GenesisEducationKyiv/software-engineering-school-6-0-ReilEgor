@@ -30,7 +30,7 @@ func NewSubscriptionRepository(db sharedPostgres.PgxInterface) *SubscriptionRepo
 }
 
 const deleteSubscriptionQuery = `
-	DELETE FROM subscriptions 
+	DELETE FROM subscriptions
 	WHERE user_id = $1 AND repository_id = (SELECT id FROM repositories WHERE full_name = $2)
 `
 
@@ -51,6 +51,23 @@ func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repoN
 	log.DebugContext(ctx, "subscription deleted",
 		slog.Int64("user_id", userID),
 		slog.String("repo", repoName),
+		slog.Int64("affected", res.RowsAffected()),
+	)
+	return nil
+}
+
+const deleteSubscriptionByIDQuery = `DELETE FROM subscriptions WHERE id = $1`
+
+func (r *SubscriptionRepository) DeleteByID(ctx context.Context, subscriptionID int64) error {
+	const op = "SubscriptionRepository.DeleteByID"
+
+	res, err := r.db.Exec(ctx, deleteSubscriptionByIDQuery, subscriptionID)
+	if err != nil {
+		return fmt.Errorf("%s: exec: %w", op, err)
+	}
+
+	r.logger.DebugContext(ctx, "subscription deleted by id",
+		slog.Int64("subscription_id", subscriptionID),
 		slog.Int64("affected", res.RowsAffected()),
 	)
 	return nil

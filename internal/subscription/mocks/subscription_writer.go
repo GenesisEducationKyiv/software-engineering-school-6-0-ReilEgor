@@ -32,6 +32,24 @@ func (_m *SubscriptionWriter) Delete(ctx context.Context, userID int64, repoName
 	return r0
 }
 
+// DeleteByID provides a mock function with given fields: ctx, subscriptionID
+func (_m *SubscriptionWriter) DeleteByID(ctx context.Context, subscriptionID int64) error {
+	ret := _m.Called(ctx, subscriptionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteByID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, subscriptionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Save provides a mock function with given fields: ctx, sub
 func (_m *SubscriptionWriter) Save(ctx context.Context, sub *model.Subscription) error {
 	ret := _m.Called(ctx, sub)

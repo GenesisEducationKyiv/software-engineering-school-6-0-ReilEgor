@@ -58,15 +58,18 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	userUseCase, cleanup3 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, publisher)
+	sagaRepository := postgres2.NewSagaRepository(pool)
+	userUseCase, cleanup3 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, publisher, sagaRepository)
 	httpConfig := ProvideHTTPConfig(cfg)
 	appConfig := ProvideAppConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
 	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
 	server := grpc.NewGrpcServer(subscriptionHandler, appConfig)
+	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, subscriptionRepository, sagaRepository)
 	app := &App{
-		HTTPServer: ginServer,
-		GrpcServer: server,
+		HTTPServer:         ginServer,
+		GrpcServer:         server,
+		SagaResultConsumer: sagaResultConsumer,
 	}
 	return app, func() {
 		cleanup3()
@@ -94,6 +97,7 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection
 }
 
 type App struct {
-	HTTPServer *http.GinServer
-	GrpcServer *grpc2.Server
+	HTTPServer         *http.GinServer
+	GrpcServer         *grpc2.Server
+	SagaResultConsumer *rabbitmq.SagaResultConsumer
 }

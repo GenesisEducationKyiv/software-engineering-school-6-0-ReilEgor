@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/wire"
 
+	notifPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
 	notifRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/broker/rabbitmq"
@@ -37,4 +38,6 @@ var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
 	notifRabbitmq.NewConsumer,
 	notifRabbitmq.NewConfirmationConsumer,
+	notifRabbitmq.NewSagaResultPublisher,
+	wire.Bind(new(notifPort.SagaResultPublisher), new(*notifRabbitmq.SagaResultPublisher)),
 )

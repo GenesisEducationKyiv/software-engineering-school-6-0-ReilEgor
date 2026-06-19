@@ -70,6 +70,11 @@ func main() {
 		return startGRPCServer(ctx, app, cfg, myLogger)
 	})
 
+	g.Go(func() error {
+		myLogger.Info("saga result consumer starting")
+		return app.SagaResultConsumer.Start(ctx)
+	})
+
 	if err := g.Wait(); err != nil {
 		myLogger.Error("server stopped", slog.Any("error", err))
 	}

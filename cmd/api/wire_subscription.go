@@ -15,8 +15,11 @@ import (
 var SubscriptionRepositorySet = wire.NewSet(
 	subPostgres.NewSubscriptionRepository,
 	subPostgres.NewUserRepository,
+	subPostgres.NewSagaRepository,
 	wire.Bind(new(subscriptionRepo.SubscriptionRepository), new(*subPostgres.SubscriptionRepository)),
+	wire.Bind(new(subscriptionRepo.SubscriptionWriter), new(*subPostgres.SubscriptionRepository)),
 	wire.Bind(new(subscriptionRepo.UserRepository), new(*subPostgres.UserRepository)),
+	wire.Bind(new(subscriptionRepo.SagaRepository), new(*subPostgres.SagaRepository)),
 )
 
 var SubscriptionUseCaseSet = wire.NewSet(
@@ -27,6 +30,7 @@ var SubscriptionUseCaseSet = wire.NewSet(
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
 	subRabbitmq.NewPublisher,
+	subRabbitmq.NewSagaResultConsumer,
 	wire.Bind(new(subscriptionPort.ConfirmationSender), new(*subRabbitmq.Publisher)),
 )
 

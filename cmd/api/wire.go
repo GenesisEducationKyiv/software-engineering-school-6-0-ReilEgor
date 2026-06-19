@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 
 	subscriptionPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
+	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
@@ -28,8 +29,9 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Conne
 }
 
 type App struct {
-	HTTPServer *http.GinServer
-	GrpcServer *grpc.Server
+	HTTPServer         *http.GinServer
+	GrpcServer         *grpc.Server
+	SagaResultConsumer *subRabbitmq.SagaResultConsumer
 }
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {

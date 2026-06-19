@@ -16,6 +16,7 @@ type SubscriptionReader interface {
 type SubscriptionWriter interface {
 	Save(ctx context.Context, sub *model.Subscription) error
 	Delete(ctx context.Context, userID int64, repoName string) error
+	DeleteByID(ctx context.Context, subscriptionID int64) error
 }
 
 //go:generate mockery --name SubscriptionRepository --output ../../mocks --case underscore --outpkg mocks

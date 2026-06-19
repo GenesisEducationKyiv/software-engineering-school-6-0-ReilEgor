@@ -9,28 +9,32 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 type ConfirmationConsumer struct {
-	conn        *rabbitmq.Connection
-	emailSvc    service.EmailService
-	sendTimeout time.Duration
-	logger      *slog.Logger
+	conn          *rabbitmq.Connection
+	emailSvc      service.EmailService
+	sendTimeout   time.Duration
+	sagaResultPub port.SagaResultPublisher
+	logger        *slog.Logger
 }
 
 func NewConfirmationConsumer(
 	conn *rabbitmq.Connection,
 	emailSvc service.EmailService,
 	sendTimeout time.Duration,
+	sagaResultPub port.SagaResultPublisher,
 ) *ConfirmationConsumer {
 	return &ConfirmationConsumer{
-		conn:        conn,
-		emailSvc:    emailSvc,
-		sendTimeout: sendTimeout,
-		logger:      slog.With(slog.String("component", "ConfirmationConsumer")),
+		conn:          conn,
+		emailSvc:      emailSvc,
+		sendTimeout:   sendTimeout,
+		sagaResultPub: sagaResultPub,
+		logger:        slog.With(slog.String("component", "ConfirmationConsumer")),
 	}
 }
 
@@ -100,10 +104,25 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 			slog.String("to", cmd.Email),
 			slog.Any("error", err),
 		)
+		if pubErr := c.sagaResultPub.Publish(ctx, model.ConfirmationResultEvent{
+			SagaID:         cmd.SagaID,
+			SubscriptionID: cmd.SubscriptionID,
+			Success:        false,
+		}); pubErr != nil {
+			c.logger.Error("rabbitmq: publish saga result failed", slog.Any("error", pubErr))
+		}
 		if nackErr := d.Nack(false, true); nackErr != nil {
 			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
+	}
+
+	if pubErr := c.sagaResultPub.Publish(ctx, model.ConfirmationResultEvent{
+		SagaID:         cmd.SagaID,
+		SubscriptionID: cmd.SubscriptionID,
+		Success:        true,
+	}); pubErr != nil {
+		c.logger.Error("rabbitmq: publish saga result failed", slog.Any("error", pubErr))
 	}
 
 	if ackErr := d.Ack(false); ackErr != nil {
