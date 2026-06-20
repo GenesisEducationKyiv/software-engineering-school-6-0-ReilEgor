@@ -62,6 +62,24 @@ func (_m *SagaRepository) UpdateStatus(ctx context.Context, sagaID int64, status
 	return r0
 }
 
+// UpdateStatusAndStep provides a mock function with given fields: ctx, sagaID, status, step
+func (_m *SagaRepository) UpdateStatusAndStep(ctx context.Context, sagaID int64, status model.SagaStatus, step model.SagaStep) error {
+	ret := _m.Called(ctx, sagaID, status, step)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateStatusAndStep")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, model.SagaStatus, model.SagaStep) error); ok {
+		r0 = rf(ctx, sagaID, status, step)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewSagaRepository creates a new instance of SagaRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewSagaRepository(t interface {

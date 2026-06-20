@@ -11,6 +11,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/outbox"
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
 	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
@@ -51,7 +52,8 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	sagaRepository := postgres2.NewSagaRepository(pool)
 	outboxRepository := postgres2.NewOutboxRepository(pool)
 	transactor := postgres.NewTransactor(pool)
-	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, sagaRepository, outboxRepository, transactor)
+	orchestrator := saga.NewOrchestrator(sagaRepository, subscriptionRepository, outboxRepository, transactor)
+	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, orchestrator, transactor)
 	httpConfig := ProvideHTTPConfig(cfg)
 	appConfig := ProvideAppConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
@@ -64,14 +66,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	subscriptionActivatedPublisher, err := rabbitmq.NewSubscriptionActivatedPublisher(connection)
-	if err != nil {
-		cleanup3()
-		cleanup2()
-		cleanup()
-		return nil, nil, err
-	}
-	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, subscriptionRepository, sagaRepository, subscriptionActivatedPublisher, transactor, outboxRepository)
+	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, orchestrator)
 	postgresRepositoryRepository := postgres2.NewRepositoryRepository(pool)
 	tagUpdatedConsumer := rabbitmq.NewTagUpdatedConsumer(connection, postgresRepositoryRepository)
 	duration := ProvideOutboxInterval()

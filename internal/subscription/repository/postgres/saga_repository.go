@@ -22,9 +22,9 @@ func NewSagaRepository(db sharedPostgres.PgxInterface) *SagaRepository {
 }
 
 const createSagaQuery = `
-		INSERT INTO subscription_sagas (subscription_id, status)
-		VALUES ($1, $2)
-		RETURNING id, subscription_id, status, created_at, updated_at
+		INSERT INTO subscription_sagas (subscription_id, status, current_step)
+		VALUES ($1, $2, $3)
+		RETURNING id, subscription_id, status, current_step, created_at, updated_at
 		`
 
 func (sr *SagaRepository) Create(ctx context.Context, subscriptionID int64) (*sharedModel.SubscriptionSaga, error) {
@@ -32,8 +32,8 @@ func (sr *SagaRepository) Create(ctx context.Context, subscriptionID int64) (*sh
 
 	saga := &sharedModel.SubscriptionSaga{}
 	err := sharedPostgres.Extract(ctx, sr.db).
-		QueryRow(ctx, createSagaQuery, subscriptionID, sharedModel.SagaStatusStarted).
-		Scan(&saga.ID, &saga.SubscriptionID, &saga.Status, &saga.CreatedAt, &saga.UpdatedAt)
+		QueryRow(ctx, createSagaQuery, subscriptionID, sharedModel.SagaStatusStarted, sharedModel.SagaStepSendConfirmation).
+		Scan(&saga.ID, &saga.SubscriptionID, &saga.Status, &saga.CurrentStep, &saga.CreatedAt, &saga.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -43,6 +43,7 @@ func (sr *SagaRepository) Create(ctx context.Context, subscriptionID int64) (*sh
 		"saga created",
 		slog.Int64("saga_id", saga.ID),
 		slog.Int64("subscription_id", subscriptionID),
+		slog.String("step", string(saga.CurrentStep)),
 	)
 	return saga, nil
 }
@@ -66,6 +67,35 @@ func (sr *SagaRepository) UpdateStatus(ctx context.Context, sagaID int64, status
 		"saga status updated",
 		slog.Int64("saga_id", sagaID),
 		slog.String("status", string(status)),
+	)
+	return nil
+}
+
+const updateSagaStatusAndStepQuery = `
+		UPDATE subscription_sagas
+		SET status = $1, current_step = $2, updated_at = NOW()
+		WHERE id = $3
+		`
+
+func (sr *SagaRepository) UpdateStatusAndStep(
+	ctx context.Context,
+	sagaID int64,
+	status sharedModel.SagaStatus,
+	step sharedModel.SagaStep,
+) error {
+	const op = "SagaRepository.UpdateStatusAndStep"
+
+	_, err := sr.db.Exec(ctx, updateSagaStatusAndStepQuery, status, step, sagaID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	sr.logger.DebugContext(
+		ctx,
+		"saga status and step updated",
+		slog.Int64("saga_id", sagaID),
+		slog.String("status", string(status)),
+		slog.String("step", string(step)),
 	)
 	return nil
 }

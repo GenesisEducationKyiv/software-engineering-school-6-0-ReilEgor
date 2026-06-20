@@ -11,6 +11,7 @@ import (
 
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
 	subMocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/mocks"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
@@ -38,13 +39,13 @@ func newUserMockFields(t *testing.T) userMockFields {
 }
 
 func newUserUC(f userMockFields) *UserUseCase {
+	orchestrator := saga.NewOrchestrator(f.sagaRepo, f.subsRepo, f.outboxRepo, f.transactor)
 	newUseUsecase, _ := NewUserUseCase(
 		context.Background(),
 		f.subsRepo,
 		f.userRepo,
 		f.repoUC,
-		f.sagaRepo,
-		f.outboxRepo,
+		orchestrator,
 		f.transactor,
 	)
 	return newUseUsecase

@@ -7,6 +7,7 @@ import (
 	subscriptionUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
 	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	subGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
 	subUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
@@ -29,13 +30,13 @@ var SubscriptionRepositorySet = wire.NewSet(
 )
 
 var SubscriptionUseCaseSet = wire.NewSet(
+	saga.NewOrchestrator,
 	subUsecase.NewUserUseCase,
 	wire.Bind(new(subscriptionUsecase.UserUseCase), new(*subUsecase.UserUseCase)),
 )
 
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
-	subRabbitmq.NewSubscriptionActivatedPublisher,
 	subRabbitmq.NewSagaResultConsumer,
 	subRabbitmq.NewTagUpdatedConsumer,
 )

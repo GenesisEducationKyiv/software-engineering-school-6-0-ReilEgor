@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,8 +13,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
-	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
-	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/metrics"
 )
 
@@ -27,13 +25,12 @@ const (
 )
 
 type UserUseCase struct {
-	logger     *slog.Logger
-	subsRepo   repository.SubscriptionRepository
-	userRepo   repository.UserRepository
-	repoUC     port.RepositoryUseCase
-	sagaRepo   repository.SagaRepository
-	outboxRepo repository.OutboxRepository
-	transactor repository.Transactor
+	logger       *slog.Logger
+	subsRepo     repository.SubscriptionRepository
+	userRepo     repository.UserRepository
+	repoUC       port.RepositoryUseCase
+	orchestrator *saga.Orchestrator
+	transactor   repository.Transactor
 }
 
 func NewUserUseCase(
@@ -41,18 +38,16 @@ func NewUserUseCase(
 	sr repository.SubscriptionRepository,
 	ur repository.UserRepository,
 	ru port.RepositoryUseCase,
-	sagaRepo repository.SagaRepository,
-	outboxRepo repository.OutboxRepository,
+	orchestrator *saga.Orchestrator,
 	transactor repository.Transactor,
 ) (*UserUseCase, func()) {
 	uc := &UserUseCase{
-		logger:     slog.With(slog.String("component", componentUserUseCase)),
-		subsRepo:   sr,
-		userRepo:   ur,
-		repoUC:     ru,
-		sagaRepo:   sagaRepo,
-		outboxRepo: outboxRepo,
-		transactor: transactor,
+		logger:       slog.With(slog.String("component", componentUserUseCase)),
+		subsRepo:     sr,
+		userRepo:     ur,
+		repoUC:       ru,
+		orchestrator: orchestrator,
+		transactor:   transactor,
 	}
 	return uc, func() {}
 }
@@ -108,21 +103,7 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 			log.ErrorContext(txCtx, "failed to save pending subscription", slog.Any("error", txErr))
 			return fmt.Errorf("save pending: %w", txErr)
 		}
-		saga, txErr := uc.sagaRepo.Create(txCtx, sub.ID)
-		if txErr != nil {
-			return fmt.Errorf("create saga: %w", txErr)
-		}
-		payload, txErr := json.Marshal(sharedModel.SendConfirmationCommand{
-			SagaID:         saga.ID,
-			SubscriptionID: sub.ID,
-			Email:          email,
-			RepoName:       repoName,
-			Token:          token,
-		})
-		if txErr != nil {
-			return fmt.Errorf("marshal confirmation: %w", txErr)
-		}
-		return uc.outboxRepo.Insert(txCtx, sharedRabbitmq.QueueConfirmations, payload)
+		return uc.orchestrator.Start(txCtx, sub.ID, email, repoName, token)
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
