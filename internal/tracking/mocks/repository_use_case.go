@@ -44,6 +44,24 @@ func (_m *RepositoryUseCase) CheckForUpdates(ctx context.Context, repo model.Rep
 	return r0, r1
 }
 
+// Delete provides a mock function with given fields: ctx, repoName
+func (_m *RepositoryUseCase) Delete(ctx context.Context, repoName string) error {
+	ret := _m.Called(ctx, repoName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, repoName)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetOrCreate provides a mock function with given fields: ctx, repoName
 func (_m *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (*model.Repository, error) {
 	ret := _m.Called(ctx, repoName)
@@ -72,6 +90,24 @@ func (_m *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (
 	}
 
 	return r0, r1
+}
+
+// UpdateRepo provides a mock function with given fields: ctx, repo
+func (_m *RepositoryUseCase) UpdateRepo(ctx context.Context, repo *model.Repository) error {
+	ret := _m.Called(ctx, repo)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateRepo")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *model.Repository) error); ok {
+		r0 = rf(ctx, repo)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // NewRepositoryUseCase creates a new instance of RepositoryUseCase. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

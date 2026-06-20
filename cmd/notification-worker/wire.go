@@ -5,11 +5,13 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/wire"
 
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 	trackingRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/broker/rabbitmq"
+	trackingOutbox "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/outbox"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
@@ -23,10 +25,15 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Conne
 	return sharedRabbitmq.NewConnection(cfg.URL)
 }
 
+func ProvideOutboxInterval() time.Duration {
+	return 5 * time.Second
+}
+
 type App struct {
-	ReleaseProcessor              trackingDomainUsecase.ReleaseProcessorUseCase
-	SubscriptionActivatedConsumer *trackingRabbitmq.SubscriptionActivatedConsumer
+	ReleaseProcessor                trackingDomainUsecase.ReleaseProcessorUseCase
+	SubscriptionActivatedConsumer   *trackingRabbitmq.SubscriptionActivatedConsumer
 	UnsubscriptionActivatedConsumer *trackingRabbitmq.UnsubscriptionActivatedConsumer
+	OutboxRelay                     *trackingOutbox.Relay
 }
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
@@ -35,6 +42,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		ProvideRedisConfig,
 		ProvideGitHubConfig,
 		ProvideRabbitMQConfig,
+		ProvideOutboxInterval,
 		SharedSet,
 		CacheSet,
 		GitHubSet,
@@ -42,6 +50,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		SubscriptionRepositorySet,
 		BrokerSet,
 		UseCaseSet,
+		trackingOutbox.NewRelay,
 		wire.Struct(new(App), "*"),
 	)
 	return nil, nil, nil

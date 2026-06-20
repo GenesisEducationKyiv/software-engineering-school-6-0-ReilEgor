@@ -61,6 +61,11 @@ func main() {
 		return app.UnsubscriptionActivatedConsumer.Start(ctx)
 	})
 
+	g.Go(func() error {
+		myLogger.Info("outbox relay starting")
+		return app.OutboxRelay.Run(ctx)
+	})
+
 	if cfg.Worker.HealthPort != "" {
 		g.Go(func() error {
 			addr := fmt.Sprintf(":%s", cfg.Worker.HealthPort)

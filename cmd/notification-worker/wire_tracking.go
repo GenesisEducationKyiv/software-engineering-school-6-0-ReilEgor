@@ -12,6 +12,7 @@ import (
 	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
+	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
 func ProvideCachedClient(c *githubClient.GitHubClient, cache sharedcache.Cache) trackingService.GitHubClient {
@@ -25,8 +26,12 @@ var GitHubSet = wire.NewSet(
 
 var TrackingRepositorySet = wire.NewSet(
 	trackingPostgres.NewRepositoryRepository,
+	trackingPostgres.NewOutboxRepository,
+	sharedPostgres.NewTransactor,
 	wire.Bind(new(trackingRepo.RepositoryRepository), new(*trackingPostgres.RepositoryRepository)),
 	wire.Bind(new(trackingPort.RepositoryReader), new(*trackingPostgres.RepositoryRepository)),
+	wire.Bind(new(trackingRepo.OutboxRepository), new(*trackingPostgres.OutboxRepository)),
+	wire.Bind(new(trackingRepo.Transactor), new(*sharedPostgres.Transactor)),
 )
 
 var BrokerSet = wire.NewSet(

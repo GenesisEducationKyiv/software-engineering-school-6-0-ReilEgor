@@ -14,8 +14,6 @@ func (s *APITestSuite) TestSubscribe_WritesRepoExistsToRedis() {
 	s.mockGitHub.On("RepoExists", mock.Anything, "golang/go").Return(true, nil).Once()
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, "golang/go").
 		Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-	s.mockSMTP.On("SendConfirmation", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).Once()
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))
@@ -30,8 +28,6 @@ func (s *APITestSuite) TestSubscribe_WritesLatestReleaseToRedis() {
 	s.mockGitHub.On("RepoExists", mock.Anything, "golang/go").Return(true, nil).Once()
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, "golang/go").
 		Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-	s.mockSMTP.On("SendConfirmation", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).Once()
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))
@@ -49,9 +45,6 @@ func (s *APITestSuite) TestSubscribe_SecondCall_HitsCache() {
 	s.mockGitHub.On("RepoExists", mock.Anything, "golang/go").Return(true, nil).Once()
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, "golang/go").
 		Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-	s.mockSMTP.On("SendConfirmation", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).Twice()
-
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"first@example.com","repository":"golang/go"}`))
 	s.Require().Equal(http.StatusAccepted, w.Code)
@@ -66,9 +59,6 @@ func (s *APITestSuite) TestSubscribe_CacheFlush_UsesDatabaseFallback() {
 		Return(true, nil).Once()
 	s.mockGitHub.On("GetLatestRelease", mock.Anything, "golang/go").
 		Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-
-	s.mockSMTP.On("SendConfirmation", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).Twice()
 
 	w1 := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"first@example.com","repository":"golang/go"}`))

@@ -83,7 +83,7 @@ func (s *APITestSuite) SetupSuite() {
 
 	connStr, err := pgContainer.ConnectionString(s.ctx, "sslmode=disable")
 	s.Require().NoError(err)
-	s.Require().NoError(runMigrations(connStr, "../../migrations"))
+	s.Require().NoError(runMigrations(connStr, "../../migrations/subscription"))
 
 	pool, err := pgxpool.New(s.ctx, connStr)
 	s.Require().NoError(err, "failed to create pgxpool")

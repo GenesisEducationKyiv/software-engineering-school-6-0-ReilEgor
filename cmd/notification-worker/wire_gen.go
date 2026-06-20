@@ -11,12 +11,14 @@ import (
 	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/outbox"
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -59,13 +61,18 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher, tagUpdatedPublisher)
+	outboxRepository := postgres2.NewOutboxRepository(pool)
+	transactor := postgres.NewTransactor(pool)
+	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher, tagUpdatedPublisher, outboxRepository, transactor)
 	subscriptionActivatedConsumer := rabbitmq.NewSubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
 	unsubscriptionActivatedConsumer := rabbitmq.NewUnsubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
+	duration := ProvideOutboxInterval()
+	relay := outbox.NewRelay(outboxRepository, connection, duration)
 	app := &App{
 		ReleaseProcessor:                releaseProcessor,
 		SubscriptionActivatedConsumer:   subscriptionActivatedConsumer,
 		UnsubscriptionActivatedConsumer: unsubscriptionActivatedConsumer,
+		OutboxRelay:                     relay,
 	}
 	return app, func() {
 		cleanup2()
@@ -87,8 +94,13 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection
 	return rabbitmq2.NewConnection(cfg.URL)
 }
 
+func ProvideOutboxInterval() time.Duration {
+	return 5 * time.Second
+}
+
 type App struct {
 	ReleaseProcessor                usecase2.ReleaseProcessorUseCase
 	SubscriptionActivatedConsumer   *rabbitmq.SubscriptionActivatedConsumer
 	UnsubscriptionActivatedConsumer *rabbitmq.UnsubscriptionActivatedConsumer
+	OutboxRelay                     *outbox.Relay
 }
