@@ -1,0 +1,87 @@
+@startuml C4_Component_API
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title RepoNotifier — API Service Components (C4 Level 3)
+
+Person(user, "User", "REST or gRPC client")
+
+ContainerDb(subscription_db, "Subscription DB", "PostgreSQL", "")
+ContainerDb(redis, "Redis Cache", "", "")
+ContainerQueue(rabbitmq, "RabbitMQ", "", "")
+System_Ext(github, "GitHub API", "")
+
+Container_Boundary(api, "API Service") {
+
+    ' ── Transport ───────────────────────────────────────────
+    Component(http_handler, "HTTP Handler", "Gin", "REST endpoints:\nPOST /api/v1/subscribe\nGET  /api/v1/confirm/:token\nGET  /api/v1/unsubscribe/:token\nGET  /api/v1/subscriptions")
+
+    Component(grpc_handler, "gRPC Handler", "protobuf / gRPC", "Subscribe, Unsubscribe,\nListSubscriptions RPCs")
+
+    Component(middleware, "Middleware", "Gin middleware", "API-key auth, rate limiting\n(limiter), Prometheus instrumentation")
+
+    ' ── Use Cases ───────────────────────────────────────────
+    Component(user_usecase, "UserUseCase", "Go", "Subscribe — starts saga, writes outbox\nConfirm — validates token, finalises subscription\nUnsubscribeByToken\nListByEmail")
+
+    Component(repo_usecase, "RepositoryUseCase", "Go", "GetOrCreate — validates repo via\nGitHub API, creates tracking entry\nin Tracker DB")
+
+    ' ── Repositories ────────────────────────────────────────
+    Component(sub_repo, "SubscriptionRepository", "PGX", "CRUD for users and subscriptions\nin Subscription DB")
+
+    Component(saga_repo, "SagaRepository", "PGX", "Read / write subscription saga state\n(pending → confirmed / failed)")
+
+    Component(outbox_repo, "OutboxRepository", "PGX", "Insert events into subscription\noutbox_messages table")
+
+    Component(tracking_repo, "TrackingRepository", "PGX", "GetOrCreate repository row\nin Subscription DB repositories table")
+
+    ' ── Infrastructure ──────────────────────────────────────
+    Component(outbox_relay, "Outbox Relay", "Go goroutine", "Polls outbox_messages, publishes\npending rows to RabbitMQ, marks sent")
+
+    Component(broker_producer, "Broker Producer", "AMQP client", "Publishes to queues:\nsubscription.activated\nunsubscription.activated")
+
+    Component(saga_consumer, "ConfirmationResultConsumer", "AMQP consumer", "Consumes saga.confirmation.results\nfrom Sender; advances saga state")
+
+    Component(github_client, "GitHub Client", "HTTP", "GET /repos/{owner}/{repo}\nto validate repository exists")
+
+    Component(cache_client, "Cache Client", "Redis client", "Cache GitHub repo validation\nresults (TTL-based)")
+}
+
+' User → Transport
+Rel(user, http_handler, "REST calls", "HTTPS")
+Rel(user, grpc_handler, "RPC calls", "gRPC / HTTP2")
+Rel(http_handler, middleware, "passes through")
+
+' Transport → Use Cases
+Rel(http_handler, user_usecase, "Subscribe / Confirm /\nUnsubscribe / List")
+Rel(http_handler, repo_usecase, "GetOrCreate")
+Rel(grpc_handler, user_usecase, "Subscribe / Unsubscribe / List")
+
+' Use Cases → Repositories
+Rel(user_usecase, sub_repo, "CRUD users & subscriptions")
+Rel(user_usecase, saga_repo, "Read/write saga state")
+Rel(user_usecase, outbox_repo, "Insert confirmation event")
+Rel(repo_usecase, tracking_repo, "GetOrCreate in Subscription DB")
+Rel(repo_usecase, github_client, "Validate repository")
+Rel(repo_usecase, cache_client, "Cache validation result")
+
+' Outbox relay
+Rel(outbox_relay, outbox_repo, "Poll pending messages")
+Rel(outbox_relay, broker_producer, "Forward to broker")
+
+' Saga consumer
+Rel(saga_consumer, rabbitmq, "Consume saga.confirmation.results", "AMQP")
+Rel(saga_consumer, saga_repo, "Advance saga to confirmed/failed")
+
+' Infrastructure → External
+Rel(broker_producer, rabbitmq, "Publish events", "AMQP")
+Rel(github_client, github, "GET /repos/{owner}/{repo}", "HTTPS")
+Rel(cache_client, redis, "GET / SET", "Redis protocol")
+
+' Repositories → DBs
+Rel(sub_repo, subscription_db, "SQL queries", "PGX / TCP")
+Rel(saga_repo, subscription_db, "SQL queries", "PGX / TCP")
+Rel(outbox_repo, subscription_db, "SQL queries", "PGX / TCP")
+Rel(tracking_repo, subscription_db, "SQL queries", "PGX / TCP")
+
+@enduml

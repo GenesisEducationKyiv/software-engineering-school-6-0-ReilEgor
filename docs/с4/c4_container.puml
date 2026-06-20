@@ -1,0 +1,50 @@
+@startuml C4_Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title RepoNotifier — Container Diagram (C4 Level 2)
+
+Person(user, "User", "Developer or subscriber who wants\nto track GitHub repository releases")
+
+System_Boundary(reponotifier, "RepoNotifier") {
+
+    Container(api, "API Service", "Go / Gin + gRPC", "Handles subscription management\nvia REST (8080) and gRPC (9091).\nRuns outbox relay for guaranteed delivery.")
+
+    Container(worker, "Notification Worker", "Go", "Polls GitHub API on a schedule.\nDetects new releases and publishes\nnotification commands via outbox relay.\nPort 8081.")
+
+    Container(sender, "Notification Sender", "Go", "Consumes notification and confirmation\ncommands from RabbitMQ and sends\nemails via SMTP. Port 8082.")
+
+    ContainerDb(subscription_db, "Subscription DB", "PostgreSQL", "Stores users, subscriptions,\nsubscription sagas, outbox messages.")
+
+    ContainerDb(tracker_db, "Tracker DB", "PostgreSQL", "Stores tracked repositories with\nlast_seen_tag, denormalized subscriptions\n(kept in sync via RabbitMQ), outbox messages.")
+
+    ContainerDb(redis, "Cache", "Redis", "Caches GitHub API responses\nto deduplicate release checks.")
+
+    ContainerQueue(rabbitmq, "Message Broker", "RabbitMQ", "Async messaging between services.\nQueues: notifications, confirmations,\nsubscription.activated, unsubscription.activated,\nsaga.confirmation.results, repository.tag_updated.")
+}
+
+System_Ext(github, "GitHub API", "Provides repository metadata\nand latest release information.")
+
+System_Ext(smtp, "SMTP Server", "Email delivery.\n(Gmail / Mailtrap / SendGrid)")
+
+' --- User interactions ---
+Rel(user, api, "Subscribe, confirm, unsubscribe, list", "HTTPS REST / gRPC")
+
+' --- API Service ---
+Rel(api, subscription_db, "Read/write users, subscriptions,\noutbox, saga state, repositories", "PGX / TCP")
+Rel(api, redis, "Cache repository validation results", "Redis protocol")
+Rel(api, github, "Validate repository exists", "HTTPS")
+Rel(api, rabbitmq, "Publish events via outbox relay;\nconsume saga result events", "AMQP")
+
+' --- Notification Worker ---
+Rel(worker, tracker_db, "Read repos & denormalized subscriptions,\nupdate last_seen_tag, write outbox", "PGX / TCP")
+Rel(worker, redis, "Cache release data to deduplicate", "Redis protocol")
+Rel(worker, github, "Poll latest release per repository", "HTTPS")
+Rel(worker, rabbitmq, "Consume subscription events;\npublish notifications via outbox relay", "AMQP")
+
+' --- Notification Sender ---
+Rel(sender, rabbitmq, "Consume notifications & confirmations;\npublish saga result events", "AMQP")
+Rel(sender, smtp, "Send emails", "SMTP / TLS")
+
+@enduml
