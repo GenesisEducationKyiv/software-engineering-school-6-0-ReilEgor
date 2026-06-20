@@ -10,5 +10,10 @@ import (
 type SagaRepository interface {
 	Create(ctx context.Context, subscriptionID int64) (*sharedModel.SubscriptionSaga, error)
 	UpdateStatus(ctx context.Context, sagaID int64, status sharedModel.SagaStatus) error
-	UpdateStatusAndStep(ctx context.Context, sagaID int64, status sharedModel.SagaStatus, step sharedModel.SagaStep) error
+	UpdateStatusAndStep(
+		ctx context.Context,
+		sagaID int64,
+		status sharedModel.SagaStatus,
+		step sharedModel.SagaStep,
+	) error
 }

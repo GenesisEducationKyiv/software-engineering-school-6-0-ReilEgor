@@ -26,6 +26,7 @@ import (
 	redisClient "github.com/redis/go-redis/v9"
 
 	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/handlers"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
 	servicesRealizationGitHub "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
@@ -155,13 +156,13 @@ func (s *APITestSuite) buildRouter() {
 	sagaRepo := subPostgres.NewSagaRepository(s.dbPool)
 	outboxRepo := subPostgres.NewOutboxRepository(s.dbPool)
 	transactor := sharedPostgres.NewTransactor(s.dbPool)
+	orchestrator := saga.NewOrchestrator(sagaRepo, subsRepo, outboxRepo, transactor)
 	userUseCase, _ := usecase.NewUserUseCase(
 		context.Background(),
 		subsRepo,
 		userRepo,
 		repoUseCase,
-		sagaRepo,
-		outboxRepo,
+		orchestrator,
 		transactor,
 	)
 

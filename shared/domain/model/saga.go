@@ -13,7 +13,7 @@ const (
 type SagaStep string
 
 const (
-	SagaStepSendConfirmation    SagaStep = "SEND_CONFIRMATION"
+	SagaStepSendConfirmation     SagaStep = "SEND_CONFIRMATION"
 	SagaStepActivateSubscription SagaStep = "ACTIVATE_SUBSCRIPTION"
 )
 
