@@ -10,7 +10,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	sharedRabbit "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
@@ -19,24 +19,30 @@ type subscriptionActivatedPublisher interface {
 }
 
 type SagaResultConsumer struct {
-	conn         *rabbitmq.Connection
+	conn         *sharedRabbit.Connection
 	subsRepo     repository.SubscriptionWriter
 	sagaRepo     repository.SagaRepository
 	activatedPub subscriptionActivatedPublisher
+	transactor   repository.Transactor
+	outboxRepo   repository.OutboxRepository
 	logger       *slog.Logger
 }
 
 func NewSagaResultConsumer(
-	conn *rabbitmq.Connection,
+	conn *sharedRabbit.Connection,
 	subsRepo repository.SubscriptionWriter,
 	sagaRepo repository.SagaRepository,
 	activatedPub *SubscriptionActivatedPublisher,
+	transactor repository.Transactor,
+	outboxRepo repository.OutboxRepository,
 ) *SagaResultConsumer {
 	return &SagaResultConsumer{
 		conn:         conn,
 		subsRepo:     subsRepo,
 		sagaRepo:     sagaRepo,
 		activatedPub: activatedPub,
+		transactor:   transactor,
+		outboxRepo:   outboxRepo,
 		logger:       slog.With(slog.String("component", "SagaResultConsumer")),
 	}
 }
@@ -66,12 +72,12 @@ func (c *SagaResultConsumer) consume(ctx context.Context) error {
 		}
 	}()
 
-	_, err = ch.QueueDeclare(rabbitmq.QueueSagaConfirmationResults, true, false, false, false, nil)
+	_, err = ch.QueueDeclare(sharedRabbit.QueueSagaConfirmationResults, true, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("declare queue: %w", err)
 	}
 
-	msgs, err := ch.Consume(rabbitmq.QueueSagaConfirmationResults, "", false, false, false, false, nil)
+	msgs, err := ch.Consume(sharedRabbit.QueueSagaConfirmationResults, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("consume: %w", err)
 	}
@@ -109,20 +115,25 @@ func (c *SagaResultConsumer) handleSuccess(
 	d amqp.Delivery,
 	event sharedModel.ConfirmationResultEvent,
 ) {
-	if err := c.sagaRepo.UpdateStatus(ctx, event.SagaID, sharedModel.SagaStatusCompleted); err != nil {
-		c.logger.Error("saga: update status to COMPLETED failed", slog.Any("error", err))
+	err := c.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if txErr := c.sagaRepo.UpdateStatus(txCtx, event.SagaID, sharedModel.SagaStatusCompleted); txErr != nil {
+			return fmt.Errorf("updateStatus: %w", txErr)
+		}
+		payload, txErr := json.Marshal(sharedModel.SubscriptionActivatedEvent{
+			FullName: event.RepoName,
+			Email:    event.Email,
+			Token:    event.Token,
+		})
+		if txErr != nil {
+			return fmt.Errorf("marshal: %w", txErr)
+		}
+		return c.outboxRepo.Insert(txCtx, sharedRabbit.QueueSubscriptionActivated, payload)
+	})
+	if err != nil {
+		c.logger.Error("saga: handleSuccess failed", slog.Any("error", err))
 		c.nack(d, true)
 		return
 	}
-
-	if err := c.activatedPub.Publish(ctx, sharedModel.SubscriptionActivatedEvent{
-		FullName: event.RepoName,
-		Email:    event.Email,
-		Token:    event.Token,
-	}); err != nil {
-		c.logger.Warn("saga: publish subscription.activated failed", slog.Any("error", err))
-	}
-
 	c.ack(d)
 }
 

@@ -71,7 +71,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, subscriptionRepository, sagaRepository, subscriptionActivatedPublisher)
+	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, subscriptionRepository, sagaRepository, subscriptionActivatedPublisher, transactor, outboxRepository)
 	postgresRepositoryRepository := postgres2.NewRepositoryRepository(pool)
 	tagUpdatedConsumer := rabbitmq.NewTagUpdatedConsumer(connection, postgresRepositoryRepository)
 	duration := ProvideOutboxInterval()
