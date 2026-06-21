@@ -91,6 +91,11 @@ func (p *rabbitPublisher) Publish(ctx context.Context, queue string, body []byte
 		}
 	}()
 
+	if err := ch.Confirm(false); err != nil {
+		return fmt.Errorf("%s: enable confirms: %w", op, err)
+	}
+	confirms := ch.NotifyPublish(make(chan amqp.Confirmation, 1))
+
 	if err := ch.PublishWithContext(ctx, "", queue, false, false, amqp.Publishing{
 		ContentType:  "application/json",
 		DeliveryMode: amqp.Persistent,
@@ -98,5 +103,14 @@ func (p *rabbitPublisher) Publish(ctx context.Context, queue string, body []byte
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	return nil
+
+	select {
+	case confirm := <-confirms:
+		if !confirm.Ack {
+			return fmt.Errorf("%s: broker nacked message for queue %q", op, queue)
+		}
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("%s: %w", op, ctx.Err())
+	}
 }
