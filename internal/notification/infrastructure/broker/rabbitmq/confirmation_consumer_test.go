@@ -12,8 +12,8 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	notificationmocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/mocks"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
+	notificationmocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/mocks"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 

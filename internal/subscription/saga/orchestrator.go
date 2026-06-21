@@ -120,13 +120,16 @@ func (o *Orchestrator) compensate(
 		slog.Int64("saga_id", reply.SagaID),
 		slog.Int64("subscription_id", reply.SubscriptionID),
 	)
-
-	if err := o.subsRepo.DeleteByID(ctx, reply.SubscriptionID); err != nil {
-		return fmt.Errorf("saga orchestrator: compensate delete subscription: %w", err)
-	}
-
-	if err := o.sagaRepo.UpdateStatus(ctx, reply.SagaID, sharedModel.SagaStatusCompensated); err != nil {
-		o.logger.ErrorContext(ctx, "saga: update status to COMPENSATED failed", slog.Any("error", err))
+	if err := o.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if err := o.subsRepo.DeleteByID(txCtx, reply.SubscriptionID); err != nil {
+			return fmt.Errorf("saga orchestrator: compensate delete subscription: %w", err)
+		}
+		if err := o.sagaRepo.UpdateStatus(txCtx, reply.SagaID, sharedModel.SagaStatusCompensated); err != nil {
+			return fmt.Errorf("saga orchestrator: compensate update saga status: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("saga orchestrator: compensate: %w", err)
 	}
 
 	o.logger.InfoContext(ctx, "saga compensated",
