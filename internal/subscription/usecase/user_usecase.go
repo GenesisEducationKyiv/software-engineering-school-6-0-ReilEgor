@@ -234,7 +234,7 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (er
 	sub, err := uc.subsRepo.GetByToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidToken) {
-			log.WarnContext(ctx, "invalid unsubscribe token", slog.String("token", token))
+			log.WarnContext(ctx, "invalid unsubscribe token")
 		}
 		return fmt.Errorf("%s: get by token: %w", op, err)
 	}
