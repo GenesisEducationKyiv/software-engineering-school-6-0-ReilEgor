@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -104,6 +105,14 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 			slog.String("to", cmd.Email),
 			slog.Any("error", err),
 		)
+
+		if errors.Is(err, service.ErrSMTPUnavailable) {
+			if nackErr := d.Nack(false, true); nackErr != nil {
+				c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+			}
+			return
+		}
+
 		if pubErr := c.sagaResultPub.Publish(ctx, model.ConfirmationResultEvent{
 			SagaID:         cmd.SagaID,
 			SubscriptionID: cmd.SubscriptionID,
@@ -114,7 +123,7 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 		}); pubErr != nil {
 			c.logger.Error("rabbitmq: publish saga result failed", slog.Any("error", pubErr))
 		}
-		if nackErr := d.Nack(false, true); nackErr != nil {
+		if nackErr := d.Nack(false, false); nackErr != nil {
 			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
@@ -128,7 +137,11 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 		RepoName:       cmd.RepoName,
 		Token:          cmd.Token,
 	}); pubErr != nil {
-		c.logger.Error("rabbitmq: publish saga result failed", slog.Any("error", pubErr))
+		c.logger.Error("rabbitmq: publish saga result failed, will retry", slog.Any("error", pubErr))
+		if nackErr := d.Nack(false, true); nackErr != nil {
+			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+		}
+		return
 	}
 
 	if ackErr := d.Ack(false); ackErr != nil {
