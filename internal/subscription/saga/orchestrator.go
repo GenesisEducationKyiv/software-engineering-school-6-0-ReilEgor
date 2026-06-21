@@ -80,7 +80,18 @@ func (o *Orchestrator) stepActivateSubscription(
 	ctx context.Context,
 	reply sharedModel.ConfirmationResultEvent,
 ) error {
-	err := o.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+	current, err := o.sagaRepo.GetByID(ctx, reply.SagaID)
+	if err != nil {
+		return fmt.Errorf("saga orchestrator: get saga: %w", err)
+	}
+	if current.Status == sharedModel.SagaStatusCompleted {
+		o.logger.InfoContext(ctx, "saga already completed, skipping duplicate",
+			slog.Int64("saga_id", reply.SagaID),
+		)
+		return nil
+	}
+
+	err = o.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
 		if txErr := o.sagaRepo.UpdateStatusAndStep(
 			txCtx,
 			reply.SagaID,

@@ -48,6 +48,25 @@ func (sr *SagaRepository) Create(ctx context.Context, subscriptionID int64) (*sh
 	return saga, nil
 }
 
+const getSagaByIDQuery = `
+		SELECT id, subscription_id, status, current_step, created_at, updated_at
+		FROM subscription_sagas
+		WHERE id = $1
+		`
+
+func (sr *SagaRepository) GetByID(ctx context.Context, sagaID int64) (*sharedModel.SubscriptionSaga, error) {
+	const op = "SagaRepository.GetByID"
+
+	saga := &sharedModel.SubscriptionSaga{}
+	err := sharedPostgres.Extract(ctx, sr.db).
+		QueryRow(ctx, getSagaByIDQuery, sagaID).
+		Scan(&saga.ID, &saga.SubscriptionID, &saga.Status, &saga.CurrentStep, &saga.CreatedAt, &saga.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return saga, nil
+}
+
 const updateSagaStatusQuery = `
 		UPDATE subscription_sagas
 		SET status = $1, updated_at = NOW()
