@@ -22,7 +22,7 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Conne
 }
 
 type App struct {
-	NotificationConsumer *notifRabbitmq.Consumer
+	NotificationConsumer *notifRabbitmq.NotificationConsumer
 	ConfirmationConsumer *notifRabbitmq.ConfirmationConsumer
 }
 

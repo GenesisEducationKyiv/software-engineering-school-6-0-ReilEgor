@@ -36,7 +36,7 @@ var NotificationSet = wire.NewSet(
 
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
-	notifRabbitmq.NewConsumer,
+	notifRabbitmq.NewNotificationConsumer,
 	notifRabbitmq.NewConfirmationConsumer,
 	notifRabbitmq.NewSagaResultPublisher,
 	wire.Bind(new(notifPort.SagaResultPublisher), new(*notifRabbitmq.SagaResultPublisher)),

@@ -10,31 +10,31 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
-	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
-type Consumer struct {
-	conn           *rabbitmq2.Connection
+type NotificationConsumer struct {
+	conn           *rabbitmq.Connection
 	notificationUC usecase.NotificationUseCase
 	sendTimeout    time.Duration
 	logger         *slog.Logger
 }
 
-func NewConsumer(
-	conn *rabbitmq2.Connection,
+func NewNotificationConsumer(
+	conn *rabbitmq.Connection,
 	notificationUC usecase.NotificationUseCase,
 	sendTimeout time.Duration,
-) *Consumer {
-	return &Consumer{
+) *NotificationConsumer {
+	return &NotificationConsumer{
 		conn:           conn,
 		notificationUC: notificationUC,
 		sendTimeout:    sendTimeout,
-		logger:         slog.With(slog.String("component", "RabbitMQConsumer")),
+		logger:         slog.With(slog.String("component", "RabbitMQNotificationConsumer")),
 	}
 }
 
-func (c *Consumer) Start(ctx context.Context) error {
+func (c *NotificationConsumer) Start(ctx context.Context) error {
 	for {
 		if err := c.consume(ctx); err != nil {
 			c.logger.Error("rabbitmq: consumer error, restarting", slog.Any("error", err))
@@ -48,7 +48,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 	}
 }
 
-func (c *Consumer) consume(ctx context.Context) error {
+func (c *NotificationConsumer) consume(ctx context.Context) error {
 	ch, err := c.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("open channel: %w", err)
@@ -59,12 +59,12 @@ func (c *Consumer) consume(ctx context.Context) error {
 		}
 	}()
 
-	_, err = ch.QueueDeclare(rabbitmq2.QueueNotifications, true, false, false, false, nil)
+	_, err = ch.QueueDeclare(rabbitmq.QueueNotifications, true, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("declare queue: %w", err)
 	}
 
-	msgs, err := ch.Consume(rabbitmq2.QueueNotifications, "", false, false, false, false, nil)
+	msgs, err := ch.Consume(rabbitmq.QueueNotifications, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("consume: %w", err)
 	}
@@ -82,7 +82,7 @@ func (c *Consumer) consume(ctx context.Context) error {
 	}
 }
 
-func (c *Consumer) handle(ctx context.Context, d amqp.Delivery) {
+func (c *NotificationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 	var cmd model.SendNotificationCommand
 	if err := json.Unmarshal(d.Body, &cmd); err != nil {
 		c.logger.Error("rabbitmq: unmarshal message", slog.Any("error", err))
