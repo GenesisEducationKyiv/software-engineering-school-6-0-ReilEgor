@@ -35,5 +35,6 @@ type TrackerSubscriptionWriter interface {
 //go:generate mockery --name TrackerSubscriptionDeleter --output ../../mocks --case underscore --outpkg mocks
 type TrackerSubscriptionDeleter interface {
 	DeleteByEmailAndRepo(ctx context.Context, email, repoName string) error
+	DeleteByUserIDAndRepo(ctx context.Context, userID int64, repoName string) error
 	HasSubscriptions(ctx context.Context, repoName string) (bool, error)
 }

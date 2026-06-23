@@ -47,6 +47,7 @@ func newUserUC(f userMockFields) *UserUseCase {
 		f.repoUC,
 		orchestrator,
 		f.transactor,
+		f.outboxRepo,
 	)
 	return newUseUsecase
 }
@@ -237,7 +238,10 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			setup: func(f userMockFields) {
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Delete", mock.Anything, int64(10), "golang/go").
+					Return(nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
 		},
@@ -265,10 +269,12 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			email:    "user@example.com",
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
+				deleteErr := errors.New("delete error")
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				setupTransactorFail(f, deleteErr)
 				f.subsRepo.On("Delete", mock.Anything, int64(10), "golang/go").
-					Return(errors.New("delete error")).Once()
+					Return(deleteErr).Once()
 			},
 			expectErr: true,
 		},
@@ -445,9 +451,12 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			token: "valid-token",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
-					Return(&subModel.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
+					Return(&subModel.Subscription{UserID: 5, Email: "user@example.com", RepositoryName: "golang/go", Token: "valid-token"}, nil).
 					Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Delete", mock.Anything, int64(5), "golang/go").
+					Return(nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
 		},
@@ -470,11 +479,13 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			name:  "error - Delete fails",
 			token: "valid-token",
 			setup: func(f userMockFields) {
+				deleteErr := errors.New("delete error")
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
-					Return(&subModel.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
+					Return(&subModel.Subscription{UserID: 5, Email: "user@example.com", RepositoryName: "golang/go", Token: "valid-token"}, nil).
 					Once()
+				setupTransactorFail(f, deleteErr)
 				f.subsRepo.On("Delete", mock.Anything, int64(5), "golang/go").
-					Return(errors.New("delete error")).Once()
+					Return(deleteErr).Once()
 			},
 			expectErr: true,
 		},

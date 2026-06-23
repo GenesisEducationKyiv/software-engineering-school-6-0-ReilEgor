@@ -74,9 +74,10 @@ func (r *SubscriptionRepository) DeleteByID(ctx context.Context, subscriptionID 
 }
 
 const getByTokenQuery = `
-	SELECT s.id, s.user_id, s.repository_id, r.full_name, s.token, s.is_confirmed, s.created_at
+	SELECT s.id, s.user_id, u.email, s.repository_id, r.full_name, s.token, s.is_confirmed, s.created_at
 	FROM subscriptions s
 	JOIN repositories r ON s.repository_id = r.id
+	JOIN users u ON s.user_id = u.id
 	WHERE s.token = $1
 `
 
@@ -87,6 +88,7 @@ func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (
 	err := r.db.QueryRow(ctx, getByTokenQuery, token).Scan(
 		&sub.ID,
 		&sub.UserID,
+		&sub.Email,
 		&sub.RepositoryID,
 		&sub.RepositoryName,
 		&sub.Token,

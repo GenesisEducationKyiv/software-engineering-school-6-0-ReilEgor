@@ -53,7 +53,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	outboxRepository := postgres2.NewOutboxRepository(pool)
 	transactor := postgres.NewTransactor(pool)
 	orchestrator := saga.NewOrchestrator(sagaRepository, subscriptionRepository, outboxRepository, transactor)
-	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, orchestrator, transactor)
+	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, orchestrator, transactor, outboxRepository)
 	httpConfig := ProvideHTTPConfig(cfg)
 	appConfig := ProvideAppConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)

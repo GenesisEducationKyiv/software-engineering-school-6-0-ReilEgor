@@ -115,3 +115,24 @@ func (r *SubscriptionRepository) Upsert(ctx context.Context, repoID int64, email
 	)
 	return nil
 }
+
+const deleteSubscriptionByUserIDAndRepo = `
+	DELETE FROM subscriptions
+	WHERE user_id = $1 AND repository_id = (SELECT id FROM repositories WHERE full_name = $2)
+`
+
+func (r *SubscriptionRepository) DeleteByUserIDAndRepo(ctx context.Context, userID int64, repoName string) error {
+	const op = "TrackerSubscriptionRepository.DeleteByUserIDAndRepo"
+
+	_, err := r.db.Exec(ctx, deleteSubscriptionByUserIDAndRepo, userID, repoName)
+	if err != nil {
+		r.logger.ErrorContext(ctx, "delete subscription failed",
+			slog.String("op", op),
+			slog.Int64("userID", userID),
+			slog.String("repo", repoName),
+			slog.Any("error", err),
+		)
+		return fmt.Errorf("%s: exec: %w", op, err)
+	}
+	return nil
+}

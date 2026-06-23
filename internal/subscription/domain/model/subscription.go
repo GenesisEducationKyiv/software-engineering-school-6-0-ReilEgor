@@ -10,6 +10,7 @@ var ErrInvalidToken = errors.New("invalid or expired token")
 type Subscription struct {
 	ID             int64
 	UserID         int64
+	Email          string
 	LastSeenTag    string
 	CreatedAt      time.Time
 	RepositoryID   int64

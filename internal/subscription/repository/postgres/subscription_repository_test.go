@@ -43,8 +43,8 @@ func TestSubscriptionRepository_GetByToken(t *testing.T) {
 			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
 				mock.ExpectQuery("^SELECT (.+) FROM subscriptions s").
 					WithArgs(token).
-					WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "repository_id", "full_name", "token", "is_confirmed", "created_at"}).
-						AddRow(int64(1), int64(10), int64(100), "golang/go", token, true, time.Now()))
+					WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "email", "repository_id", "full_name", "token", "is_confirmed", "created_at"}).
+						AddRow(int64(1), int64(10), "user@example.com", int64(100), "golang/go", token, true, time.Now()))
 			},
 			expectError: false,
 			checkResult: func(t *testing.T, sub *subModel.Subscription) {

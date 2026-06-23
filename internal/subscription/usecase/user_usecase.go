@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +15,8 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/metrics"
 )
 
@@ -31,6 +34,7 @@ type UserUseCase struct {
 	repoUC       port.RepositoryUseCase
 	orchestrator *saga.Orchestrator
 	transactor   repository.Transactor
+	outBox       repository.OutboxRepository
 }
 
 func NewUserUseCase(
@@ -40,6 +44,7 @@ func NewUserUseCase(
 	ru port.RepositoryUseCase,
 	orchestrator *saga.Orchestrator,
 	transactor repository.Transactor,
+	outBox repository.OutboxRepository,
 ) (*UserUseCase, func()) {
 	uc := &UserUseCase{
 		logger:       slog.With(slog.String("component", componentUserUseCase)),
@@ -48,6 +53,7 @@ func NewUserUseCase(
 		repoUC:       ru,
 		orchestrator: orchestrator,
 		transactor:   transactor,
+		outBox:       outBox,
 	}
 	return uc, func() {}
 }
@@ -137,11 +143,23 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 		return fmt.Errorf("%s: %s: %w", op, errMsgGetUser, err)
 	}
 
-	if err = uc.subsRepo.Delete(ctx, user.ID, repoName); err != nil {
-		log.ErrorContext(ctx, errMsgDeleteSub, slog.String("error", err.Error()))
-		return fmt.Errorf("%s: %s: %w", op, errMsgDeleteSub, err)
-	}
+	if err = uc.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if txErr := uc.subsRepo.Delete(txCtx, user.ID, repoName); txErr != nil {
+			log.ErrorContext(txCtx, "failed to delete subscription", slog.Any("error", txErr))
+			return fmt.Errorf("delete pending: %w", txErr)
+		}
+		payload, err := json.Marshal(sharedModel.UnsubscriptionActivatedEvent{
+			Email:    email,
+			RepoName: repoName,
+		})
+		if err != nil {
+			return fmt.Errorf("marshal confirmation command: %w", err)
+		}
 
+		return uc.outBox.Insert(txCtx, rabbitmq.QueueUnsubscriptionActivated, payload)
+	}); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
 	log.InfoContext(ctx, "unsubscribed successfully")
 	return nil
 }
@@ -239,8 +257,22 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (er
 		return fmt.Errorf("%s: get by token: %w", op, err)
 	}
 
-	if err := uc.subsRepo.Delete(ctx, sub.UserID, sub.RepositoryName); err != nil {
-		return fmt.Errorf("%s: delete: %w", op, err)
+	if err = uc.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if txErr := uc.subsRepo.Delete(txCtx, sub.UserID, sub.RepositoryName); txErr != nil {
+			log.ErrorContext(txCtx, "failed to delete subscription", slog.Any("error", txErr))
+			return fmt.Errorf("delete pending: %w", txErr)
+		}
+		payload, err := json.Marshal(sharedModel.UnsubscriptionActivatedEvent{
+			Email:    sub.Email,
+			RepoName: sub.RepositoryName,
+		})
+		if err != nil {
+			return fmt.Errorf("marshal confirmation command: %w", err)
+		}
+
+		return uc.outBox.Insert(txCtx, rabbitmq.QueueUnsubscriptionActivated, payload)
+	}); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	log.InfoContext(ctx, "unsubscribed by token successfully")
