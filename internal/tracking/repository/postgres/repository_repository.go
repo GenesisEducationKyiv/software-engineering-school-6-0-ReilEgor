@@ -147,7 +147,7 @@ func (r *RepositoryRepository) Update(ctx context.Context, repo *model.Repositor
 	const op = "RepositoryRepository.Update"
 	log := r.logger.With(slog.String("op", op), slog.Int64("id", repo.ID))
 
-	commandTag, err := r.db.Exec(ctx, updateRepositoryQuery, repo.LastSeenTag, repo.ID)
+	commandTag, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, updateRepositoryQuery, repo.LastSeenTag, repo.ID)
 	if err != nil {
 		log.ErrorContext(ctx, "exec failed", slog.String("error", err.Error()))
 		return fmt.Errorf("%s: exec: %w", op, err)

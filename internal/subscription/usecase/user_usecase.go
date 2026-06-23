@@ -23,8 +23,7 @@ import (
 const componentUserUseCase = "UserUseCase"
 
 const (
-	errMsgGetUser   = "get user"
-	errMsgDeleteSub = "delete subscription"
+	errMsgGetUser = "get user"
 )
 
 type UserUseCase struct {
@@ -148,12 +147,12 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 			log.ErrorContext(txCtx, "failed to delete subscription", slog.Any("error", txErr))
 			return fmt.Errorf("delete pending: %w", txErr)
 		}
-		payload, err := json.Marshal(sharedModel.UnsubscriptionActivatedEvent{
+		payload, marshalErr := json.Marshal(sharedModel.UnsubscriptionActivatedEvent{
 			Email:    email,
 			RepoName: repoName,
 		})
-		if err != nil {
-			return fmt.Errorf("marshal confirmation command: %w", err)
+		if marshalErr != nil {
+			return fmt.Errorf("marshal confirmation command: %w", marshalErr)
 		}
 
 		return uc.outBox.Insert(txCtx, rabbitmq.QueueUnsubscriptionActivated, payload)
@@ -277,12 +276,12 @@ func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (er
 			log.ErrorContext(txCtx, "failed to delete subscription", slog.Any("error", txErr))
 			return fmt.Errorf("delete pending: %w", txErr)
 		}
-		payload, err := json.Marshal(sharedModel.UnsubscriptionActivatedEvent{
+		payload, marshalErr := json.Marshal(sharedModel.UnsubscriptionActivatedEvent{
 			Email:    sub.Email,
 			RepoName: sub.RepositoryName,
 		})
-		if err != nil {
-			return fmt.Errorf("marshal confirmation command: %w", err)
+		if marshalErr != nil {
+			return fmt.Errorf("marshal confirmation command: %w", marshalErr)
 		}
 
 		return uc.outBox.Insert(txCtx, rabbitmq.QueueUnsubscriptionActivated, payload)

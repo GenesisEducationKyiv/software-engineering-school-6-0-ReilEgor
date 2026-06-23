@@ -76,7 +76,7 @@ const updateSagaStatusQuery = `
 func (sr *SagaRepository) UpdateStatus(ctx context.Context, sagaID int64, status sharedModel.SagaStatus) error {
 	const op = "SagaRepository.UpdateStatus"
 
-	_, err := sr.db.Exec(ctx, updateSagaStatusQuery, status, sagaID)
+	_, err := sharedPostgres.Extract(ctx, sr.db).Exec(ctx, updateSagaStatusQuery, status, sagaID)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -104,7 +104,7 @@ func (sr *SagaRepository) UpdateStatusAndStep(
 ) error {
 	const op = "SagaRepository.UpdateStatusAndStep"
 
-	_, err := sr.db.Exec(ctx, updateSagaStatusAndStepQuery, status, step, sagaID)
+	_, err := sharedPostgres.Extract(ctx, sr.db).Exec(ctx, updateSagaStatusAndStepQuery, status, step, sagaID)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

@@ -38,7 +38,7 @@ func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repoN
 	const op = "SubscriptionRepository.Delete"
 	log := r.logger.With(slog.String("op", op))
 
-	res, err := r.db.Exec(ctx, deleteSubscriptionQuery, userID, repoName)
+	res, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, deleteSubscriptionQuery, userID, repoName)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to delete subscription",
 			slog.Int64("user_id", userID),
@@ -61,7 +61,7 @@ const deleteSubscriptionByIDQuery = `DELETE FROM subscriptions WHERE id = $1`
 func (r *SubscriptionRepository) DeleteByID(ctx context.Context, subscriptionID int64) error {
 	const op = "SubscriptionRepository.DeleteByID"
 
-	res, err := r.db.Exec(ctx, deleteSubscriptionByIDQuery, subscriptionID)
+	res, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, deleteSubscriptionByIDQuery, subscriptionID)
 	if err != nil {
 		return fmt.Errorf("%s: exec: %w", op, err)
 	}
