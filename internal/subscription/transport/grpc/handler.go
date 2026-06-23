@@ -10,7 +10,7 @@ import (
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
-	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc/proto/v1"
+	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/grpc/proto/v1"
 )
 
 type SubscriptionHandler struct {

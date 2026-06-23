@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
-	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc/proto/v1"
+	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/grpc/proto/v1"
 )
 
 type TagUpdatedPublisher struct {

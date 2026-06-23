@@ -4,7 +4,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc/middleware"
-	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc/proto/v1"
+	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/grpc/proto/v1"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 

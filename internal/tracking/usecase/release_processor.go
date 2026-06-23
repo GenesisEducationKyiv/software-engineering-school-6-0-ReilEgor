@@ -82,6 +82,17 @@ func (rp *ReleaseProcessor) processRepo(ctx context.Context, repo trackingModel.
 	}); err != nil {
 		return fmt.Errorf("commit release: %w", err)
 	}
+
+	if pubErr := rp.tagUpdatedPub.Publish(ctx, sharedModel.TagUpdatedEvent{
+		FullName: updatedRepo.FullName,
+		Tag:      updatedRepo.LastSeenTag,
+	}); pubErr != nil {
+		rp.logger.ErrorContext(ctx, "tag updated publish failed",
+			slog.String("repo", updatedRepo.FullName),
+			slog.Any("error", pubErr),
+		)
+	}
+
 	return nil
 }
 
@@ -94,19 +105,8 @@ func (rp *ReleaseProcessor) commitRelease(
 		return fmt.Errorf("update repo tag: %w", err)
 	}
 
-	payload, err := json.Marshal(sharedModel.TagUpdatedEvent{
-		FullName: repo.FullName,
-		Tag:      repo.LastSeenTag,
-	})
-	if err != nil {
-		return fmt.Errorf("marshal tag updated: %w", err)
-	}
-	if err = rp.outboxRepo.Insert(ctx, sharedRabbitmq.QueueTagUpdated, payload); err != nil {
-		return fmt.Errorf("insert tag updated outbox: %w", err)
-	}
-
 	for _, sub := range subs {
-		if err = rp.insertNotificationOutbox(ctx, sub, repo); err != nil {
+		if err := rp.insertNotificationOutbox(ctx, sub, repo); err != nil {
 			return err
 		}
 	}

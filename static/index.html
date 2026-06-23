@@ -114,8 +114,9 @@
                 } else {
                     data.subscriptions.forEach(sub => {
                         const status = sub.confirmed ? 'confirmed' : 'awaits';
+                        const tag = sub.last_seen_tag ? `<span class="text-xs text-gray-400 ml-2">${sub.last_seen_tag}</span>` : '';
                         listItems.innerHTML += `<li class="flex justify-between items-center bg-gray-50 p-2 rounded">
-                            <span>${sub.repository_name}</span>
+                            <span>${sub.repository_name}${tag}</span>
                             <span title="${sub.confirmed ? 'Confirmed' : 'Pending'}">${status}</span>
                         </li>`;
                     });

@@ -168,6 +168,8 @@ services:
       TRACKING_DB_HEALTH_CHECK_PERIOD: ${TRACKING_DB_HEALTH_CHECK_PERIOD}
       # Application
       APP_BASE_URL: ${APP_BASE_URL}
+      APP_API_KEY: ${APP_API_KEY}
+      SUBSCRIPTION_GRPC_ADDR: repo-notifier-service:${APP_GRPC_PORT}
       # Redis
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
@@ -198,6 +200,8 @@ services:
       migrate-tracker:
         condition: service_completed_successfully
       rabbitmq:
+        condition: service_healthy
+      repo-notifier-service:
         condition: service_healthy
     networks:
       - internal
