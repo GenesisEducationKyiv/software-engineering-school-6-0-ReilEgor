@@ -150,7 +150,11 @@ func (c *ConfirmationConsumer) handleEmailError(
 		RepoName:       cmd.RepoName,
 		Token:          cmd.Token,
 	}); pubErr != nil {
-		c.logger.Error("rabbitmq: publish saga result failed", slog.Any("error", pubErr))
+		c.logger.Error("rabbitmq: publish saga result failed, requeuing", slog.Any("error", pubErr))
+		if nackErr := d.Nack(false, true); nackErr != nil {
+			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+		}
+		return
 	}
 	if nackErr := d.Nack(false, false); nackErr != nil {
 		c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
