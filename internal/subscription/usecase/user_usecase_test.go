@@ -373,15 +373,19 @@ func TestUserUseCase_Confirm(t *testing.T) {
 			setup: func(f userMockFields) {
 				sub := &subModel.Subscription{
 					UserID:         1,
+					Email:          "user@example.com",
 					RepositoryName: "golang/go",
 					Token:          "valid-token",
 					Confirmed:      false,
 				}
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
 					Return(sub, nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Save", mock.Anything, mock.MatchedBy(func(s *subModel.Subscription) bool {
 					return s.Confirmed == true
 				})).Return(nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
+					Return(nil).Once()
 			},
 		},
 		{
@@ -403,16 +407,19 @@ func TestUserUseCase_Confirm(t *testing.T) {
 			name:  "error - Save fails after confirm",
 			token: "valid-token",
 			setup: func(f userMockFields) {
+				saveErr := errors.New("db error")
 				sub := &subModel.Subscription{
 					UserID:         1,
+					Email:          "user@example.com",
 					RepositoryName: "golang/go",
 					Token:          "valid-token",
 					Confirmed:      false,
 				}
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
 					Return(sub, nil).Once()
+				setupTransactorFail(f, saveErr)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
-					Return(errors.New("db error")).Once()
+					Return(saveErr).Once()
 			},
 			expectErr: true,
 		},

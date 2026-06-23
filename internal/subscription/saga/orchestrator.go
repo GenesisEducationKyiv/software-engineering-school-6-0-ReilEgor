@@ -91,32 +91,16 @@ func (o *Orchestrator) stepActivateSubscription(
 		return nil
 	}
 
-	err = o.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
-		if txErr := o.sagaRepo.UpdateStatusAndStep(
-			txCtx,
-			reply.SagaID,
-			sharedModel.SagaStatusCompleted,
-			sharedModel.SagaStepActivateSubscription,
-		); txErr != nil {
-			return fmt.Errorf("update saga: %w", txErr)
-		}
-
-		payload, txErr := json.Marshal(sharedModel.SubscriptionActivatedEvent{
-			FullName: reply.RepoName,
-			Email:    reply.Email,
-			Token:    reply.Token,
-		})
-		if txErr != nil {
-			return fmt.Errorf("marshal activation command: %w", txErr)
-		}
-
-		return o.outboxRepo.Insert(txCtx, sharedRabbit.QueueSubscriptionActivated, payload)
-	})
-	if err != nil {
-		return fmt.Errorf("saga orchestrator: step activate: %w", err)
+	if err = o.sagaRepo.UpdateStatusAndStep(
+		ctx,
+		reply.SagaID,
+		sharedModel.SagaStatusCompleted,
+		sharedModel.SagaStepActivateSubscription,
+	); err != nil {
+		return fmt.Errorf("saga orchestrator: step activate: update saga: %w", err)
 	}
 
-	o.logger.InfoContext(ctx, "saga completed — activation command enqueued",
+	o.logger.InfoContext(ctx, "saga completed — awaiting user confirmation",
 		slog.Int64("saga_id", reply.SagaID),
 		slog.Int64("subscription_id", reply.SubscriptionID),
 	)

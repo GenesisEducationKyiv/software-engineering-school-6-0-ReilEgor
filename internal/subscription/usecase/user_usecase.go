@@ -221,8 +221,23 @@ func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 
 	sub.Confirmed = true
 
-	if err := uc.subsRepo.Save(ctx, sub); err != nil {
-		return fmt.Errorf("%s: save: %w", op, err)
+	if err = uc.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+		if txErr := uc.subsRepo.Save(txCtx, sub); txErr != nil {
+			return fmt.Errorf("save: %w", txErr)
+		}
+
+		payload, txErr := json.Marshal(sharedModel.SubscriptionActivatedEvent{
+			FullName: sub.RepositoryName,
+			Email:    sub.Email,
+			Token:    sub.Token,
+		})
+		if txErr != nil {
+			return fmt.Errorf("marshal activation event: %w", txErr)
+		}
+
+		return uc.outBox.Insert(txCtx, rabbitmq.QueueSubscriptionActivated, payload)
+	}); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	log.InfoContext(ctx, "subscription confirmed successfully")

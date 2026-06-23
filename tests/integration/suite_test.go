@@ -164,6 +164,7 @@ func (s *APITestSuite) buildRouter() {
 		repoUseCase,
 		orchestrator,
 		transactor,
+		outboxRepo,
 	)
 
 	handler := handlers.NewHandler(userUseCase, testAPIKey)
