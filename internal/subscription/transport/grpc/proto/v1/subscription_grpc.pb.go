@@ -8,7 +8,6 @@ package v1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -23,6 +22,7 @@ const (
 	SubscriptionService_Subscribe_FullMethodName         = "/subscription.v1.SubscriptionService/Subscribe"
 	SubscriptionService_Unsubscribe_FullMethodName       = "/subscription.v1.SubscriptionService/Unsubscribe"
 	SubscriptionService_ListSubscriptions_FullMethodName = "/subscription.v1.SubscriptionService/ListSubscriptions"
+	SubscriptionService_UpdateTag_FullMethodName         = "/subscription.v1.SubscriptionService/UpdateTag"
 )
 
 // SubscriptionServiceClient is the client API for SubscriptionService service.
@@ -32,6 +32,7 @@ type SubscriptionServiceClient interface {
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error)
 	Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*UnsubscribeResponse, error)
 	ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error)
+	UpdateTag(ctx context.Context, in *UpdateTagRequest, opts ...grpc.CallOption) (*UpdateTagResponse, error)
 }
 
 type subscriptionServiceClient struct {
@@ -72,6 +73,16 @@ func (c *subscriptionServiceClient) ListSubscriptions(ctx context.Context, in *L
 	return out, nil
 }
 
+func (c *subscriptionServiceClient) UpdateTag(ctx context.Context, in *UpdateTagRequest, opts ...grpc.CallOption) (*UpdateTagResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateTagResponse)
+	err := c.cc.Invoke(ctx, SubscriptionService_UpdateTag_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SubscriptionServiceServer is the server API for SubscriptionService service.
 // All implementations must embed UnimplementedSubscriptionServiceServer
 // for forward compatibility.
@@ -79,6 +90,7 @@ type SubscriptionServiceServer interface {
 	Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error)
 	Unsubscribe(context.Context, *UnsubscribeRequest) (*UnsubscribeResponse, error)
 	ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error)
+	UpdateTag(context.Context, *UpdateTagRequest) (*UpdateTagResponse, error)
 	mustEmbedUnimplementedSubscriptionServiceServer()
 }
 
@@ -97,6 +109,9 @@ func (UnimplementedSubscriptionServiceServer) Unsubscribe(context.Context, *Unsu
 }
 func (UnimplementedSubscriptionServiceServer) ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSubscriptions not implemented")
+}
+func (UnimplementedSubscriptionServiceServer) UpdateTag(context.Context, *UpdateTagRequest) (*UpdateTagResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateTag not implemented")
 }
 func (UnimplementedSubscriptionServiceServer) mustEmbedUnimplementedSubscriptionServiceServer() {}
 func (UnimplementedSubscriptionServiceServer) testEmbeddedByValue()                             {}
@@ -173,6 +188,24 @@ func _SubscriptionService_ListSubscriptions_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SubscriptionService_UpdateTag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateTagRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubscriptionServiceServer).UpdateTag(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubscriptionService_UpdateTag_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubscriptionServiceServer).UpdateTag(ctx, req.(*UpdateTagRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SubscriptionService_ServiceDesc is the grpc.ServiceDesc for SubscriptionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -191,6 +224,10 @@ var SubscriptionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSubscriptions",
 			Handler:    _SubscriptionService_ListSubscriptions_Handler,
+		},
+		{
+			MethodName: "UpdateTag",
+			Handler:    _SubscriptionService_UpdateTag_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

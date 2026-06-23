@@ -76,11 +76,6 @@ func main() {
 	})
 
 	g.Go(func() error {
-		myLogger.Info("tag updated consumer starting")
-		return app.TagUpdatedConsumer.Start(ctx)
-	})
-
-	g.Go(func() error {
 		myLogger.Info("outbox relay starting")
 		return app.OutboxRelay.Run(ctx)
 	})

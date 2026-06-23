@@ -38,7 +38,6 @@ var SubscriptionUseCaseSet = wire.NewSet(
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
 	subRabbitmq.NewSagaResultConsumer,
-	subRabbitmq.NewTagUpdatedConsumer,
 )
 
 var GrpcSet = wire.NewSet(

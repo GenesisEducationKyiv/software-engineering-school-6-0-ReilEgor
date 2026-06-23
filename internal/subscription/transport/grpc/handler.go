@@ -8,20 +8,23 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc/proto/v1"
 )
 
 type SubscriptionHandler struct {
 	v1.UnimplementedSubscriptionServiceServer
-	usecase usecase.UserUseCase
-	logger  *slog.Logger
+	usecase     usecase.UserUseCase
+	repoUpdater repository.RepositoryUpdater
+	logger      *slog.Logger
 }
 
-func NewSubscriptionHandler(uc usecase.UserUseCase) *SubscriptionHandler {
+func NewSubscriptionHandler(uc usecase.UserUseCase, repoUpdater repository.RepositoryUpdater) *SubscriptionHandler {
 	return &SubscriptionHandler{
-		usecase: uc,
-		logger:  slog.With(slog.String("component", "grpc_handler")),
+		usecase:     uc,
+		repoUpdater: repoUpdater,
+		logger:      slog.With(slog.String("component", "grpc_handler")),
 	}
 }
 
@@ -118,4 +121,15 @@ func (h *SubscriptionHandler) ListSubscriptions(
 		Subscriptions: pbSubs,
 		Total:         int32(len(pbSubs)),
 	}, nil
+}
+
+func (h *SubscriptionHandler) UpdateTag(ctx context.Context, req *v1.UpdateTagRequest) (*v1.UpdateTagResponse, error) {
+	if err := h.repoUpdater.UpdateTag(ctx, req.GetFullName(), req.GetTag()); err != nil {
+		h.logger.ErrorContext(ctx, "failed to update tag",
+			slog.String("repo", req.GetFullName()),
+			slog.Any("error", err),
+		)
+		return nil, status.Errorf(codes.Internal, "update tag: %v", err)
+	}
+	return &v1.UpdateTagResponse{}, nil
 }

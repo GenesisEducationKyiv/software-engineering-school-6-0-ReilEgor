@@ -38,7 +38,6 @@ type App struct {
 	HTTPServer         *http.GinServer
 	GrpcServer         *grpc.Server
 	SagaResultConsumer *subRabbitmq.SagaResultConsumer
-	TagUpdatedConsumer *subRabbitmq.TagUpdatedConsumer
 	OutboxRelay        *outbox.Relay
 }
 

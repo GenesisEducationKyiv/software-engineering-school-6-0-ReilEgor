@@ -7,13 +7,12 @@
 package v1
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -395,6 +394,94 @@ func (x *ListSubscriptionsResponse) GetTotal() int32 {
 	return 0
 }
 
+type UpdateTagRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FullName      string                 `protobuf:"bytes,1,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
+	Tag           string                 `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTagRequest) Reset() {
+	*x = UpdateTagRequest{}
+	mi := &file_subscription_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTagRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTagRequest) ProtoMessage() {}
+
+func (x *UpdateTagRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_subscription_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTagRequest.ProtoReflect.Descriptor instead.
+func (*UpdateTagRequest) Descriptor() ([]byte, []int) {
+	return file_subscription_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateTagRequest) GetFullName() string {
+	if x != nil {
+		return x.FullName
+	}
+	return ""
+}
+
+func (x *UpdateTagRequest) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
+type UpdateTagResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateTagResponse) Reset() {
+	*x = UpdateTagResponse{}
+	mi := &file_subscription_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateTagResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateTagResponse) ProtoMessage() {}
+
+func (x *UpdateTagResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_subscription_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateTagResponse.ProtoReflect.Descriptor instead.
+func (*UpdateTagResponse) Descriptor() ([]byte, []int) {
+	return file_subscription_proto_rawDescGZIP(), []int{8}
+}
+
 var File_subscription_proto protoreflect.FileDescriptor
 
 const file_subscription_proto_rawDesc = "" +
@@ -424,11 +511,16 @@ const file_subscription_proto_rawDesc = "" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"v\n" +
 	"\x19ListSubscriptionsResponse\x12C\n" +
 	"\rsubscriptions\x18\x01 \x03(\v2\x1d.subscription.v1.SubscriptionR\rsubscriptions\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total2\xaf\x02\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"A\n" +
+	"\x10UpdateTagRequest\x12\x1b\n" +
+	"\tfull_name\x18\x01 \x01(\tR\bfullName\x12\x10\n" +
+	"\x03tag\x18\x02 \x01(\tR\x03tag\"\x13\n" +
+	"\x11UpdateTagResponse2\x83\x03\n" +
 	"\x13SubscriptionService\x12R\n" +
 	"\tSubscribe\x12!.subscription.v1.SubscribeRequest\x1a\".subscription.v1.SubscribeResponse\x12X\n" +
 	"\vUnsubscribe\x12#.subscription.v1.UnsubscribeRequest\x1a$.subscription.v1.UnsubscribeResponse\x12j\n" +
-	"\x11ListSubscriptions\x12).subscription.v1.ListSubscriptionsRequest\x1a*.subscription.v1.ListSubscriptionsResponseBCZAgithub.com/ReilEgor/RepoNotifier/internal/transport/grpc/proto/v1b\x06proto3"
+	"\x11ListSubscriptions\x12).subscription.v1.ListSubscriptionsRequest\x1a*.subscription.v1.ListSubscriptionsResponse\x12R\n" +
+	"\tUpdateTag\x12!.subscription.v1.UpdateTagRequest\x1a\".subscription.v1.UpdateTagResponseBxZvgithub.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc/proto/v1b\x06proto3"
 
 var (
 	file_subscription_proto_rawDescOnce sync.Once
@@ -442,7 +534,7 @@ func file_subscription_proto_rawDescGZIP() []byte {
 	return file_subscription_proto_rawDescData
 }
 
-var file_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_subscription_proto_goTypes = []any{
 	(*SubscribeRequest)(nil),          // 0: subscription.v1.SubscribeRequest
 	(*SubscribeResponse)(nil),         // 1: subscription.v1.SubscribeResponse
@@ -451,19 +543,23 @@ var file_subscription_proto_goTypes = []any{
 	(*ListSubscriptionsRequest)(nil),  // 4: subscription.v1.ListSubscriptionsRequest
 	(*Subscription)(nil),              // 5: subscription.v1.Subscription
 	(*ListSubscriptionsResponse)(nil), // 6: subscription.v1.ListSubscriptionsResponse
-	(*timestamppb.Timestamp)(nil),     // 7: google.protobuf.Timestamp
+	(*UpdateTagRequest)(nil),          // 7: subscription.v1.UpdateTagRequest
+	(*UpdateTagResponse)(nil),         // 8: subscription.v1.UpdateTagResponse
+	(*timestamppb.Timestamp)(nil),     // 9: google.protobuf.Timestamp
 }
 var file_subscription_proto_depIdxs = []int32{
-	7, // 0: subscription.v1.Subscription.created_at:type_name -> google.protobuf.Timestamp
+	9, // 0: subscription.v1.Subscription.created_at:type_name -> google.protobuf.Timestamp
 	5, // 1: subscription.v1.ListSubscriptionsResponse.subscriptions:type_name -> subscription.v1.Subscription
 	0, // 2: subscription.v1.SubscriptionService.Subscribe:input_type -> subscription.v1.SubscribeRequest
 	2, // 3: subscription.v1.SubscriptionService.Unsubscribe:input_type -> subscription.v1.UnsubscribeRequest
 	4, // 4: subscription.v1.SubscriptionService.ListSubscriptions:input_type -> subscription.v1.ListSubscriptionsRequest
-	1, // 5: subscription.v1.SubscriptionService.Subscribe:output_type -> subscription.v1.SubscribeResponse
-	3, // 6: subscription.v1.SubscriptionService.Unsubscribe:output_type -> subscription.v1.UnsubscribeResponse
-	6, // 7: subscription.v1.SubscriptionService.ListSubscriptions:output_type -> subscription.v1.ListSubscriptionsResponse
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
+	7, // 5: subscription.v1.SubscriptionService.UpdateTag:input_type -> subscription.v1.UpdateTagRequest
+	1, // 6: subscription.v1.SubscriptionService.Subscribe:output_type -> subscription.v1.SubscribeResponse
+	3, // 7: subscription.v1.SubscriptionService.Unsubscribe:output_type -> subscription.v1.UnsubscribeResponse
+	6, // 8: subscription.v1.SubscriptionService.ListSubscriptions:output_type -> subscription.v1.ListSubscriptionsResponse
+	8, // 9: subscription.v1.SubscriptionService.UpdateTag:output_type -> subscription.v1.UpdateTagResponse
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
@@ -480,7 +576,7 @@ func file_subscription_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_subscription_proto_rawDesc), len(file_subscription_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

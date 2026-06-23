@@ -4,12 +4,13 @@ package subscription.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/transport/grpc/proto/v1";
+option go_package = "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc/proto/v1";
 
 service SubscriptionService {
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse);
   rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse);
   rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
+  rpc UpdateTag(UpdateTagRequest) returns (UpdateTagResponse);
 }
 
 message SubscribeRequest {
@@ -47,3 +48,10 @@ message ListSubscriptionsResponse {
   repeated Subscription subscriptions = 1;
   int32 total = 2;
 }
+
+message UpdateTagRequest {
+  string full_name = 1;
+  string tag       = 2;
+}
+
+message UpdateTagResponse {}

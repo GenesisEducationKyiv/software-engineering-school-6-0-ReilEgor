@@ -79,6 +79,11 @@ type RabbitMQConfig struct {
 	URL string `env:"RABBITMQ_URL"`
 }
 
+type GRPCClientConfig struct {
+	SubscriptionAddr string `env:"SUBSCRIPTION_GRPC_ADDR"`
+	APIKey           string `env:"APP_API_KEY"`
+}
+
 type SenderConfig struct {
 	SendTimeout time.Duration `env:"WORKER_SEND_TIMEOUT"`
 	HealthPort  string        `env:"SENDER_HEALTH_PORT"`

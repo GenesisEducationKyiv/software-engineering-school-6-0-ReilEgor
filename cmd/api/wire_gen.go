@@ -57,7 +57,8 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	httpConfig := ProvideHTTPConfig(cfg)
 	appConfig := ProvideAppConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
-	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
+	postgresRepositoryRepository := postgres2.NewRepositoryRepository(pool)
+	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase, postgresRepositoryRepository)
 	server := grpc.NewGrpcServer(subscriptionHandler, appConfig)
 	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
 	connection, cleanup3, err := ProvideRabbitMQConnection(rabbitMQConfig)
@@ -67,15 +68,12 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, orchestrator)
-	postgresRepositoryRepository := postgres2.NewRepositoryRepository(pool)
-	tagUpdatedConsumer := rabbitmq.NewTagUpdatedConsumer(connection, postgresRepositoryRepository)
 	duration := ProvideOutboxInterval()
 	relay := outbox.NewRelay(outboxRepository, connection, duration)
 	app := &App{
 		HTTPServer:         ginServer,
 		GrpcServer:         server,
 		SagaResultConsumer: sagaResultConsumer,
-		TagUpdatedConsumer: tagUpdatedConsumer,
 		OutboxRelay:        relay,
 	}
 	return app, func() {
@@ -111,6 +109,5 @@ type App struct {
 	HTTPServer         *http.GinServer
 	GrpcServer         *grpc2.Server
 	SagaResultConsumer *rabbitmq.SagaResultConsumer
-	TagUpdatedConsumer *rabbitmq.TagUpdatedConsumer
 	OutboxRelay        *outbox.Relay
 }

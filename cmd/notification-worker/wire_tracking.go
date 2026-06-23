@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/google/wire"
+	"google.golang.org/grpc"
 
 	trackingPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/port"
 	trackingRepo "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
@@ -9,10 +10,12 @@ import (
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
 	trackingRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/broker/rabbitmq"
 	githubClient "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
+	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/grpc"
 	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
 func ProvideCachedClient(c *githubClient.GitHubClient, cache sharedcache.Cache) trackingService.GitHubClient {
@@ -34,14 +37,18 @@ var TrackingRepositorySet = wire.NewSet(
 	wire.Bind(new(trackingRepo.Transactor), new(*sharedPostgres.Transactor)),
 )
 
+func ProvideTagUpdatedGRPCPublisher(conn *grpc.ClientConn, cfg config.GRPCClientConfig) *trackingGrpc.TagUpdatedPublisher {
+	return trackingGrpc.NewTagUpdatedPublisher(conn, cfg.APIKey)
+}
+
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
 	trackingRabbitmq.NewPublisher,
-	trackingRabbitmq.NewTagUpdatedPublisher,
 	trackingRabbitmq.NewSubscriptionActivatedConsumer,
 	trackingRabbitmq.NewUnsubscriptionActivatedConsumer,
+	ProvideTagUpdatedGRPCPublisher,
 	wire.Bind(new(trackingPort.NotificationPublisher), new(*trackingRabbitmq.Publisher)),
-	wire.Bind(new(trackingPort.TagUpdatedPublisher), new(*trackingRabbitmq.TagUpdatedPublisher)),
+	wire.Bind(new(trackingPort.TagUpdatedPublisher), new(*trackingGrpc.TagUpdatedPublisher)),
 )
 
 var UseCaseSet = wire.NewSet(

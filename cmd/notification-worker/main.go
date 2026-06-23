@@ -24,6 +24,7 @@ type Config struct {
 	Worker     sharedConfig.WorkerConfig
 	App        sharedConfig.AppConfig
 	RabbitMQ   sharedConfig.RabbitMQConfig
+	GRPCClient sharedConfig.GRPCClientConfig
 }
 
 func main() {
