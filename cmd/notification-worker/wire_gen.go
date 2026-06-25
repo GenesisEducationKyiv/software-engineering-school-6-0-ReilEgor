@@ -21,6 +21,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"net/http"
 	"time"
 )
 
@@ -58,17 +59,20 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	grpcClientConfig := ProvideGRPCClientConfig(cfg)
-	clientConn, cleanup3, err := ProvideSubscriptionGRPCConn(grpcClientConfig)
+	subscriptionClientConfig := ProvideSubscriptionClientConfig(cfg)
+	clientConn, cleanup3, err := ProvideSubscriptionGRPCConn(subscriptionClientConfig)
 	if err != nil {
 		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
-	tagUpdatedPublisher := ProvideTagUpdatedGRPCPublisher(clientConn, grpcClientConfig)
+	tagUpdatedPublisher := ProvideTagUpdatedGRPCPublisher(clientConn, subscriptionClientConfig)
+	httpClient := ProvideHTTPClient()
+	httpTagUpdatedPublisher := ProvideTagUpdatedHTTPPublisher(httpClient, subscriptionClientConfig)
+	portTagUpdatedPublisher := ProvideTagUpdatedPublisher(subscriptionClientConfig, tagUpdatedPublisher, httpTagUpdatedPublisher)
 	outboxRepository := postgres2.NewOutboxRepository(pool)
 	transactor := postgres.NewTransactor(pool)
-	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher, tagUpdatedPublisher, outboxRepository, transactor)
+	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher, portTagUpdatedPublisher, outboxRepository, transactor)
 	subscriptionActivatedConsumer := rabbitmq.NewSubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
 	unsubscriptionActivatedConsumer := rabbitmq.NewUnsubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
 	duration := ProvideOutboxInterval()
@@ -96,18 +100,24 @@ func ProvideGitHubConfig(cfg Config) config.GitHubConfig { return cfg.GitHub }
 
 func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
 
-func ProvideGRPCClientConfig(cfg Config) config.GRPCClientConfig { return cfg.GRPCClient }
+func ProvideSubscriptionClientConfig(cfg Config) config.SubscriptionClientConfig {
+	return cfg.SubscriptionClient
+}
 
 func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection, func(), error) {
 	return rabbitmq2.NewConnection(cfg.URL)
 }
 
-func ProvideSubscriptionGRPCConn(cfg config.GRPCClientConfig) (*grpc.ClientConn, func(), error) {
-	conn, err := grpc.NewClient(cfg.SubscriptionAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func ProvideSubscriptionGRPCConn(cfg config.SubscriptionClientConfig) (*grpc.ClientConn, func(), error) {
+	conn, err := grpc.NewClient(cfg.SubscriptionGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("dial subscription grpc: %w", err)
 	}
 	return conn, func() { conn.Close() }, nil
+}
+
+func ProvideHTTPClient() *http.Client {
+	return &http.Client{Timeout: 10 * time.Second}
 }
 
 func ProvideOutboxInterval() time.Duration {

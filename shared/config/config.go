@@ -79,9 +79,11 @@ type RabbitMQConfig struct {
 	URL string `env:"RABBITMQ_URL"`
 }
 
-type GRPCClientConfig struct {
-	SubscriptionAddr string `env:"SUBSCRIPTION_GRPC_ADDR"`
-	APIKey           string `env:"APP_API_KEY"`
+type SubscriptionClientConfig struct {
+	SubscriptionGRPCAddr string `env:"SUBSCRIPTION_GRPC_ADDR"`
+	SubscriptionHTTPAddr string `env:"SUBSCRIPTION_HTTP_ADDR"`
+	APIKey               string `env:"APP_API_KEY"`
+	TagPublisherType     string `env:"TAG_PUBLISHER_TYPE"` // "grpc" (default) or "http"
 }
 
 type SenderConfig struct {

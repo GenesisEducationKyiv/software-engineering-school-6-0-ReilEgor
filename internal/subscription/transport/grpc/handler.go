@@ -8,23 +8,22 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/usecase"
 	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/grpc/proto/v1"
 )
 
 type SubscriptionHandler struct {
 	v1.UnimplementedSubscriptionServiceServer
-	usecase     usecase.UserUseCase
-	repoUpdater repository.RepositoryUpdater
-	logger      *slog.Logger
+	userUC usecase.UserUseCase
+	repoUC usecase.RepositoryUseCase
+	logger *slog.Logger
 }
 
-func NewSubscriptionHandler(uc usecase.UserUseCase, repoUpdater repository.RepositoryUpdater) *SubscriptionHandler {
+func NewSubscriptionHandler(userUC usecase.UserUseCase, repoUC usecase.RepositoryUseCase) *SubscriptionHandler {
 	return &SubscriptionHandler{
-		usecase:     uc,
-		repoUpdater: repoUpdater,
-		logger:      slog.With(slog.String("component", "grpc_handler")),
+		userUC: userUC,
+		repoUC: repoUC,
+		logger: slog.With(slog.String("component", "grpc_handler")),
 	}
 }
 
@@ -37,7 +36,7 @@ func (h *SubscriptionHandler) Subscribe(ctx context.Context, req *v1.SubscribeRe
 		slog.String("repo", repo),
 	)
 
-	err := h.usecase.Subscribe(ctx, email, repo)
+	err := h.userUC.Subscribe(ctx, email, repo)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to initiate subscription",
 			slog.String("email", email),
@@ -71,7 +70,7 @@ func (h *SubscriptionHandler) Unsubscribe(
 
 	log.InfoContext(ctx, "unsubscribe request received")
 
-	err := h.usecase.UnsubscribeByToken(ctx, token)
+	err := h.userUC.UnsubscribeByToken(ctx, token)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to unsubscribe", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Internal, "failed to unsubscribe: %v", err)
@@ -93,7 +92,7 @@ func (h *SubscriptionHandler) ListSubscriptions(
 	email := req.GetEmail()
 	log.InfoContext(ctx, "list subscriptions request received", slog.String("email", email))
 
-	subs, err := h.usecase.ListByEmail(ctx, email)
+	subs, err := h.userUC.ListByEmail(ctx, email)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to list subscriptions",
 			slog.String("email", email),
@@ -124,7 +123,7 @@ func (h *SubscriptionHandler) ListSubscriptions(
 }
 
 func (h *SubscriptionHandler) UpdateTag(ctx context.Context, req *v1.UpdateTagRequest) (*v1.UpdateTagResponse, error) {
-	if err := h.repoUpdater.UpdateTag(ctx, req.GetFullName(), req.GetTag()); err != nil {
+	if err := h.repoUC.UpdateTag(ctx, req.GetFullName(), req.GetTag()); err != nil {
 		h.logger.ErrorContext(ctx, "failed to update tag",
 			slog.String("repo", req.GetFullName()),
 			slog.Any("error", err),

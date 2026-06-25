@@ -1,6 +1,8 @@
 package main
 
 import (
+	nethttp "net/http"
+
 	"github.com/google/wire"
 	"google.golang.org/grpc"
 
@@ -11,6 +13,7 @@ import (
 	trackingRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/broker/rabbitmq"
 	githubClient "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
 	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/grpc"
+	trackingHttp "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/http"
 	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
@@ -37,8 +40,19 @@ var TrackingRepositorySet = wire.NewSet(
 	wire.Bind(new(trackingRepo.Transactor), new(*sharedPostgres.Transactor)),
 )
 
-func ProvideTagUpdatedGRPCPublisher(conn *grpc.ClientConn, cfg config.GRPCClientConfig) *trackingGrpc.TagUpdatedPublisher {
+func ProvideTagUpdatedGRPCPublisher(conn *grpc.ClientConn, cfg config.SubscriptionClientConfig) *trackingGrpc.TagUpdatedPublisher {
 	return trackingGrpc.NewTagUpdatedPublisher(conn, cfg.APIKey)
+}
+
+func ProvideTagUpdatedHTTPPublisher(client *nethttp.Client, cfg config.SubscriptionClientConfig) *trackingHttp.TagUpdatedPublisher {
+	return trackingHttp.NewTagUpdatedPublisher(client, cfg.SubscriptionHTTPAddr, cfg.APIKey)
+}
+
+func ProvideTagUpdatedPublisher(cfg config.SubscriptionClientConfig, grpcPub *trackingGrpc.TagUpdatedPublisher, httpPub *trackingHttp.TagUpdatedPublisher) trackingPort.TagUpdatedPublisher {
+	if cfg.TagPublisherType == "http" {
+		return httpPub
+	}
+	return grpcPub
 }
 
 var BrokerSet = wire.NewSet(
@@ -47,8 +61,9 @@ var BrokerSet = wire.NewSet(
 	trackingRabbitmq.NewSubscriptionActivatedConsumer,
 	trackingRabbitmq.NewUnsubscriptionActivatedConsumer,
 	ProvideTagUpdatedGRPCPublisher,
+	ProvideTagUpdatedHTTPPublisher,
+	ProvideTagUpdatedPublisher,
 	wire.Bind(new(trackingPort.NotificationPublisher), new(*trackingRabbitmq.Publisher)),
-	wire.Bind(new(trackingPort.TagUpdatedPublisher), new(*trackingGrpc.TagUpdatedPublisher)),
 )
 
 var UseCaseSet = wire.NewSet(

@@ -32,7 +32,9 @@ var SubscriptionRepositorySet = wire.NewSet(
 var SubscriptionUseCaseSet = wire.NewSet(
 	saga.NewOrchestrator,
 	subUsecase.NewUserUseCase,
+	subUsecase.NewRepositoryUseCase,
 	wire.Bind(new(subscriptionUsecase.UserUseCase), new(*subUsecase.UserUseCase)),
+	wire.Bind(new(subscriptionUsecase.RepositoryUseCase), new(*subUsecase.RepositoryUseCase)),
 )
 
 var BrokerSet = wire.NewSet(

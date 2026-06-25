@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	nethttp "net/http"
 	"time"
 
 	"github.com/google/wire"
@@ -23,18 +24,24 @@ func ProvideTrackingDBConfig(cfg Config) config.TrackingDBConfig   { return cfg.
 func ProvideRedisConfig(cfg Config) config.RedisConfig             { return cfg.Redis }
 func ProvideGitHubConfig(cfg Config) config.GitHubConfig           { return cfg.GitHub }
 func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig       { return cfg.RabbitMQ }
-func ProvideGRPCClientConfig(cfg Config) config.GRPCClientConfig   { return cfg.GRPCClient }
+func ProvideSubscriptionClientConfig(cfg Config) config.SubscriptionClientConfig {
+	return cfg.SubscriptionClient
+}
 
 func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Connection, func(), error) {
 	return sharedRabbitmq.NewConnection(cfg.URL)
 }
 
-func ProvideSubscriptionGRPCConn(cfg config.GRPCClientConfig) (*grpc.ClientConn, func(), error) {
-	conn, err := grpc.NewClient(cfg.SubscriptionAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func ProvideSubscriptionGRPCConn(cfg config.SubscriptionClientConfig) (*grpc.ClientConn, func(), error) {
+	conn, err := grpc.NewClient(cfg.SubscriptionGRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("dial subscription grpc: %w", err)
 	}
 	return conn, func() { conn.Close() }, nil
+}
+
+func ProvideHTTPClient() *nethttp.Client {
+	return &nethttp.Client{Timeout: 10 * time.Second}
 }
 
 func ProvideOutboxInterval() time.Duration {
@@ -54,8 +61,9 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		ProvideRedisConfig,
 		ProvideGitHubConfig,
 		ProvideRabbitMQConfig,
-		ProvideGRPCClientConfig,
+		ProvideSubscriptionClientConfig,
 		ProvideSubscriptionGRPCConn,
+		ProvideHTTPClient,
 		ProvideOutboxInterval,
 		SharedSet,
 		CacheSet,

@@ -33,6 +33,11 @@ type DeleteSubscriptionResponse struct {
 	Message string `json:"message" example:"Subscription deleted successfully"` // Status message confirming the operation.
 }
 
+type UpdateTagRequest struct {
+	FullName string `json:"full_name" binding:"required"`
+	Tag      string `json:"tag"       binding:"required"`
+}
+
 // ListSubscriptionsResponse represents a collection of subscriptions.
 type ListSubscriptionsResponse struct {
 	Subscriptions []SubscriptionResponse `json:"subscriptions"`             // List of the user's subscriptions.

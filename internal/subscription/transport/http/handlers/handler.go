@@ -16,13 +16,15 @@ import (
 
 type Handler struct {
 	userUC usecase.UserUseCase
+	repoUC usecase.RepositoryUseCase
 	logger *slog.Logger
 	apiKey string
 }
 
-func NewHandler(userUC usecase.UserUseCase, apiKey string) *Handler {
+func NewHandler(userUC usecase.UserUseCase, repoUC usecase.RepositoryUseCase, apiKey string) *Handler {
 	return &Handler{
 		userUC: userUC,
+		repoUC: repoUC,
 		logger: slog.With(slog.String("component", "handler")),
 		apiKey: apiKey,
 	}
@@ -48,5 +50,11 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 			protected.POST("/subscribe", h.Subscribe)
 			protected.GET("/subscriptions", h.ListSubscriptions)
 		}
+	}
+
+	internal := router.Group("/internal")
+	internal.Use(middleware.AuthMiddleware(h.apiKey))
+	{
+		internal.POST("/repositories/tag", h.UpdateTag)
 	}
 }

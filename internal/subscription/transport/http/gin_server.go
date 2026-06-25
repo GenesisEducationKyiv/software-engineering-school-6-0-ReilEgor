@@ -26,6 +26,7 @@ type GinServer struct {
 
 func NewGinServer(
 	userUC usecase.UserUseCase,
+	repoUC usecase.RepositoryUseCase,
 	redisClient *redis.Client,
 	httpCfg config.HTTPConfig,
 	appCfg config.AppConfig,
@@ -41,7 +42,7 @@ func NewGinServer(
 		shutdownTimeout: httpCfg.ShutdownTimeout,
 	}
 
-	h := handler.NewHandler(userUC, appCfg.APIKey)
+	h := handler.NewHandler(userUC, repoUC, appCfg.APIKey)
 	h.InitRoutes(s.router)
 
 	return s

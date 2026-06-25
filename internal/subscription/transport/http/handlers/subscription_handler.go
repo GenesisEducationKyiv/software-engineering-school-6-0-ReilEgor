@@ -274,3 +274,22 @@ func (h *Handler) Confirm(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "subscription confirmed successfully"})
 	}
 }
+
+func (h *Handler) UpdateTag(c *gin.Context) {
+	var req dto.UpdateTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidRequestBody})
+		return
+	}
+
+	if err := h.repoUC.UpdateTag(c.Request.Context(), req.FullName, req.Tag); err != nil {
+		h.logger.ErrorContext(c.Request.Context(), "failed to update tag",
+			slog.String("repo", req.FullName),
+			slog.Any("error", err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update tag"})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
