@@ -5,17 +5,17 @@ import (
 	"github.com/google/wire"
 	"google.golang.org/grpc"
 
+	nethttp "net/http"
+
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
-	nethttp "net/http"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/repository"
 	trackingService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/service"
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/usecase"
+	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/adapter/grpc"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/clients/github"
-	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/grpc"
-	trackingHttp "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/http"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/repository/postgres"
 	trackingRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/transport/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/usecase"
@@ -50,14 +50,14 @@ func ProvideTagUpdatedGRPCPublisher(
 func ProvideTagUpdatedHTTPPublisher(
 	client *nethttp.Client,
 	cfg config.SubscriptionClientConfig,
-) *trackingHttp.TagUpdatedPublisher {
-	return trackingHttp.NewTagUpdatedPublisher(client, cfg.SubscriptionHTTPAddr, cfg.APIKey)
+) *trackingGrpc.TagUpdatedPublisher {
+	return trackingGrpc.NewTagUpdatedPublisher(client, cfg.SubscriptionHTTPAddr, cfg.APIKey)
 }
 
 func ProvideTagUpdatedPublisher(
 	cfg config.SubscriptionClientConfig,
 	grpcPub *trackingGrpc.TagUpdatedPublisher,
-	httpPub *trackingHttp.TagUpdatedPublisher,
+	httpPub *trackingGrpc.TagUpdatedPublisher,
 ) usecase.TagUpdatedPublisher {
 	if cfg.TagPublisherType == "http" {
 		return httpPub
