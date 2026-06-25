@@ -11,21 +11,24 @@ import (
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/port"
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/usecase"
 )
+
+type TrackerSubscriptionWriter interface {
+	Upsert(ctx context.Context, repoID int64, email, token string) error
+}
 
 type SubscriptionActivatedConsumer struct {
 	conn    *sharedRabbitmq.Connection
 	repoUC  trackingDomainUsecase.RepositoryUseCase
-	subRepo port.TrackerSubscriptionWriter
+	subRepo TrackerSubscriptionWriter
 	logger  *slog.Logger
 }
 
 func NewSubscriptionActivatedConsumer(
 	conn *sharedRabbitmq.Connection,
 	repoUC trackingDomainUsecase.RepositoryUseCase,
-	subRepo port.TrackerSubscriptionWriter,
+	subRepo TrackerSubscriptionWriter,
 ) *SubscriptionActivatedConsumer {
 	return &SubscriptionActivatedConsumer{
 		conn:    conn,

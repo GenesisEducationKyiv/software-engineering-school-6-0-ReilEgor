@@ -10,28 +10,47 @@ import (
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/repository"
 	domainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/usecase"
 )
 
+//go:generate mockery --name RepositoryReader --output ../mocks --case underscore --outpkg mocks
+type RepositoryReader interface {
+	GetAll(ctx context.Context) ([]model.Repository, error)
+}
+
+//go:generate mockery --name SubscriberReader --output ../mocks --case underscore --outpkg mocks
+type SubscriberReader interface {
+	GetByRepoID(ctx context.Context, repoID int64) ([]model.Subscriber, error)
+}
+
+//go:generate mockery --name NotificationPublisher --output ../mocks --case underscore --outpkg mocks
+type NotificationPublisher interface {
+	Publish(ctx context.Context, cmd sharedModel.SendNotificationCommand) error
+}
+
+//go:generate mockery --name TagUpdatedPublisher --output ../mocks --case underscore --outpkg mocks
+type TagUpdatedPublisher interface {
+	Publish(ctx context.Context, event sharedModel.TagUpdatedEvent) error
+}
+
 type ReleaseProcessor struct {
-	repoReader    port.RepositoryReader
+	repoReader    RepositoryReader
 	repoUC        domainUsecase.RepositoryUseCase
-	subReader     port.SubscriberReader
-	publisher     port.NotificationPublisher
-	tagUpdatedPub port.TagUpdatedPublisher
+	subReader     SubscriberReader
+	publisher     NotificationPublisher
+	tagUpdatedPub TagUpdatedPublisher
 	outboxRepo    repository.OutboxRepository
 	transactor    repository.Transactor
 	logger        *slog.Logger
 }
 
 func NewReleaseProcessor(
-	repoReader port.RepositoryReader,
+	repoReader RepositoryReader,
 	repoUC domainUsecase.RepositoryUseCase,
-	subReader port.SubscriberReader,
-	publisher port.NotificationPublisher,
-	tagUpdatedPub port.TagUpdatedPublisher,
+	subReader SubscriberReader,
+	publisher NotificationPublisher,
+	tagUpdatedPub TagUpdatedPublisher,
 	outboxRepo repository.OutboxRepository,
 	transactor repository.Transactor,
 ) *ReleaseProcessor {

@@ -11,21 +11,25 @@ import (
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/port"
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/usecase"
 )
+
+type TrackerSubscriptionDeleter interface {
+	DeleteByEmailAndRepo(ctx context.Context, email, repoName string) error
+	HasSubscriptions(ctx context.Context, repoName string) (bool, error)
+}
 
 type UnsubscriptionActivatedConsumer struct {
 	conn    *sharedRabbitmq.Connection
 	repoUC  trackingDomainUsecase.RepositoryUseCase
-	subRepo port.TrackerSubscriptionDeleter
+	subRepo TrackerSubscriptionDeleter
 	logger  *slog.Logger
 }
 
 func NewUnsubscriptionActivatedConsumer(
 	conn *sharedRabbitmq.Connection,
 	repoUC trackingDomainUsecase.RepositoryUseCase,
-	subRepo port.TrackerSubscriptionDeleter,
+	subRepo TrackerSubscriptionDeleter,
 ) *UnsubscriptionActivatedConsumer {
 	return &UnsubscriptionActivatedConsumer{
 		conn:    conn,

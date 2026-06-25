@@ -9,7 +9,6 @@ import (
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 	nethttp "net/http"
 
-	trackingPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/repository"
 	trackingService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/service"
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/usecase"
@@ -36,7 +35,7 @@ var TrackingRepositorySet = wire.NewSet(
 	postgres.NewOutboxRepository,
 	sharedPostgres.NewTransactor,
 	wire.Bind(new(repository.RepositoryRepository), new(*postgres.RepositoryRepository)),
-	wire.Bind(new(trackingPort.RepositoryReader), new(*postgres.RepositoryRepository)),
+	wire.Bind(new(usecase.RepositoryReader), new(*postgres.RepositoryRepository)),
 	wire.Bind(new(repository.OutboxRepository), new(*postgres.OutboxRepository)),
 	wire.Bind(new(repository.Transactor), new(*sharedPostgres.Transactor)),
 )
@@ -59,7 +58,7 @@ func ProvideTagUpdatedPublisher(
 	cfg config.SubscriptionClientConfig,
 	grpcPub *trackingGrpc.TagUpdatedPublisher,
 	httpPub *trackingHttp.TagUpdatedPublisher,
-) trackingPort.TagUpdatedPublisher {
+) usecase.TagUpdatedPublisher {
 	if cfg.TagPublisherType == "http" {
 		return httpPub
 	}
@@ -74,7 +73,7 @@ var BrokerSet = wire.NewSet(
 	ProvideTagUpdatedGRPCPublisher,
 	ProvideTagUpdatedHTTPPublisher,
 	ProvideTagUpdatedPublisher,
-	wire.Bind(new(trackingPort.NotificationPublisher), new(*rabbitmq.Publisher)),
+	wire.Bind(new(usecase.NotificationPublisher), new(*rabbitmq.Publisher)),
 )
 
 var UseCaseSet = wire.NewSet(

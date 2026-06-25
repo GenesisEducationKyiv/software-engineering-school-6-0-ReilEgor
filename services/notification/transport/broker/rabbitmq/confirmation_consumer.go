@@ -13,15 +13,19 @@ import (
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/service"
 )
+
+//go:generate mockery --name SagaResultPublisher --output ../../mocks --case underscore --outpkg mocks
+type SagaResultPublisher interface {
+	Publish(ctx context.Context, event model.ConfirmationResultEvent) error
+}
 
 type ConfirmationConsumer struct {
 	conn          *sharedRabbitmq.Connection
 	emailSvc      service.EmailService
 	sendTimeout   time.Duration
-	sagaResultPub port.SagaResultPublisher
+	sagaResultPub SagaResultPublisher
 	logger        *slog.Logger
 }
 
@@ -29,7 +33,7 @@ func NewConfirmationConsumer(
 	conn *sharedRabbitmq.Connection,
 	emailSvc service.EmailService,
 	sendTimeout time.Duration,
-	sagaResultPub port.SagaResultPublisher,
+	sagaResultPub SagaResultPublisher,
 ) *ConfirmationConsumer {
 	return &ConfirmationConsumer{
 		conn:          conn,
