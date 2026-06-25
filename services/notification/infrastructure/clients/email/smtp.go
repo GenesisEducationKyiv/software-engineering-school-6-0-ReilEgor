@@ -7,9 +7,10 @@ import (
 	"net/smtp"
 	"strings"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+
 	notifModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
 const componentEmailClient = "EmailClient"

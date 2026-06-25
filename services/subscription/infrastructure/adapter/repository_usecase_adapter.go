@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
+
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
-	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 )
 
 type RepositoryUseCaseAdapter struct {
@@ -56,7 +57,21 @@ func translateGRPCError(err error) error {
 		return fmt.Errorf("%w", subModel.ErrRepositoryNotFound)
 	case codes.Unavailable, codes.ResourceExhausted:
 		return fmt.Errorf("%w", subModel.ErrServiceUnavailable)
-	default:
+	case codes.OK,
+		codes.Canceled,
+		codes.Unknown,
+		codes.InvalidArgument,
+		codes.DeadlineExceeded,
+		codes.AlreadyExists,
+		codes.PermissionDenied,
+		codes.FailedPrecondition,
+		codes.Aborted,
+		codes.OutOfRange,
+		codes.Unimplemented,
+		codes.Internal,
+		codes.DataLoss,
+		codes.Unauthenticated:
 		return err
 	}
+	return err
 }

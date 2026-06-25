@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/service"
 )
 
 type NotificationUseCase struct {

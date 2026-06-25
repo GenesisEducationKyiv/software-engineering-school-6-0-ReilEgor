@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	amqp "github.com/rabbitmq/amqp091-go"
-
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	rabbitmq3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type SubscriptionActivatedPublisher struct {

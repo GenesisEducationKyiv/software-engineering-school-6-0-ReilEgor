@@ -3,16 +3,16 @@ package main
 import (
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/google/wire"
 
 	notifPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/port"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/usecase"
 	infraRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/infrastructure/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/transport/broker/rabbitmq"
 	email2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/infrastructure/clients/email"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/transport/broker/rabbitmq"
 	notifUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/usecase"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
 func ProvideEmailService(sender service.EmailSender, cfg Config) *email2.EmailService {

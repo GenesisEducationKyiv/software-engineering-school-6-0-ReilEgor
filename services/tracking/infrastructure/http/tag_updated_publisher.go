@@ -7,9 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	nethttp "net/http"
-
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	nethttp "net/http"
 )
 
 type TagUpdatedPublisher struct {

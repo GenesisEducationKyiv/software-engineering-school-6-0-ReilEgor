@@ -1,11 +1,12 @@
 package grpc
 
 import (
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"google.golang.org/grpc"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/transport/grpc/middleware"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/transport/grpc/middleware"
 )
 
 func NewGrpcServer(h *TrackingHandler, appCfg config.AppConfig) *grpc.Server {

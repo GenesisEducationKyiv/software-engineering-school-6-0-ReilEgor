@@ -3,8 +3,9 @@ package port
 import (
 	"context"
 
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/model"
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/model"
 )
 
 //go:generate mockery --name RepositoryReader --output ../../mocks --case underscore --outpkg mocks

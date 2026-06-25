@@ -11,10 +11,11 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/model"
-	trackingMocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/mocks"
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
 	sharedMocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/model"
+	trackingMocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/mocks"
 )
 
 const (

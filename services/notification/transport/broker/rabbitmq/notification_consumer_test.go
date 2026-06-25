@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	notificationmocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/mocks"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
 func newTestConsumer(t *testing.T) (*NotificationConsumer, *notificationmocks.NotificationUseCase) {
