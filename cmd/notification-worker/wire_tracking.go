@@ -1,10 +1,10 @@
 package main
 
 import (
-	nethttp "net/http"
-
 	"github.com/google/wire"
 	"google.golang.org/grpc"
+
+	nethttp "net/http"
 
 	trackingPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/port"
 	trackingRepo "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
@@ -16,9 +16,9 @@ import (
 	trackingHttp "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/http"
 	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
 func ProvideCachedClient(c *githubClient.GitHubClient, cache sharedcache.Cache) trackingService.GitHubClient {
@@ -40,15 +40,25 @@ var TrackingRepositorySet = wire.NewSet(
 	wire.Bind(new(trackingRepo.Transactor), new(*sharedPostgres.Transactor)),
 )
 
-func ProvideTagUpdatedGRPCPublisher(conn *grpc.ClientConn, cfg config.SubscriptionClientConfig) *trackingGrpc.TagUpdatedPublisher {
+func ProvideTagUpdatedGRPCPublisher(
+	conn *grpc.ClientConn,
+	cfg config.SubscriptionClientConfig,
+) *trackingGrpc.TagUpdatedPublisher {
 	return trackingGrpc.NewTagUpdatedPublisher(conn, cfg.APIKey)
 }
 
-func ProvideTagUpdatedHTTPPublisher(client *nethttp.Client, cfg config.SubscriptionClientConfig) *trackingHttp.TagUpdatedPublisher {
+func ProvideTagUpdatedHTTPPublisher(
+	client *nethttp.Client,
+	cfg config.SubscriptionClientConfig,
+) *trackingHttp.TagUpdatedPublisher {
 	return trackingHttp.NewTagUpdatedPublisher(client, cfg.SubscriptionHTTPAddr, cfg.APIKey)
 }
 
-func ProvideTagUpdatedPublisher(cfg config.SubscriptionClientConfig, grpcPub *trackingGrpc.TagUpdatedPublisher, httpPub *trackingHttp.TagUpdatedPublisher) trackingPort.TagUpdatedPublisher {
+func ProvideTagUpdatedPublisher(
+	cfg config.SubscriptionClientConfig,
+	grpcPub *trackingGrpc.TagUpdatedPublisher,
+	httpPub *trackingHttp.TagUpdatedPublisher,
+) trackingPort.TagUpdatedPublisher {
 	if cfg.TagPublisherType == "http" {
 		return httpPub
 	}

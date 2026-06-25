@@ -167,7 +167,10 @@ func (s *APITestSuite) buildRouter() {
 		outboxRepo,
 	)
 
-	handler := handlers.NewHandler(userUseCase, testAPIKey)
+	subRepoRepo := subPostgres.NewRepositoryRepository(s.dbPool)
+	repoUC := usecase.NewRepositoryUseCase(subRepoRepo)
+
+	handler := handlers.NewHandler(userUseCase, repoUC, testAPIKey)
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
