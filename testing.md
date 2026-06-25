@@ -12,23 +12,20 @@ Before running the tests, make sure the following tools are installed on your ma
 
 ---
 
-## Run All Tests
-
-To run all tests in the project
-
-```bash
-go test -v ./...
-npx --prefix static playwright test
-```
-
 ## Unit Tests
 
-Unit tests cover the internal business logic of the application and do not require any external dependencies.
-
-Run all unit tests with:
+Run unit tests for all services at once:
 
 ```bash
-go test -v ./internal/...
+go test ./services/subscription/... ./services/tracking/... ./services/notification/... ./shared/...
+```
+
+Or per service:
+
+```bash
+go test ./services/subscription/...
+go test ./services/tracking/...
+go test ./services/notification/...
 ```
 
 ## Integration Tests
@@ -41,7 +38,6 @@ Run integration tests with:
 
 ```bash
 go test -v ./tests/integration/...
-
 ```
 
 ## End-to-End (E2E) Tests

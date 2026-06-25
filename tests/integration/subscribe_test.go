@@ -2,23 +2,20 @@ package integration
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/dto"
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/transport/http/dto"
+	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 )
 
 func (s *APITestSuite) TestSubscribe_Success() {
-	s.mockGitHub.On("RepoExists", mock.Anything, testRepo).Return(true, nil)
-	s.mockGitHub.On("GetLatestRelease", mock.Anything, testRepo).
-		Return(&model2.ReleaseInfo{TagName: testTag}, nil)
-	s.mockSMTP.On("SendConfirmation", mock.Anything, testEmail, testRepo, mock.AnythingOfType("string")).
-		Return(nil).Maybe()
-
+	s.mockTracking.On("GetOrCreateRepository", mock.Anything, &pb.GetOrCreateRepositoryRequest{FullName: testRepo}).
+		Return(&pb.GetOrCreateRepositoryResponse{Id: 1, FullName: testRepo}, nil)
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))
 
@@ -37,12 +34,6 @@ func (s *APITestSuite) TestSubscribe_Success() {
 		testEmail, testRepo,
 	).Scan(&count))
 	s.Equal(1, count)
-
-	var savedTag string
-	s.Require().NoError(s.dbPool.QueryRow(s.ctx,
-		`SELECT last_seen_tag FROM repositories WHERE full_name = $1`, testRepo,
-	).Scan(&savedTag))
-	s.Equal(testTag, savedTag)
 }
 
 func (s *APITestSuite) TestSubscribe_InvalidEmail() {
@@ -66,7 +57,8 @@ func (s *APITestSuite) TestSubscribe_EmptyBody() {
 }
 
 func (s *APITestSuite) TestSubscribe_RepoNotFoundOnGitHub() {
-	s.mockGitHub.On("RepoExists", mock.Anything, testRepo).Return(false, nil)
+	s.mockTracking.On("GetOrCreateRepository", mock.Anything, &pb.GetOrCreateRepositoryRequest{FullName: testRepo}).
+		Return(nil, status.Error(codes.NotFound, "repository not found"))
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))
@@ -75,8 +67,8 @@ func (s *APITestSuite) TestSubscribe_RepoNotFoundOnGitHub() {
 }
 
 func (s *APITestSuite) TestSubscribe_GitHubUnavailable() {
-	s.mockGitHub.On("RepoExists", mock.Anything, testRepo).
-		Return(false, fmt.Errorf("wrapped: %w", model2.ErrGitHubUnavailable))
+	s.mockTracking.On("GetOrCreateRepository", mock.Anything, &pb.GetOrCreateRepositoryRequest{FullName: testRepo}).
+		Return(nil, status.Error(codes.Unavailable, "external service unavailable"))
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))

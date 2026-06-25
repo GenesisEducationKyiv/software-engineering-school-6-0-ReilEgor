@@ -14,28 +14,24 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/grpc"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
-	redisClient "github.com/redis/go-redis/v9"
-
-	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/handlers"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
-	subAdapter "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/adapter"
-	servicesRealizationGitHub "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
-	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
-	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
-	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
-	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
-	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
+	subAdapter "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/infrastructure/adapter"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/saga"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/transport/http/handlers"
+	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/usecase"
+	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
+	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 )
 
 const testAPIKey = "test-api-key"
@@ -46,19 +42,33 @@ const (
 	testTag   = "v1.22.0"
 )
 
+// mockTrackingClient is a testify mock for pb.TrackingServiceClient.
+type mockTrackingClient struct {
+	mock.Mock
+}
+
+func (m *mockTrackingClient) GetOrCreateRepository(
+	ctx context.Context,
+	in *pb.GetOrCreateRepositoryRequest,
+	opts ...grpc.CallOption,
+) (*pb.GetOrCreateRepositoryResponse, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.GetOrCreateRepositoryResponse), args.Error(1)
+}
+
 type APITestSuite struct {
 	suite.Suite
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	dbPool         *pgxpool.Pool
-	pgContainer    *postgres.PostgresContainer
-	redisContainer *redis.RedisContainer
-	redisClient    *redisClient.Client
-	router         *gin.Engine
+	dbPool      *pgxpool.Pool
+	pgContainer *postgres.PostgresContainer
+	router      *gin.Engine
 
-	mockGitHub *mocks2.GitHubClient
-	mockSMTP   *mocks2.EmailService
+	mockTracking *mockTrackingClient
 }
 
 func TestAPISuite(t *testing.T) {
@@ -85,40 +95,14 @@ func (s *APITestSuite) SetupSuite() {
 
 	connStr, err := pgContainer.ConnectionString(s.ctx, "sslmode=disable")
 	s.Require().NoError(err)
-	s.Require().NoError(runMigrations(connStr, "../../migrations/subscription"))
+	s.Require().NoError(runMigrations(connStr, "../../services/subscription/migrations"))
 
 	pool, err := pgxpool.New(s.ctx, connStr)
 	s.Require().NoError(err, "failed to create pgxpool")
 	s.dbPool = pool
-
-	redisContainer, err := redis.Run(
-		s.ctx,
-		"redis:7-alpine",
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("Ready to accept connections").
-				WithStartupTimeout(20*time.Second),
-		),
-	)
-	s.Require().NoError(err, "failed to start Redis container")
-	s.redisContainer = redisContainer
-
-	redisURL, err := redisContainer.ConnectionString(s.ctx)
-	s.Require().NoError(err)
-
-	opt, err := redisClient.ParseURL(redisURL)
-	s.Require().NoError(err)
-
-	s.redisClient = redisClient.NewClient(opt)
-	s.Require().NoError(s.redisClient.Ping(s.ctx).Err(), "redis ping failed")
 }
 
 func (s *APITestSuite) TearDownSuite() {
-	if s.redisClient != nil {
-		s.NoError(s.redisClient.Close())
-	}
-	if s.redisContainer != nil {
-		s.NoError(s.redisContainer.Terminate(s.ctx))
-	}
 	if s.dbPool != nil {
 		s.dbPool.Close()
 	}
@@ -132,44 +116,43 @@ func (s *APITestSuite) TearDownSuite() {
 
 func (s *APITestSuite) SetupTest() {
 	s.truncateTables()
-	s.Require().NoError(s.redisClient.FlushAll(s.ctx).Err())
 
-	s.mockGitHub = new(mocks2.GitHubClient)
-	s.mockSMTP = new(mocks2.EmailService)
+	s.mockTracking = new(mockTrackingClient)
 
 	s.buildRouter()
 }
 
 func (s *APITestSuite) TearDownTest() {
-	s.mockGitHub.AssertExpectations(s.T())
-	s.mockSMTP.AssertExpectations(s.T())
+	s.mockTracking.AssertExpectations(s.T())
 }
 
 func (s *APITestSuite) buildRouter() {
-	cache := cacheRealization.NewCache(s.redisClient)
-	cachedGitHub := servicesRealizationGitHub.NewCachedGitHubClient(s.mockGitHub, cache)
-
-	repoRepo := trackingPostgres.NewRepositoryRepository(s.dbPool)
-	userRepo := subPostgres.NewUserRepository(s.dbPool)
-	subsRepo := subPostgres.NewSubscriptionRepository(s.dbPool)
-
-	repoUseCase := trackingUsecase.NewRepositoryUseCase(repoRepo, cachedGitHub)
-	sagaRepo := subPostgres.NewSagaRepository(s.dbPool)
-	outboxRepo := subPostgres.NewOutboxRepository(s.dbPool)
+	userRepo := postgres2.NewUserRepository(s.dbPool)
+	subsRepo := postgres2.NewSubscriptionRepository(s.dbPool)
+	sagaRepo := postgres2.NewSagaRepository(s.dbPool)
+	outboxRepo := postgres2.NewOutboxRepository(s.dbPool)
 	transactor := sharedPostgres.NewTransactor(s.dbPool)
 	orchestrator := saga.NewOrchestrator(sagaRepo, subsRepo, outboxRepo, transactor)
-	userUseCase, _ := usecase.NewUserUseCase(
+
+	repoRepo := postgres2.NewRepositoryRepository(s.dbPool)
+	trackingAdapter := subAdapter.NewRepositoryUseCaseAdapter(
+		s.mockTracking,
+		repoRepo,
+		sharedConfig.TrackingClientConfig{},
+	)
+
+	userUseCase, _ := usecase2.NewUserUseCase(
 		context.Background(),
 		subsRepo,
 		userRepo,
-		subAdapter.NewRepositoryUseCaseAdapter(repoUseCase),
+		trackingAdapter,
 		orchestrator,
 		transactor,
 		outboxRepo,
 	)
 
-	subRepoRepo := subPostgres.NewRepositoryRepository(s.dbPool)
-	repoUC := usecase.NewRepositoryUseCase(subRepoRepo)
+	subRepoRepo := postgres2.NewRepositoryRepository(s.dbPool)
+	repoUC := usecase2.NewRepositoryUseCase(subRepoRepo)
 
 	handler := handlers.NewHandler(userUseCase, repoUC, testAPIKey)
 
