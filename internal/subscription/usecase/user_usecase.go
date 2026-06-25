@@ -76,7 +76,7 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 		slog.String("repo", repoName),
 	)
 
-	repo, err := uc.repoUC.GetOrCreate(ctx, repoName)
+	repoRef, err := uc.repoUC.GetOrCreate(ctx, repoName)
 	if err != nil {
 		return fmt.Errorf("%s: get or create repo: %w", op, err)
 	}
@@ -97,8 +97,8 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 	token := uuid.NewString()
 	sub := &model.Subscription{
 		UserID:         user.ID,
-		RepositoryID:   repo.ID,
-		RepositoryName: repo.FullName,
+		RepositoryID:   repoRef.ID,
+		RepositoryName: repoRef.FullName,
 		Token:          token,
 		Confirmed:      false,
 	}

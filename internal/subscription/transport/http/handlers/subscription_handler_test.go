@@ -21,7 +21,6 @@ import (
 
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/dto"
-	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
 
@@ -158,7 +157,7 @@ func TestHandler_Subscribe(t *testing.T) {
 			body: map[string]string{"email": "test@example.com", "repository": "owner/repo"},
 			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "owner/repo").
-					Return(trackingModel.ErrRepositoryNotFound).Once()
+					Return(subModel.ErrRepositoryNotFound).Once()
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -167,7 +166,7 @@ func TestHandler_Subscribe(t *testing.T) {
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
 			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").
-					Return(trackingModel.ErrGitHubUnavailable).Once()
+					Return(subModel.ErrServiceUnavailable).Once()
 			},
 			expectedStatus: http.StatusServiceUnavailable,
 		},
@@ -176,7 +175,7 @@ func TestHandler_Subscribe(t *testing.T) {
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
 			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").
-					Return(trackingModel.ErrRateLimitExceeded).Once()
+					Return(subModel.ErrServiceUnavailable).Once()
 			},
 			expectedStatus: http.StatusServiceUnavailable,
 		},

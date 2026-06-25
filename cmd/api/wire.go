@@ -12,9 +12,9 @@ import (
 
 	subscriptionPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
 	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/adapter"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/outbox"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
-	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
@@ -61,7 +61,8 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		GrpcSet,
 		outbox.NewRelay,
 		http.NewGinServer,
-		wire.Bind(new(subscriptionPort.RepositoryUseCase), new(*trackingUsecase.RepositoryUseCase)),
+		adapter.NewRepositoryUseCaseAdapter,
+		wire.Bind(new(subscriptionPort.RepositoryUseCase), new(*adapter.RepositoryUseCaseAdapter)),
 		wire.Struct(new(App), "*"),
 	)
 	return nil, nil, nil

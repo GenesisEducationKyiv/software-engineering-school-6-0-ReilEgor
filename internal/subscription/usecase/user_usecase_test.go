@@ -12,7 +12,6 @@ import (
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
 	subMocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/mocks"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
-	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
@@ -96,7 +95,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&subModel.RepositoryRef{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				setupTransactorOK(f)
@@ -114,7 +113,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&subModel.RepositoryRef{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "new@example.com").
 					Return(subModel.User{}, subModel.ErrUserNotFound).Once()
 				f.userRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.User")).
@@ -140,7 +139,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "unknown/repo",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "unknown/repo").
-					Return((*trackingModel.Repository)(nil), errors.New("repo not found")).Once()
+					Return((*subModel.RepositoryRef)(nil), errors.New("repo not found")).Once()
 			},
 			expectErr: true,
 		},
@@ -150,7 +149,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&subModel.RepositoryRef{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{}, errors.New("db error")).Once()
 			},
@@ -162,7 +161,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&subModel.RepositoryRef{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "new@example.com").
 					Return(subModel.User{}, subModel.ErrUserNotFound).Once()
 				f.userRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.User")).
@@ -176,7 +175,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&subModel.RepositoryRef{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				saveErr := errors.New("save error")
@@ -192,7 +191,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
 				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
-					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+					Return(&subModel.RepositoryRef{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
 				sagaErr := errors.New("saga create error")

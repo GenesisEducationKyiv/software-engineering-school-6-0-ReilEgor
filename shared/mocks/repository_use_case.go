@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	model "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -14,54 +14,24 @@ type RepositoryUseCase struct {
 	mock.Mock
 }
 
-// CheckForUpdates provides a mock function with given fields: ctx, repo
-func (_m *RepositoryUseCase) CheckForUpdates(ctx context.Context, repo model.Repository) (*model.Repository, error) {
-	ret := _m.Called(ctx, repo)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CheckForUpdates")
-	}
-
-	var r0 *model.Repository
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, model.Repository) (*model.Repository, error)); ok {
-		return rf(ctx, repo)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, model.Repository) *model.Repository); ok {
-		r0 = rf(ctx, repo)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.Repository)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, model.Repository) error); ok {
-		r1 = rf(ctx, repo)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // GetOrCreate provides a mock function with given fields: ctx, repoName
-func (_m *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (*model.Repository, error) {
+func (_m *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (*model.RepositoryRef, error) {
 	ret := _m.Called(ctx, repoName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOrCreate")
 	}
 
-	var r0 *model.Repository
+	var r0 *model.RepositoryRef
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.Repository, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.RepositoryRef, error)); ok {
 		return rf(ctx, repoName)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *model.Repository); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.RepositoryRef); ok {
 		r0 = rf(ctx, repoName)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.Repository)
+			r0 = ret.Get(0).(*model.RepositoryRef)
 		}
 	}
 

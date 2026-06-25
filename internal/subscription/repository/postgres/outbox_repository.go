@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
@@ -33,16 +33,16 @@ const fetchPendingQuery = `
 	LIMIT $1
 `
 
-func (r *OutboxRepository) FetchPending(ctx context.Context, limit int) ([]subModel.OutboxMessage, error) {
+func (r *OutboxRepository) FetchPending(ctx context.Context, limit int) ([]sharedModel.OutboxMessage, error) {
 	rows, err := r.db.Query(ctx, fetchPendingQuery, limit)
 	if err != nil {
 		return nil, fmt.Errorf("OutboxRepository.FetchPending: %w", err)
 	}
 	defer rows.Close()
 
-	var msgs []subModel.OutboxMessage
+	var msgs []sharedModel.OutboxMessage
 	for rows.Next() {
-		var msg subModel.OutboxMessage
+		var msg sharedModel.OutboxMessage
 		if err := rows.Scan(&msg.ID, &msg.Queue, &msg.Payload); err != nil {
 			return nil, fmt.Errorf("OutboxRepository.FetchPending scan: %w", err)
 		}

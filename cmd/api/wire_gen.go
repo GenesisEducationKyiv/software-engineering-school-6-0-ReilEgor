@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/adapter"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/outbox"
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
@@ -49,11 +50,12 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
+	repositoryUseCaseAdapter := adapter.NewRepositoryUseCaseAdapter(repositoryUseCase)
 	sagaRepository := postgres2.NewSagaRepository(pool)
 	outboxRepository := postgres2.NewOutboxRepository(pool)
 	transactor := postgres.NewTransactor(pool)
 	orchestrator := saga.NewOrchestrator(sagaRepository, subscriptionRepository, outboxRepository, transactor)
-	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, orchestrator, transactor, outboxRepository)
+	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCaseAdapter, orchestrator, transactor, outboxRepository)
 	postgresRepositoryRepository := postgres2.NewRepositoryRepository(pool)
 	usecaseRepositoryUseCase := usecase2.NewRepositoryUseCase(postgresRepositoryRepository)
 	httpConfig := ProvideHTTPConfig(cfg)
