@@ -6,17 +6,16 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/google/wire"
 
-	notifPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/port"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/domain/usecase"
-	infraRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/infrastructure/broker/rabbitmq"
-	email2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/infrastructure/clients/email"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/transport/broker/rabbitmq"
-	notifUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/usecase"
+	infraRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/infrastructure/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/infrastructure/clients/email"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/transport/broker/rabbitmq"
+	notifUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/usecase"
 )
 
-func ProvideEmailService(sender service.EmailSender, cfg Config) *email2.EmailService {
-	return email2.NewEmailService(sender, cfg.App.BaseURL)
+func ProvideEmailService(sender service.EmailSender, cfg Config) *email.EmailService {
+	return email.NewEmailService(sender, cfg.App.BaseURL)
 }
 
 func ProvideSendTimeout(cfg config.SenderConfig) time.Duration {
@@ -24,10 +23,10 @@ func ProvideSendTimeout(cfg config.SenderConfig) time.Duration {
 }
 
 var EmailSet = wire.NewSet(
-	email2.NewSMTPClient,
+	email.NewSMTPClient,
 	ProvideEmailService,
-	wire.Bind(new(service.EmailSender), new(*email2.SMTPClient)),
-	wire.Bind(new(service.EmailService), new(*email2.EmailService)),
+	wire.Bind(new(service.EmailSender), new(*email.SMTPClient)),
+	wire.Bind(new(service.EmailService), new(*email.EmailService)),
 )
 
 var NotificationSet = wire.NewSet(
@@ -40,5 +39,5 @@ var BrokerSet = wire.NewSet(
 	rabbitmq.NewNotificationConsumer,
 	rabbitmq.NewConfirmationConsumer,
 	infraRabbitmq.NewSagaResultPublisher,
-	wire.Bind(new(notifPort.SagaResultPublisher), new(*infraRabbitmq.SagaResultPublisher)),
+	wire.Bind(new(rabbitmq.SagaResultPublisher), new(*infraRabbitmq.SagaResultPublisher)),
 )

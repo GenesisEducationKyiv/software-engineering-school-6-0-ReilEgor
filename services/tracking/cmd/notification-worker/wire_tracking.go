@@ -5,39 +5,39 @@ import (
 	"github.com/google/wire"
 	"google.golang.org/grpc"
 
-	nethttp "net/http"
-
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
+	nethttp "net/http"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/repository"
-	trackingService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/service"
-	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/usecase"
-	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/adapter/grpc"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/clients/github"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/repository/postgres"
-	trackingRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/transport/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/usecase"
+	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/repository"
+	trackingService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/service"
+	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/usecase"
+	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/adapter/grpc"
+	trackingHttp "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/adapter/http"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/broker/rabbitmq"
+	github2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/clients/github"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/repository/postgres"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/broker/rabbitmq"
+	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/usecase"
 )
 
-func ProvideCachedClient(c *github.GitHubClient, cache sharedcache.Cache) trackingService.GitHubClient {
-	return github.NewCachedGitHubClient(c, cache)
+func ProvideCachedClient(c *github2.GitHubClient, cache sharedcache.Cache) trackingService.GitHubClient {
+	return github2.NewCachedGitHubClient(c, cache)
 }
 
 var GitHubSet = wire.NewSet(
-	github.NewGitHubClient,
+	github2.NewGitHubClient,
 	ProvideCachedClient,
 )
 
 var TrackingRepositorySet = wire.NewSet(
-	postgres.NewRepositoryRepository,
-	postgres.NewOutboxRepository,
+	postgres2.NewRepositoryRepository,
+	postgres2.NewOutboxRepository,
 	sharedPostgres.NewTransactor,
-	wire.Bind(new(repository.RepositoryRepository), new(*postgres.RepositoryRepository)),
-	wire.Bind(new(usecase.RepositoryReader), new(*postgres.RepositoryRepository)),
-	wire.Bind(new(repository.OutboxRepository), new(*postgres.OutboxRepository)),
-	wire.Bind(new(repository.Transactor), new(*sharedPostgres.Transactor)),
+	wire.Bind(new(repository2.RepositoryRepository), new(*postgres2.RepositoryRepository)),
+	wire.Bind(new(usecase2.RepositoryReader), new(*postgres2.RepositoryRepository)),
+	wire.Bind(new(repository2.OutboxRepository), new(*postgres2.OutboxRepository)),
+	wire.Bind(new(repository2.Transactor), new(*sharedPostgres.Transactor)),
 )
 
 func ProvideTagUpdatedGRPCPublisher(
@@ -50,15 +50,15 @@ func ProvideTagUpdatedGRPCPublisher(
 func ProvideTagUpdatedHTTPPublisher(
 	client *nethttp.Client,
 	cfg config.SubscriptionClientConfig,
-) *trackingGrpc.TagUpdatedPublisher {
-	return trackingGrpc.NewTagUpdatedPublisher(client, cfg.SubscriptionHTTPAddr, cfg.APIKey)
+) *trackingHttp.TagUpdatedPublisher {
+	return trackingHttp.NewTagUpdatedPublisher(client, cfg.SubscriptionHTTPAddr, cfg.APIKey)
 }
 
 func ProvideTagUpdatedPublisher(
 	cfg config.SubscriptionClientConfig,
 	grpcPub *trackingGrpc.TagUpdatedPublisher,
-	httpPub *trackingGrpc.TagUpdatedPublisher,
-) usecase.TagUpdatedPublisher {
+	httpPub *trackingHttp.TagUpdatedPublisher,
+) usecase2.TagUpdatedPublisher {
 	if cfg.TagPublisherType == "http" {
 		return httpPub
 	}
@@ -68,17 +68,17 @@ func ProvideTagUpdatedPublisher(
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
 	rabbitmq.NewPublisher,
-	trackingRabbitmq.NewSubscriptionActivatedConsumer,
-	trackingRabbitmq.NewUnsubscriptionActivatedConsumer,
+	rabbitmq2.NewSubscriptionActivatedConsumer,
+	rabbitmq2.NewUnsubscriptionActivatedConsumer,
 	ProvideTagUpdatedGRPCPublisher,
 	ProvideTagUpdatedHTTPPublisher,
 	ProvideTagUpdatedPublisher,
-	wire.Bind(new(usecase.NotificationPublisher), new(*rabbitmq.Publisher)),
+	wire.Bind(new(usecase2.NotificationPublisher), new(*rabbitmq.Publisher)),
 )
 
 var UseCaseSet = wire.NewSet(
-	usecase.NewRepositoryUseCase,
-	usecase.NewReleaseProcessor,
-	wire.Bind(new(trackingDomainUsecase.RepositoryUseCase), new(*usecase.RepositoryUseCase)),
-	wire.Bind(new(trackingDomainUsecase.ReleaseProcessorUseCase), new(*usecase.ReleaseProcessor)),
+	usecase2.NewRepositoryUseCase,
+	usecase2.NewReleaseProcessor,
+	wire.Bind(new(trackingDomainUsecase.RepositoryUseCase), new(*usecase2.RepositoryUseCase)),
+	wire.Bind(new(trackingDomainUsecase.ReleaseProcessorUseCase), new(*usecase2.ReleaseProcessor)),
 )

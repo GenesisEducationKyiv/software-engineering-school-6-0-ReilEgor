@@ -6,11 +6,12 @@ package main
 import (
 	"context"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/google/wire"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/transport/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
+
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/transport/broker/rabbitmq"
 )
 
 func ProvideEmailConfig(cfg Config) config.EmailConfig       { return cfg.Email }
@@ -22,8 +23,8 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Conne
 }
 
 type App struct {
-	NotificationConsumer *rabbitmq.NotificationConsumer
-	ConfirmationConsumer *rabbitmq.ConfirmationConsumer
+	NotificationConsumer *rabbitmq2.NotificationConsumer
+	ConfirmationConsumer *rabbitmq2.ConfirmationConsumer
 }
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {

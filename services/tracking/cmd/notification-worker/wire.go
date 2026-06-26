@@ -8,17 +8,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/google/wire"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	nethttp "net/http"
 
-	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/domain/usecase"
-	trackingRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/transport/broker/rabbitmq"
-	trackingOutbox "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/infrastructure/outbox"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
-	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
+	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/usecase"
+	trackingOutbox "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/outbox"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/broker/rabbitmq"
 )
 
 func ProvideTrackingDBConfig(cfg Config) config.TrackingDBConfig { return cfg.TrackingDB }
@@ -53,8 +53,8 @@ func ProvideOutboxInterval() time.Duration {
 type App struct {
 	GrpcServer                      *grpc.Server
 	ReleaseProcessor                trackingDomainUsecase.ReleaseProcessorUseCase
-	SubscriptionActivatedConsumer   *trackingRabbitmq.SubscriptionActivatedConsumer
-	UnsubscriptionActivatedConsumer *trackingRabbitmq.UnsubscriptionActivatedConsumer
+	SubscriptionActivatedConsumer   *rabbitmq.SubscriptionActivatedConsumer
+	UnsubscriptionActivatedConsumer *rabbitmq.UnsubscriptionActivatedConsumer
 	OutboxRelay                     *trackingOutbox.Relay
 }
 

@@ -8,18 +8,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/google/wire"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	subscriptionPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/domain/port"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/infrastructure/adapter"
-	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/transport/broker/rabbitmq"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/infrastructure/outbox"
-	subHttp "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/transport/http"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/adapter"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/outbox"
+	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/broker/rabbitmq"
+	subHttp "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/http"
+	subUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 )
 
 func ProvideSubscriptionDBConfig(cfg Config) config.SubscriptionDBConfig { return cfg.SubscriptionDB }
@@ -76,7 +77,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		outbox.NewRelay,
 		subHttp.NewGinServer,
 		adapter.NewRepositoryUseCaseAdapter,
-		wire.Bind(new(subscriptionPort.RepositoryUseCase), new(*adapter.RepositoryUseCaseAdapter)),
+		wire.Bind(new(subUsecase.TrackingRepository), new(*adapter.RepositoryUseCaseAdapter)),
 		wire.Struct(new(App), "*"),
 	)
 	return nil, nil, nil

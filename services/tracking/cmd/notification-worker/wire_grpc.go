@@ -3,10 +3,10 @@ package main
 import (
 	"github.com/google/wire"
 
-	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/transport/grpc"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/grpc"
 )
 
 var GrpcSet = wire.NewSet(
-	trackingGrpc.NewTrackingHandler,
-	trackingGrpc.NewGrpcServer,
+	grpc.NewTrackingHandler,
+	grpc.NewGrpcServer,
 )
