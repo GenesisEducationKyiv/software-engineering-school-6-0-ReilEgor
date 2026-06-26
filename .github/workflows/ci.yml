@@ -10,16 +10,24 @@ jobs:
   lint:
     name: Linting
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - services/subscription
+          - services/tracking
+          - services/notification
+          - shared
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
           cache: true
-      - name: Run golangci-lint
+      - name: Run golangci-lint (${{ matrix.module }})
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.1
+          working-directory: ${{ matrix.module }}
           args: --timeout=5m
 
   unit-tests:
