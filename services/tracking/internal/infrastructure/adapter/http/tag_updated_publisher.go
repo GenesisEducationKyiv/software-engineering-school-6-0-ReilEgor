@@ -6,19 +6,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
-	nethttp "net/http"
 )
 
 type TagUpdatedPublisher struct {
-	client  *nethttp.Client
+	client  *http.Client
 	baseURL string
 	apiKey  string
 	logger  *slog.Logger
 }
 
-func NewTagUpdatedPublisher(client *nethttp.Client, baseURL, apiKey string) *TagUpdatedPublisher {
+func NewTagUpdatedPublisher(client *http.Client, baseURL, apiKey string) *TagUpdatedPublisher {
 	return &TagUpdatedPublisher{
 		client:  client,
 		baseURL: baseURL,
@@ -33,9 +33,9 @@ func (p *TagUpdatedPublisher) Publish(ctx context.Context, event contracts.TagUp
 		return fmt.Errorf("marshal: %w", err)
 	}
 
-	req, err := nethttp.NewRequestWithContext(
+	req, err := http.NewRequestWithContext(
 		ctx,
-		nethttp.MethodPost,
+		http.MethodPost,
 		p.baseURL+"/internal/repositories/tag",
 		bytes.NewReader(body),
 	)
@@ -55,7 +55,7 @@ func (p *TagUpdatedPublisher) Publish(ctx context.Context, event contracts.TagUp
 		}
 	}()
 
-	if resp.StatusCode != nethttp.StatusOK {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http update tag: unexpected status %d", resp.StatusCode)
 	}
 	return nil

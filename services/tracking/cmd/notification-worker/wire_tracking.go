@@ -1,13 +1,14 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/google/wire"
 	"google.golang.org/grpc"
 
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
-	nethttp "net/http"
 
 	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/repository"
 	trackingService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/service"
@@ -48,7 +49,7 @@ func ProvideTagUpdatedGRPCPublisher(
 }
 
 func ProvideTagUpdatedHTTPPublisher(
-	client *nethttp.Client,
+	client *http.Client,
 	cfg config.SubscriptionClientConfig,
 ) *trackingHttp.TagUpdatedPublisher {
 	return trackingHttp.NewTagUpdatedPublisher(client, cfg.SubscriptionHTTPAddr, cfg.APIKey)
