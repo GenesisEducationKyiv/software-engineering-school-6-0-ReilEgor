@@ -29,6 +29,8 @@ jobs:
           TRACKING_DB_MAX_OPEN_CONNS=10
           TRACKING_DB_MAX_CONN_IDLE_TIME=30m
           TRACKING_DB_HEALTH_CHECK_PERIOD=1m
+          TRACKING_GRPC_PORT=50051
+          TAG_PUBLISHER_TYPE=grpc
 
           REDIS_PASSWORD=test_redis_pass
           REDIS_PORT=6379
@@ -80,9 +82,11 @@ jobs:
         run: docker compose up -d --build
       - name: Wait for backend to be ready
         run: |
-          echo "Waiting for app to start on port 8080..."
+          echo "Waiting for subscription service..."
           timeout 120 bash -c 'until curl -s -f http://localhost:8080/health > /dev/null; do sleep 2; done'
-          echo "App is ready to accept E2E tests!"
+          echo "Waiting for tracking service..."
+          timeout 120 bash -c 'until docker inspect --format="{{.State.Health.Status}}" notification-worker 2>/dev/null | grep -q healthy; do sleep 2; done'
+          echo "All services ready!"
 
       - uses: actions/setup-node@v4
         with:
