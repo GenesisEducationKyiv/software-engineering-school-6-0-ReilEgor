@@ -1,0 +1,76 @@
+name: Playwright Tests
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+jobs:
+  e2e-test:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create .env file
+        working-directory: ./deployments
+        run: |
+          cat <<EOF > .env
+          POSTGRES_USER=test_user
+          POSTGRES_PASSWORD=test_pass
+          POSTGRES_DB=test_db
+          POSTGRES_PORT=5432
+            
+          REDIS_PASSWORD=test_redis_pass
+          REDIS_PORT=6379
+          REDIS_HOST=redis
+            
+          DB_URL=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
+            
+          APP_HTTP_PORT=8080
+          APP_GRPC_PORT=50051
+          APP_BASE_URL=http://localhost:8080
+
+          APP_API_KEY=my-super-secret-token-123
+
+          EMAIL_HOST=smtp.mailtrap.io
+          EMAIL_PORT=2525
+          EMAIL_USER=test_user
+          EMAIL_PASSWORD=test_pass
+          EMAIL_FROM=noreply@example.com
+
+          PROMETHEUS_PORT=9090
+          GRAFANA_PORT=3000
+          SWAGGER_PORT=8081
+          EOF
+
+      - name: Start Application Stack
+        working-directory: ./deployments
+        run: docker compose up -d --build
+      - name: Wait for backend to be ready
+        run: |
+          echo "Waiting for app to start on port 8080..."
+          while ! curl -s -f http://localhost:8080/health > /dev/null; do
+            sleep 2
+          done
+          echo "App is ready to accept E2E tests!"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: ./tests/e2e
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: ./tests/e2e
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npx --prefix tests/e2e playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: ./tests/e2e/playwright-report/
+          retention-days: 30

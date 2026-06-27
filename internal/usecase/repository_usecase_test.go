@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -162,6 +163,27 @@ func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 		wantRepo  *model.Repository
 		expectErr bool
 	}{
+		{
+			name: "success - context has deadline (10s timeout)",
+			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
+			setup: func(f repoMockFields) {
+				f.ghClient.On("GetLatestRelease",
+					mock.MatchedBy(func(ctx context.Context) bool {
+						deadline, hasDeadline := ctx.Deadline()
+						if !hasDeadline {
+							return false
+						}
+						remaining := time.Until(deadline)
+						return remaining > (checkForUpdatesCtxTimeout-1)*time.Second &&
+							remaining <= checkForUpdatesCtxTimeout*time.Second
+					}),
+					"golang/go",
+				).Return(&model.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
+				f.repoRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Repository")).
+					Return(nil).Once()
+			},
+			wantRepo: &model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
+		},
 		{
 			name: "success - new release detected, repo updated",
 			repo: model.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},

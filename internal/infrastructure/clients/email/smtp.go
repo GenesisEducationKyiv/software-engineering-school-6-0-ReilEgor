@@ -12,31 +12,23 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
-const (
-	componentEmailClient = "EmailClient"
-)
+const componentEmailClient = "EmailClient"
 
 type SMTPClient struct {
-	host     config.EmailHostType
-	port     config.EmailPortType
-	from     config.EmailFromType
+	host     string
+	port     string
+	from     string
 	auth     smtp.Auth
 	sendMail func(addr string, a smtp.Auth, from string, to []string, msg []byte) error
 	logger   *slog.Logger
 }
 
-func NewSMTPClient(
-	host config.EmailHostType,
-	port config.EmailPortType,
-	from config.EmailFromType,
-	password config.EmailPasswordType,
-	user config.EmailUserType,
-) *SMTPClient {
+func NewSMTPClient(cfg config.EmailConfig) *SMTPClient {
 	return &SMTPClient{
-		host:     host,
-		port:     port,
-		from:     from,
-		auth:     smtp.PlainAuth("", string(user), string(password), string(host)),
+		host:     cfg.Host,
+		port:     cfg.Port,
+		from:     cfg.From,
+		auth:     smtp.PlainAuth("", cfg.User, cfg.Password, cfg.Host),
 		logger:   slog.With(slog.String("component", componentEmailClient)),
 		sendMail: smtp.SendMail,
 	}
@@ -50,7 +42,7 @@ func (c *SMTPClient) Send(ctx context.Context, msg model.EmailMessage) error {
 		c.from, msg.To, msg.Subject, msg.Body,
 	))
 
-	if err := c.sendMail(addr, c.auth, string(c.from), []string{msg.To}, rawMsg); err != nil {
+	if err := c.sendMail(addr, c.auth, c.from, []string{msg.To}, rawMsg); err != nil {
 		c.logger.ErrorContext(ctx, "failed to send email", slog.String("to", msg.To), slog.Any("error", err))
 		return classifySMTPError(err)
 	}

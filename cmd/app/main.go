@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bytedance/gopkg/util/logger"
 	"github.com/caarlos0/env/v11"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 )
@@ -39,22 +39,35 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	app, cleanup, err := InitializeApp(ctx, cfg.RedisHost, cfg.RedisPort, cfg.RedisPassword, 0, cfg.DSN,
-		cfg.EmailHost, cfg.EmailPort, cfg.EmailPassword, cfg.EmailFrom, cfg.EmailUser,
-		cfg.APIKey, cfg.GitHubToken, cfg.AppBaseURL)
+	app, cleanup, err := InitializeApp(ctx, cfg)
 	if err != nil {
 		myLogger.Error("application initialization failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer cleanup()
 
-	errCh := make(chan error, 2)
+	g, ctx := errgroup.WithContext(ctx)
 
-	go startHTTPServer(ctx, app, cfg, myLogger, errCh)
-	go startGRPCServer(ctx, app, cfg, myLogger, errCh)
-	go startNotificationWorker(ctx, app, myLogger)
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
+		myLogger.Info("HTTP server starting", slog.String("addr", addr))
+		return startHTTPServer(ctx, app, cfg, myLogger)
+	})
 
-	wait(ctx, myLogger, errCh)
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
+		myLogger.Info("gRPC server starting", slog.String("addr", addr))
+		return startGRPCServer(ctx, app, cfg, myLogger)
+	})
+
+	g.Go(func() error {
+		startNotificationWorker(ctx, app, myLogger)
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		myLogger.Error("server stopped", slog.Any("error", err))
+	}
 }
 
 func setupLogger() *slog.Logger {
@@ -73,21 +86,21 @@ func loadConfig(l *slog.Logger) (config.Config, error) {
 	return cfg, nil
 }
 
-func startHTTPServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger, errCh chan error) {
-	addr := fmt.Sprintf(":%s", cfg.HTTPPort)
+func startHTTPServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger) error {
+	addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
 	l.Info("HTTP server starting", slog.String("addr", addr))
 	if err := app.HTTPServer.Run(ctx, addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		errCh <- fmt.Errorf("http server error: %w", err)
+		return fmt.Errorf("http server error: %w", err)
 	}
+	return nil
 }
 
-func startGRPCServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger, errCh chan error) {
-	addr := fmt.Sprintf(":%s", cfg.GRPCPort)
+func startGRPCServer(ctx context.Context, app *App, cfg config.Config, l *slog.Logger) error {
+	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 	lc := net.ListenConfig{}
 	lis, err := lc.Listen(ctx, "tcp", addr)
 	if err != nil {
-		errCh <- fmt.Errorf("gRPC listen error: %w", err)
-		return
+		return fmt.Errorf("gRPC listen error: %w", err)
 	}
 	go func() {
 		<-ctx.Done()
@@ -97,8 +110,9 @@ func startGRPCServer(ctx context.Context, app *App, cfg config.Config, l *slog.L
 
 	l.Info("gRPC server starting", slog.String("addr", addr))
 	if err := app.GrpcServer.Serve(lis); err != nil {
-		errCh <- fmt.Errorf("gRPC server error: %w", err)
+		return fmt.Errorf("gRPC server error: %w", err)
 	}
+	return nil
 }
 
 func startNotificationWorker(ctx context.Context, app *App, l *slog.Logger) {
@@ -115,17 +129,5 @@ func startNotificationWorker(ctx context.Context, app *App, l *slog.Logger) {
 				l.Error("worker check failed", slog.Any("error", err))
 			}
 		}
-	}
-}
-
-func wait(ctx context.Context, l *slog.Logger, errCh chan error) {
-	select {
-	case <-ctx.Done():
-		l.Info("shutting down gracefully")
-		if err := <-errCh; err != nil {
-			logger.Error("server shutdown error", slog.Any("error", err))
-		}
-	case err := <-errCh:
-		l.Error("server stopped unexpectedly", slog.Any("error", err))
 	}
 }

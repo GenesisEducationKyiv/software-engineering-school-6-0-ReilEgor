@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/mocks"
 )
@@ -168,7 +167,7 @@ func TestEmailManager_SendConfirmation(t *testing.T) {
 				Return(tc.mockReturn).
 				Once()
 
-			manager := NewEmailManager(mockSender, config.AppBaseURLType(tc.baseURL))
+			manager := NewEmailManager(mockSender, tc.baseURL)
 			err := manager.SendConfirmation(tc.args.ctx, tc.args.to, tc.args.repoName, tc.args.token)
 
 			if tc.wantErr {
@@ -390,7 +389,7 @@ func TestEmailManager_SendNotification(t *testing.T) {
 				Return(tc.mockReturn).
 				Once()
 
-			manager := NewEmailManager(mockSender, config.AppBaseURLType(tc.baseURL))
+			manager := NewEmailManager(mockSender, tc.baseURL)
 			err := manager.SendNotification(
 				tc.args.ctx,
 				tc.args.to,

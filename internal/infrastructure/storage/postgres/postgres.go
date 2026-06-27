@@ -12,31 +12,26 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
 )
 
-const (
-	MaxOpenConnections = 25
-	MaxIdleConnections = 25
-)
-
-func New(ctx context.Context, dsn config.DSNType) (*pgxpool.Pool, func(), error) {
-	slog.With(slog.String("component", "postgres"))
+func New(ctx context.Context, cfg config.DBConfig) (*pgxpool.Pool, func(), error) {
 	slog.Info("connecting to database",
-		slog.String("dsn", maskDSN(string(dsn))),
+		slog.String("dsn", maskDSN(cfg.DSN)),
 	)
-	myConfig, err := pgxpool.ParseConfig(string(dsn))
+
+	poolCfg, err := pgxpool.ParseConfig(cfg.DSN)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	myConfig.MaxConns = MaxOpenConnections
-	myConfig.MaxConnIdleTime = time.Duration(MaxIdleConnections) * time.Second
-	myConfig.HealthCheckPeriod = 1 * time.Minute
+	poolCfg.MaxConns = cfg.MaxOpenConns
+	poolCfg.MaxConnIdleTime = cfg.MaxConnIdleTime
+	poolCfg.HealthCheckPeriod = cfg.HealthCheckPeriod
 
-	pool, err := pgxpool.NewWithConfig(ctx, myConfig)
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create pool: %w", err)
 	}
-	start := time.Now()
 
+	start := time.Now()
 	if err := pool.Ping(ctx); err != nil {
 		slog.Error("database ping failed",
 			slog.Any("error", err),
@@ -46,7 +41,7 @@ func New(ctx context.Context, dsn config.DSNType) (*pgxpool.Pool, func(), error)
 
 	slog.Info("successful connection to PostgreSQL",
 		slog.Duration("latency", time.Since(start)),
-		slog.Int("max_open_conns", MaxOpenConnections))
+		slog.Int("max_open_conns", int(cfg.MaxOpenConns)))
 
 	cleanup := func() {
 		slog.Info("closing database connections")
@@ -61,6 +56,5 @@ func maskDSN(dsn string) string {
 	if err != nil {
 		return "invalid-dsn"
 	}
-
 	return u.Redacted()
 }
