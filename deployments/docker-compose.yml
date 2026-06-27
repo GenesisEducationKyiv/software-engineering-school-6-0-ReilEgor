@@ -51,7 +51,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ../migrations/subscription:/migrations
+      - ../services/subscription/migrations:/migrations
     command: [
       "-path", "/migrations",
       "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${SUBSCRIPTION_POSTGRES_DB}?sslmode=disable",
@@ -65,7 +65,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ../migrations/tracker:/migrations
+      - ../services/tracking/migrations:/migrations
     command: [
       "-path", "/migrations",
       "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${TRACKER_POSTGRES_DB}?sslmode=disable",
@@ -96,7 +96,7 @@ services:
   repo-notifier-service:
     build:
       context: ..
-      dockerfile: deployments/Dockerfile.api
+      dockerfile: services/subscription/Dockerfile
     container_name: repo-notifier-service
     restart: always
     environment:
@@ -127,6 +127,8 @@ services:
       GITHUB_CB_INTERVAL: ${GITHUB_CB_INTERVAL}
       GITHUB_CB_TIMEOUT: ${GITHUB_CB_TIMEOUT}
       GITHUB_CB_FAILURE_THRESHOLD: ${GITHUB_CB_FAILURE_THRESHOLD}
+      # Tracking gRPC
+      TRACKING_GRPC_ADDR: notification-worker:${TRACKING_GRPC_PORT}
       # RabbitMQ
       RABBITMQ_URL: ${RABBITMQ_URL}
     ports:
@@ -157,7 +159,7 @@ services:
   notification-worker:
     build:
       context: ..
-      dockerfile: deployments/Dockerfile.notification-worker
+      dockerfile: services/tracking/Dockerfile
     container_name: notification-worker
     restart: always
     environment:
@@ -170,6 +172,7 @@ services:
       APP_BASE_URL: ${APP_BASE_URL}
       APP_API_KEY: ${APP_API_KEY}
       SUBSCRIPTION_GRPC_ADDR: repo-notifier-service:${APP_GRPC_PORT}
+      TRACKING_GRPC_PORT: ${TRACKING_GRPC_PORT}
       # Redis
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
@@ -215,7 +218,7 @@ services:
   notification-sender:
     build:
       context: ..
-      dockerfile: deployments/Dockerfile.notification-sender
+      dockerfile: services/notification/Dockerfile
     container_name: notification-sender
     restart: always
     environment:

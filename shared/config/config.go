@@ -86,6 +86,15 @@ type SubscriptionClientConfig struct {
 	TagPublisherType     string `env:"TAG_PUBLISHER_TYPE"` // "grpc" (default) or "http"
 }
 
+type TrackingClientConfig struct {
+	TrackingGRPCAddr string `env:"TRACKING_GRPC_ADDR"`
+	APIKey           string `env:"APP_API_KEY"`
+}
+
+type TrackingGRPCConfig struct {
+	Port string `env:"TRACKING_GRPC_PORT"`
+}
+
 type SenderConfig struct {
 	SendTimeout time.Duration `env:"WORKER_SEND_TIMEOUT"`
 	HealthPort  string        `env:"SENDER_HEALTH_PORT"`

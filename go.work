@@ -1,0 +1,9 @@
+go 1.25.0
+
+use (
+	./services/notification
+	./services/subscription
+	./services/subscription/tests/integration
+	./services/tracking
+	./shared
+)
