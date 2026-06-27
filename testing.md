@@ -31,6 +31,9 @@ go test ./services/tracking/internal/...
 ```bash
 go test ./services/notification/internal/...
 ```
+```bash
+go test ./shared/infrastructure...
+```
 
 ## Integration Tests
 

@@ -40,7 +40,7 @@ jobs:
           go-version: '1.25'
           cache: true
       - name: Run Unit Tests
-        run: go test -v -race ./services/subscription/internal... ./services/tracking/internal... ./services/notification/internal... ./shared... -coverprofile=unit-coverage.txt -covermode=atomic
+        run: go test -v -race ./services/subscription/internal... ./services/tracking/internal... ./services/notification/internal... ./shared/infrastructure... -coverprofile=unit-coverage.txt -covermode=atomic
 
   integration-tests:
     name: Integration Tests
