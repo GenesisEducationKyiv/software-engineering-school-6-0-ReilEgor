@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
-
 	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/mocks"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/saga"
@@ -102,7 +100,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
 				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
-					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
+					Return(&model2.SubscriptionSaga{ID: 1}, nil).Once()
 				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
@@ -128,7 +126,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
 				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
-					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
+					Return(&model2.SubscriptionSaga{ID: 1}, nil).Once()
 				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
@@ -199,7 +197,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
 				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
-					Return((*sharedModel.SubscriptionSaga)(nil), sagaErr).Once()
+					Return((*model2.SubscriptionSaga)(nil), sagaErr).Once()
 			},
 			expectErr: true,
 		},

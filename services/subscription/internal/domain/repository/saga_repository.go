@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 )
 
 //go:generate mockery --name SagaRepository --output ../../mocks --case underscore --outpkg mocks
