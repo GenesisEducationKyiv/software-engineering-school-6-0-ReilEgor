@@ -11,7 +11,6 @@ RUN go work init ./shared ./services/subscription && go mod download
 
 COPY shared/ ./shared/
 COPY services/subscription/ ./services/subscription/
-COPY static/ ./static/
 
 RUN go build -o bin/repo_notifier ./services/subscription/cmd/api/
 
@@ -19,7 +18,7 @@ RUN go build -o bin/repo_notifier ./services/subscription/cmd/api/
 FROM alpine:3.18
 
 WORKDIR /app
-COPY --from=builder /app/static ./static
+COPY --from=builder /app/services/subscription/static ./static
 COPY --from=builder /app/bin/repo_notifier .
 
 RUN mkdir -p /app/data
