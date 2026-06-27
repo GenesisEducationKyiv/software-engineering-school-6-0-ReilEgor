@@ -7,13 +7,12 @@
 package v1
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -521,7 +520,7 @@ const file_v1_subscription_proto_rawDesc = "" +
 	"\tSubscribe\x12!.subscription.v1.SubscribeRequest\x1a\".subscription.v1.SubscribeResponse\x12X\n" +
 	"\vUnsubscribe\x12#.subscription.v1.UnsubscribeRequest\x1a$.subscription.v1.UnsubscribeResponse\x12j\n" +
 	"\x11ListSubscriptions\x12).subscription.v1.ListSubscriptionsRequest\x1a*.subscription.v1.ListSubscriptionsResponse\x12R\n" +
-	"\tUpdateTag\x12!.subscription.v1.UpdateTagRequest\x1a\".subscription.v1.UpdateTagResponseB_Z]github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/grpc/proto/v1b\x06proto3"
+	"\tUpdateTag\x12!.subscription.v1.UpdateTagRequest\x1a\".subscription.v1.UpdateTagResponseBnZlgithub.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1b\x06proto3"
 
 var (
 	file_v1_subscription_proto_rawDescOnce sync.Once
