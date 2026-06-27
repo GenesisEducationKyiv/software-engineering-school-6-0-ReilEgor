@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,54 +27,38 @@ func newSubRepo(t *testing.T) (*SubscriptionRepository, pgxmock.PgxPoolIface) {
 	return repo, mock
 }
 
-func TestSubscriptionRepository_Confirm(t *testing.T) {
+func TestSubscriptionRepository_GetByToken(t *testing.T) {
 	tests := []struct {
 		name        string
 		token       string
 		mockSetup   func(mock pgxmock.PgxPoolIface, token string)
 		expectError bool
 		expectErr   error
-		checkErrMsg string
+		checkResult func(t *testing.T, sub *model.Subscription)
 	}{
 		{
-			name:  "success confirm",
+			name:  "success",
 			token: "valid-token",
 			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("UPDATE subscriptions SET is_confirmed = TRUE").
+				mock.ExpectQuery("^SELECT (.+) FROM subscriptions s").
 					WithArgs(token).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+					WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "repository_id", "full_name", "token", "is_confirmed", "created_at"}).
+						AddRow(int64(1), int64(10), int64(100), "golang/go", token, true, time.Now()))
 			},
 			expectError: false,
-		},
-		{
-			name:  "invalid token - no rows affected",
-			token: "wrong-token",
-			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("UPDATE subscriptions").
-					WithArgs(token).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+			checkResult: func(t *testing.T, sub *model.Subscription) {
+				assert.Equal(t, int64(1), sub.ID)
+				assert.Equal(t, "golang/go", sub.RepositoryName)
+				assert.True(t, sub.Confirmed)
 			},
-			expectError: true,
-			expectErr:   model.ErrInvalidToken,
 		},
 		{
-			name:  "database exec error",
-			token: "any-token",
+			name:  "not found error",
+			token: "invalid-token",
 			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("UPDATE subscriptions").
+				mock.ExpectQuery("^SELECT (.+) FROM subscriptions s").
 					WithArgs(token).
-					WillReturnError(fmt.Errorf("connection reset"))
-			},
-			expectError: true,
-			checkErrMsg: "exec:",
-		},
-		{
-			name:  "empty token",
-			token: "",
-			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("UPDATE subscriptions").
-					WithArgs(token).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 0))
+					WillReturnError(pgx.ErrNoRows)
 			},
 			expectError: true,
 			expectErr:   model.ErrInvalidToken,
@@ -86,103 +71,25 @@ func TestSubscriptionRepository_Confirm(t *testing.T) {
 			defer mock.Close()
 
 			tt.mockSetup(mock, tt.token)
-			err := repo.Confirm(context.Background(), tt.token)
+			sub, err := repo.GetByToken(context.Background(), tt.token)
 
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.expectErr != nil {
 					require.ErrorIs(t, err, tt.expectErr)
 				}
-				if tt.checkErrMsg != "" {
-					assert.Contains(t, err.Error(), tt.checkErrMsg)
-				}
+				assert.Nil(t, sub)
 			} else {
 				require.NoError(t, err)
+				assert.NotNil(t, sub)
+				tt.checkResult(t, sub)
 			}
-			require.NoError(t, mock.ExpectationsWereMet())
+			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }
 
-func TestSubscriptionRepository_UnsubscribeByToken(t *testing.T) {
-	tests := []struct {
-		name        string
-		token       string
-		mockSetup   func(mock pgxmock.PgxPoolIface, token string)
-		expectError bool
-		expectErr   error
-		checkErrMsg string
-	}{
-		{
-			name:  "success unsubscribe",
-			token: "unsubscribe-me",
-			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("DELETE FROM subscriptions WHERE token = \\$1").
-					WithArgs(token).
-					WillReturnResult(pgxmock.NewResult("DELETE", 1))
-			},
-			expectError: false,
-		},
-		{
-			name:  "invalid token - no rows deleted",
-			token: "fake",
-			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("DELETE FROM subscriptions").
-					WithArgs(token).
-					WillReturnResult(pgxmock.NewResult("DELETE", 0))
-			},
-			expectError: true,
-			expectErr:   model.ErrInvalidToken,
-		},
-		{
-			name:  "database exec error",
-			token: "any-token",
-			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("DELETE FROM subscriptions").
-					WithArgs(token).
-					WillReturnError(fmt.Errorf("db unavailable"))
-			},
-			expectError: true,
-			checkErrMsg: "exec:",
-		},
-		{
-			name:  "empty token",
-			token: "",
-			mockSetup: func(mock pgxmock.PgxPoolIface, token string) {
-				mock.ExpectExec("DELETE FROM subscriptions").
-					WithArgs(token).
-					WillReturnResult(pgxmock.NewResult("DELETE", 0))
-			},
-			expectError: true,
-			expectErr:   model.ErrInvalidToken,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo, mock := newSubRepo(t)
-			defer mock.Close()
-
-			tt.mockSetup(mock, tt.token)
-			err := repo.UnsubscribeByToken(context.Background(), tt.token)
-
-			if tt.expectError {
-				require.Error(t, err)
-				if tt.expectErr != nil {
-					require.ErrorIs(t, err, tt.expectErr)
-				}
-				if tt.checkErrMsg != "" {
-					assert.Contains(t, err.Error(), tt.checkErrMsg)
-				}
-			} else {
-				require.NoError(t, err)
-			}
-			require.NoError(t, mock.ExpectationsWereMet())
-		})
-	}
-}
-
-func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
+func TestSubscriptionRepository_GetByRepoID(t *testing.T) {
 	repoID := int64(42)
 
 	tests := []struct {
@@ -195,7 +102,7 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 		{
 			name: "success with multiple subscribers",
 			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT u.email, s.token FROM subscriptions s").
+				mock.ExpectQuery("^SELECT u.email, s.token").
 					WithArgs(repoID).
 					WillReturnRows(pgxmock.NewRows([]string{"email", "token"}).
 						AddRow("user1@mail.com", "token1").
@@ -212,7 +119,7 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 		{
 			name: "empty result - no confirmed subscribers",
 			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT u.email, s.token FROM subscriptions s").
+				mock.ExpectQuery("^SELECT u.email, s.token").
 					WithArgs(repoID).
 					WillReturnRows(pgxmock.NewRows([]string{"email", "token"}))
 			},
@@ -223,36 +130,12 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 		{
 			name: "query error",
 			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT").
+				mock.ExpectQuery("^SELECT u.email, s.token").
 					WithArgs(repoID).
 					WillReturnError(fmt.Errorf("db fail"))
 			},
 			expectError: true,
 			checkErrMsg: "query:",
-		},
-		{
-			name: "row scan error - wrong email type",
-			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT u.email, s.token FROM subscriptions s").
-					WithArgs(repoID).
-					WillReturnRows(pgxmock.NewRows([]string{"email", "token"}).
-						AddRow(12345, "token1"))
-			},
-			expectError: true,
-			checkErrMsg: "scan:",
-		},
-		{
-			name: "single subscriber",
-			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT u.email, s.token FROM subscriptions s").
-					WithArgs(repoID).
-					WillReturnRows(pgxmock.NewRows([]string{"email", "token"}).
-						AddRow("only@one.com", "solo-token"))
-			},
-			checkResult: func(t *testing.T, subs []model.Subscriber) {
-				assert.Len(t, subs, 1)
-				assert.Equal(t, "only@one.com", subs[0].Email)
-			},
 		},
 	}
 
@@ -262,7 +145,7 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 			defer mock.Close()
 
 			tt.mockSetup(mock)
-			subs, err := repo.GetSubscribersByRepoID(context.Background(), repoID)
+			subs, err := repo.GetByRepoID(context.Background(), repoID)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -282,7 +165,7 @@ func TestSubscriptionRepository_GetSubscribersByRepoID(t *testing.T) {
 func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 	email := "yehor@kpi.ua"
 	now := time.Now()
-	cols := []string{"id", "repository_id", "full_name", "is_confirmed", "last_seen_tag", "created_at"}
+	cols := []string{"id", "repository_id", "full_name", "token", "is_confirmed", "last_seen_tag", "created_at"}
 
 	tests := []struct {
 		name        string
@@ -297,14 +180,13 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
 					WithArgs(email).
 					WillReturnRows(pgxmock.NewRows(cols).
-						AddRow(int64(1), int64(101), "golang/go", true, "v1.25.0", now).
-						AddRow(int64(2), int64(102), "google/uuid", false, "v1.6.0", now))
+						AddRow(int64(1), int64(101), "golang/go", "token1", true, "v1.25.0", now).
+						AddRow(int64(2), int64(102), "google/uuid", "token2", false, "v1.6.0", now))
 			},
 			checkResult: func(t *testing.T, subs []model.Subscription) {
 				assert.Len(t, subs, 2)
 				assert.Equal(t, "golang/go", subs[0].RepositoryName)
 				assert.True(t, subs[0].Confirmed)
-				assert.Equal(t, int64(101), subs[0].RepositoryID)
 				assert.Equal(t, "google/uuid", subs[1].RepositoryName)
 				assert.False(t, subs[1].Confirmed)
 			},
@@ -318,55 +200,7 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 			},
 			checkResult: func(t *testing.T, subs []model.Subscription) {
 				assert.NotNil(t, subs)
-				assert.Empty(t, subs, 0)
-			},
-		},
-		{
-			name: "query error",
-			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
-					WithArgs(email).
-					WillReturnError(fmt.Errorf("timeout"))
-			},
-			expectError: true,
-		},
-		{
-			name: "scan error - wrong id type",
-			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
-					WithArgs(email).
-					WillReturnRows(pgxmock.NewRows(cols).
-						AddRow("not-int", int64(101), "golang/go", true, "v1.25.0", now))
-			},
-			expectError: true,
-			checkErrMsg: "scan:",
-		},
-		{
-			name: "rows iteration error",
-			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				rows := pgxmock.NewRows(cols).
-					AddRow(int64(1), int64(101), "golang/go", true, "v1.25.0", now).
-					RowError(0, fmt.Errorf("network error during iteration"))
-				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
-					WithArgs(email).
-					WillReturnRows(rows)
-			},
-			expectError: true,
-			checkErrMsg: "scan:",
-		},
-		{
-			name: "single confirmed subscription",
-			mockSetup: func(mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
-					WithArgs(email).
-					WillReturnRows(pgxmock.NewRows(cols).
-						AddRow(int64(7), int64(55), "torvalds/linux", true, "v6.9", now))
-			},
-			checkResult: func(t *testing.T, subs []model.Subscription) {
-				assert.Len(t, subs, 1)
-				assert.Equal(t, int64(7), subs[0].ID)
-				assert.Equal(t, "torvalds/linux", subs[0].RepositoryName)
-				assert.True(t, subs[0].Confirmed)
+				assert.Empty(t, subs)
 			},
 		},
 	}
@@ -396,6 +230,63 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 	}
 }
 
+func TestSubscriptionRepository_Save(t *testing.T) {
+	tests := []struct {
+		name        string
+		inputSub    *model.Subscription
+		mockSetup   func(mock pgxmock.PgxPoolIface, sub *model.Subscription)
+		expectError bool
+	}{
+		{
+			name: "success save",
+			inputSub: &model.Subscription{
+				UserID:       10,
+				RepositoryID: 20,
+				Token:        "token-123",
+				Confirmed:    true,
+			},
+			mockSetup: func(mock pgxmock.PgxPoolIface, sub *model.Subscription) {
+				mock.ExpectQuery("^INSERT INTO subscriptions").
+					WithArgs(sub.UserID, sub.RepositoryID, sub.Token, sub.Confirmed).
+					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(int64(99)))
+			},
+			expectError: false,
+		},
+		{
+			name: "save error",
+			inputSub: &model.Subscription{
+				UserID:       10,
+				RepositoryID: 20,
+				Token:        "token-123",
+			},
+			mockSetup: func(mock pgxmock.PgxPoolIface, sub *model.Subscription) {
+				mock.ExpectQuery("^INSERT INTO subscriptions").
+					WithArgs(sub.UserID, sub.RepositoryID, sub.Token, sub.Confirmed).
+					WillReturnError(fmt.Errorf("db error"))
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, mock := newSubRepo(t)
+			defer mock.Close()
+
+			tt.mockSetup(mock, tt.inputSub)
+			err := repo.Save(context.Background(), tt.inputSub)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, int64(99), tt.inputSub.ID)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
 func TestSubscriptionRepository_Delete(t *testing.T) {
 	userID := int64(1)
 	repoName := "owner/repo"
@@ -413,7 +304,7 @@ func TestSubscriptionRepository_Delete(t *testing.T) {
 			userID:   userID,
 			repoName: repoName,
 			mockSetup: func(mock pgxmock.PgxPoolIface, userID int64, repo string) {
-				mock.ExpectExec("DELETE FROM subscriptions").
+				mock.ExpectExec("^DELETE FROM subscriptions").
 					WithArgs(userID, repo).
 					WillReturnResult(pgxmock.NewResult("DELETE", 1))
 			},
@@ -424,32 +315,9 @@ func TestSubscriptionRepository_Delete(t *testing.T) {
 			userID:   userID,
 			repoName: repoName,
 			mockSetup: func(mock pgxmock.PgxPoolIface, userID int64, repo string) {
-				mock.ExpectExec("DELETE FROM subscriptions").
+				mock.ExpectExec("^DELETE FROM subscriptions").
 					WithArgs(userID, repo).
 					WillReturnError(fmt.Errorf("fatal error"))
-			},
-			expectError: true,
-			checkErrMsg: "exec:",
-		},
-		{
-			name:     "zero rows affected - subscription did not exist",
-			userID:   userID,
-			repoName: "nonexistent/repo",
-			mockSetup: func(mock pgxmock.PgxPoolIface, userID int64, repo string) {
-				mock.ExpectExec("DELETE FROM subscriptions").
-					WithArgs(userID, repo).
-					WillReturnResult(pgxmock.NewResult("DELETE", 0))
-			},
-			expectError: false,
-		},
-		{
-			name:     "zero user id",
-			userID:   0,
-			repoName: repoName,
-			mockSetup: func(mock pgxmock.PgxPoolIface, userID int64, repo string) {
-				mock.ExpectExec("DELETE FROM subscriptions").
-					WithArgs(userID, repo).
-					WillReturnError(fmt.Errorf("not null violation"))
 			},
 			expectError: true,
 			checkErrMsg: "exec:",

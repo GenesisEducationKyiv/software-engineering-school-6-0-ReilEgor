@@ -49,10 +49,10 @@ func discardLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-func newTestHandler(uc *mocks.SubscriptionUseCase) *Handler {
+func newTestHandler(uc *mocks.UserUseCase) *Handler {
 	return &Handler{
-		subscriptionUC: uc,
-		logger:         discardLogger(),
+		userUC: uc,
+		logger: discardLogger(),
 	}
 }
 
@@ -87,14 +87,14 @@ func TestHandler_Subscribe(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           any
-		mockSetup      func(uc *mocks.SubscriptionUseCase)
+		mockSetup      func(uc *mocks.UserUseCase)
 		expectedStatus int
 		checkBody      func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
 			name: "success - 202 accepted",
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").Return(nil).Once()
 			},
 			expectedStatus: http.StatusAccepted,
@@ -106,13 +106,13 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name:           "invalid json body",
 			body:           "not-json",
-			mockSetup:      func(_ *mocks.SubscriptionUseCase) {},
+			mockSetup:      func(_ *mocks.UserUseCase) {},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing email",
 			body:           map[string]string{"repository": "golang/go"},
-			mockSetup:      func(_ *mocks.SubscriptionUseCase) {},
+			mockSetup:      func(_ *mocks.UserUseCase) {},
 			expectedStatus: http.StatusBadRequest,
 			checkBody: func(t *testing.T, w *httptest.ResponseRecorder) {
 				resp := decodeJSON[errorResponse](t, w)
@@ -122,7 +122,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name:           "invalid email format",
 			body:           map[string]string{"email": "not-an-email", "repository": "golang/go"},
-			mockSetup:      func(_ *mocks.SubscriptionUseCase) {},
+			mockSetup:      func(_ *mocks.UserUseCase) {},
 			expectedStatus: http.StatusBadRequest,
 			checkBody: func(t *testing.T, w *httptest.ResponseRecorder) {
 				resp := decodeJSON[errorResponse](t, w)
@@ -132,7 +132,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name:           "invalid repo format - no slash",
 			body:           map[string]string{"email": "test@example.com", "repository": "badrepo"},
-			mockSetup:      func(_ *mocks.SubscriptionUseCase) {},
+			mockSetup:      func(_ *mocks.UserUseCase) {},
 			expectedStatus: http.StatusBadRequest,
 			checkBody: func(t *testing.T, w *httptest.ResponseRecorder) {
 				resp := decodeJSON[errorsResponse](t, w)
@@ -143,7 +143,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name:           "both email and repo invalid - two errors returned",
 			body:           map[string]string{"email": "bad", "repository": "bad"},
-			mockSetup:      func(_ *mocks.SubscriptionUseCase) {},
+			mockSetup:      func(_ *mocks.UserUseCase) {},
 			expectedStatus: http.StatusBadRequest,
 			checkBody: func(t *testing.T, w *httptest.ResponseRecorder) {
 				resp := decodeJSON[errorResponse](t, w)
@@ -153,7 +153,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name: "repository not found",
 			body: map[string]string{"email": "test@example.com", "repository": "owner/repo"},
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "owner/repo").
 					Return(service.ErrRepositoryNotFound).Once()
 			},
@@ -162,7 +162,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name: "already subscribed - 409 conflict",
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").
 					Return(ErrAlreadySubscribed).Once()
 			},
@@ -171,7 +171,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name: "github unavailable - 503",
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").
 					Return(service.ErrGitHubUnavailable).Once()
 			},
@@ -180,7 +180,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name: "rate limit exceeded - 503",
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").
 					Return(service.ErrRateLimitExceeded).Once()
 			},
@@ -189,7 +189,7 @@ func TestHandler_Subscribe(t *testing.T) {
 		{
 			name: "unexpected internal error - 500",
 			body: map[string]string{"email": "test@example.com", "repository": "golang/go"},
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Subscribe", mock.Anything, "test@example.com", "golang/go").
 					Return(fmt.Errorf("unexpected db error")).Once()
 			},
@@ -199,7 +199,7 @@ func TestHandler_Subscribe(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUC := mocks.NewSubscriptionUseCase(t)
+			mockUC := mocks.NewUserUseCase(t)
 			tt.mockSetup(mockUC)
 
 			r := newRouter(http.MethodPost, "/subscribe", newTestHandler(mockUC).Subscribe)
@@ -218,14 +218,14 @@ func TestHandler_Confirm(t *testing.T) {
 	tests := []struct {
 		name           string
 		token          string
-		mockSetup      func(uc *mocks.SubscriptionUseCase)
+		mockSetup      func(uc *mocks.UserUseCase)
 		expectedStatus int
 		checkBody      func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
 			name:  "success - 200",
 			token: "valid_token",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Confirm", mock.Anything, "valid_token").Return(nil).Once()
 			},
 			expectedStatus: http.StatusOK,
@@ -237,7 +237,7 @@ func TestHandler_Confirm(t *testing.T) {
 		{
 			name:  "invalid token - 404",
 			token: "bad_token",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Confirm", mock.Anything, "bad_token").Return(model.ErrInvalidToken).Once()
 			},
 			expectedStatus: http.StatusNotFound,
@@ -249,7 +249,7 @@ func TestHandler_Confirm(t *testing.T) {
 		{
 			name:  "internal error - 500",
 			token: "some_token",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("Confirm", mock.Anything, "some_token").
 					Return(fmt.Errorf("db failure")).Once()
 			},
@@ -259,7 +259,7 @@ func TestHandler_Confirm(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUC := mocks.NewSubscriptionUseCase(t)
+			mockUC := mocks.NewUserUseCase(t)
 			tt.mockSetup(mockUC)
 
 			r := newRouter(http.MethodGet, "/confirm/:token", newTestHandler(mockUC).Confirm)
@@ -278,14 +278,14 @@ func TestHandler_UnsubscribeByToken(t *testing.T) {
 	tests := []struct {
 		name           string
 		token          string
-		mockSetup      func(uc *mocks.SubscriptionUseCase)
+		mockSetup      func(uc *mocks.UserUseCase)
 		expectedStatus int
 		checkBody      func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
 			name:  "success - 200",
 			token: "token123",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("UnsubscribeByToken", mock.Anything, "token123").Return(nil).Once()
 			},
 			expectedStatus: http.StatusOK,
@@ -297,7 +297,7 @@ func TestHandler_UnsubscribeByToken(t *testing.T) {
 		{
 			name:  "invalid token - 404",
 			token: "expired_token",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("UnsubscribeByToken", mock.Anything, "expired_token").
 					Return(model.ErrInvalidToken).Once()
 			},
@@ -310,7 +310,7 @@ func TestHandler_UnsubscribeByToken(t *testing.T) {
 		{
 			name:  "internal error - 500",
 			token: "some_token",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("UnsubscribeByToken", mock.Anything, "some_token").
 					Return(fmt.Errorf("db crash")).Once()
 			},
@@ -320,7 +320,7 @@ func TestHandler_UnsubscribeByToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUC := mocks.NewSubscriptionUseCase(t)
+			mockUC := mocks.NewUserUseCase(t)
 			tt.mockSetup(mockUC)
 
 			r := newRouter(http.MethodGet, "/unsubscribe/:token", newTestHandler(mockUC).UnsubscribeByToken)
@@ -339,14 +339,14 @@ func TestHandler_ListSubscriptions(t *testing.T) {
 	tests := []struct {
 		name           string
 		query          string
-		mockSetup      func(uc *mocks.SubscriptionUseCase)
+		mockSetup      func(uc *mocks.UserUseCase)
 		expectedStatus int
 		checkBody      func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
 			name:  "success - returns list",
 			query: "?email=test@example.com",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("ListByEmail", mock.Anything, "test@example.com").Return([]model.Subscription{
 					{ID: 1, RepositoryName: "golang/go", Confirmed: true},
 					{ID: 2, RepositoryName: "google/uuid", Confirmed: false},
@@ -362,7 +362,7 @@ func TestHandler_ListSubscriptions(t *testing.T) {
 		{
 			name:           "missing email - 400",
 			query:          "",
-			mockSetup:      func(_ *mocks.SubscriptionUseCase) {},
+			mockSetup:      func(_ *mocks.UserUseCase) {},
 			expectedStatus: http.StatusBadRequest,
 			checkBody: func(t *testing.T, w *httptest.ResponseRecorder) {
 				resp := decodeJSON[errorResponse](t, w)
@@ -372,7 +372,7 @@ func TestHandler_ListSubscriptions(t *testing.T) {
 		{
 			name:           "invalid email format - 400",
 			query:          "?email=not-valid",
-			mockSetup:      func(_ *mocks.SubscriptionUseCase) {},
+			mockSetup:      func(_ *mocks.UserUseCase) {},
 			expectedStatus: http.StatusBadRequest,
 			checkBody: func(t *testing.T, w *httptest.ResponseRecorder) {
 				resp := decodeJSON[errorResponse](t, w)
@@ -382,7 +382,7 @@ func TestHandler_ListSubscriptions(t *testing.T) {
 		{
 			name:  "empty subscription list - 200 with empty array",
 			query: "?email=new@example.com",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("ListByEmail", mock.Anything, "new@example.com").
 					Return([]model.Subscription{}, nil).Once()
 			},
@@ -396,7 +396,7 @@ func TestHandler_ListSubscriptions(t *testing.T) {
 		{
 			name:  "usecase error - 500",
 			query: "?email=test@example.com",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("ListByEmail", mock.Anything, "test@example.com").
 					Return(nil, fmt.Errorf("db connection lost")).Once()
 			},
@@ -405,7 +405,7 @@ func TestHandler_ListSubscriptions(t *testing.T) {
 		{
 			name:  "email with leading/trailing spaces - trimmed correctly",
 			query: "?email= test@example.com ",
-			mockSetup: func(uc *mocks.SubscriptionUseCase) {
+			mockSetup: func(uc *mocks.UserUseCase) {
 				uc.On("ListByEmail", mock.Anything, "test@example.com").
 					Return([]model.Subscription{
 						{ID: 1, RepositoryName: "golang/go", Confirmed: true},
@@ -422,7 +422,7 @@ func TestHandler_ListSubscriptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUC := mocks.NewSubscriptionUseCase(t)
+			mockUC := mocks.NewUserUseCase(t)
 			tt.mockSetup(mockUC)
 
 			r := newRouter(http.MethodGet, "/subscriptions", newTestHandler(mockUC).ListSubscriptions)

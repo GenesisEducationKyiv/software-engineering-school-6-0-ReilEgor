@@ -2,8 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 )
@@ -25,11 +28,11 @@ func NewRepositoryRepository(db PgxInterface) *RepositoryRepository {
 }
 
 const getActiveRepositoriesQuery = `
-    SELECT r.id, r.full_name, r.last_seen_tag, r.updated_at 
-    FROM repositories r
-    WHERE EXISTS (
-        SELECT 1 FROM subscriptions s WHERE s.repository_id = r.id
-    )
+	SELECT r.id, r.full_name, r.last_seen_tag, r.updated_at 
+	FROM repositories r
+	WHERE EXISTS (
+		SELECT 1 FROM subscriptions s WHERE s.repository_id = r.id
+	)
 `
 
 func (r *RepositoryRepository) GetAll(ctx context.Context) ([]model.Repository, error) {
@@ -38,9 +41,7 @@ func (r *RepositoryRepository) GetAll(ctx context.Context) ([]model.Repository, 
 
 	rows, err := r.db.Query(ctx, getActiveRepositoriesQuery)
 	if err != nil {
-		log.ErrorContext(ctx, "query failed",
-			slog.String("error", err.Error()),
-		)
+		log.ErrorContext(ctx, "query failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("%s: query: %w", op, err)
 	}
 	defer rows.Close()
@@ -49,98 +50,96 @@ func (r *RepositoryRepository) GetAll(ctx context.Context) ([]model.Repository, 
 	for rows.Next() {
 		var repo model.Repository
 		if err := rows.Scan(&repo.ID, &repo.FullName, &repo.LastSeenTag, &repo.UpdatedAt); err != nil {
-			log.ErrorContext(ctx, "scan failed",
-				slog.String("error", err.Error()),
-			)
+			log.ErrorContext(ctx, "scan failed", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("%s: scan: %w", op, err)
 		}
 		repos = append(repos, repo)
 	}
 
 	if err := rows.Err(); err != nil {
-		log.ErrorContext(ctx, "rows iteration failed",
-			slog.String("error", err.Error()),
-		)
+		log.ErrorContext(ctx, "rows iteration failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("%s: rows: %w", op, err)
 	}
-	log.DebugContext(ctx, "repositories fetched", slog.String("op", op), slog.Int("count", len(repos)))
+
+	log.DebugContext(ctx, "repositories fetched", slog.Int("count", len(repos)))
 	return repos, nil
 }
 
-const updateLastSeenTagRepositoryQuery = `
-	UPDATE repositories 
-	SET last_seen_tag = $1, updated_at = CURRENT_TIMESTAMP 
-	WHERE full_name = $2
+const getRepositoryByNameQuery = `
+	SELECT id, full_name, last_seen_tag, updated_at 
+	FROM repositories 
+	WHERE full_name = $1
 `
 
-func (r *RepositoryRepository) UpdateLastSeenTag(ctx context.Context, name, tag string) error {
-	const op = "RepositoryRepository.UpdateLastSeenTag"
-	log := r.logger.With(slog.String("op", op))
-
-	if _, err := r.db.Exec(ctx, updateLastSeenTagRepositoryQuery, tag, name); err != nil {
-		log.ErrorContext(ctx, "exec failed",
-			slog.String("name", name),
-			slog.String("tag", tag),
-			slog.String("error", err.Error()),
-		)
-		return fmt.Errorf("%s: exec: %w", op, err)
-	}
-	log.DebugContext(ctx, "last seen tag updated",
-		slog.String("name", name),
-		slog.String("tag", tag),
-	)
-	return nil
-}
-
-const getOrCreateRepositoryQuery = `
-	INSERT INTO repositories (full_name, last_seen_tag)
-	VALUES ($1, $2)
-	ON CONFLICT (full_name) DO UPDATE SET full_name = EXCLUDED.full_name
-	RETURNING id, full_name, last_seen_tag, updated_at
-`
-
-func (r *RepositoryRepository) GetOrCreate(ctx context.Context, name, tagName string) (*model.Repository, error) {
-	const op = "RepositoryRepository.GetOrCreate"
-	log := r.logger.With(slog.String("op", op))
+func (r *RepositoryRepository) GetByName(ctx context.Context, name string) (*model.Repository, error) {
+	const op = "RepositoryRepository.GetByName"
+	log := r.logger.With(slog.String("op", op), slog.String("name", name))
 
 	var repo model.Repository
-	err := r.db.QueryRow(ctx, getOrCreateRepositoryQuery, name, tagName).Scan(
+	err := r.db.QueryRow(ctx, getRepositoryByNameQuery, name).Scan(
 		&repo.ID,
 		&repo.FullName,
 		&repo.LastSeenTag,
 		&repo.UpdatedAt,
 	)
 	if err != nil {
-		log.ErrorContext(ctx, "query failed",
-			slog.String("name", name),
-			slog.String("tag", tagName),
-			slog.String("error", err.Error()),
-		)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf(
+				"%s: %w",
+				op,
+				model.ErrRepositoryNotFound,
+			)
+		}
+		log.ErrorContext(ctx, "query row failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("%s: query row: %w", op, err)
 	}
 
-	log.DebugContext(ctx, "repository get or created",
-		slog.String("name", name),
-		slog.Int64("id", repo.ID),
-	)
 	return &repo, nil
 }
 
-const subscribeQuery = `
-    INSERT INTO subscriptions (user_id, repository_id, token, is_confirmed)
-    VALUES ($1, $2, $3, FALSE)
-    ON CONFLICT (user_id, repository_id) 
-    DO UPDATE SET token = EXCLUDED.token, is_confirmed = FALSE
-    RETURNING id
+const createRepositoryQuery = `
+	INSERT INTO repositories (full_name, last_seen_tag)
+	VALUES ($1, $2)
+	RETURNING id, updated_at
 `
 
-func (r *SubscriptionRepository) CreatePending(ctx context.Context, userID, repoID int64, token string) (int64, error) {
-	const op = "SubscriptionRepository.CreatePending"
-	var id int64
+func (r *RepositoryRepository) Create(ctx context.Context, repo *model.Repository) error {
+	const op = "RepositoryRepository.Create"
+	log := r.logger.With(slog.String("op", op), slog.String("name", repo.FullName))
 
-	err := r.db.QueryRow(ctx, subscribeQuery, userID, repoID, token).Scan(&id)
+	err := r.db.QueryRow(ctx, createRepositoryQuery, repo.FullName, repo.LastSeenTag).Scan(
+		&repo.ID,
+		&repo.UpdatedAt,
+	)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		log.ErrorContext(ctx, "insert failed", slog.String("error", err.Error()))
+		return fmt.Errorf("%s: insert: %w", op, err)
 	}
-	return id, nil
+
+	log.DebugContext(ctx, "repository created", slog.Int64("id", repo.ID))
+	return nil
+}
+
+const updateRepositoryQuery = `
+	UPDATE repositories 
+	SET last_seen_tag = $1, updated_at = CURRENT_TIMESTAMP 
+	WHERE id = $2
+`
+
+func (r *RepositoryRepository) Update(ctx context.Context, repo *model.Repository) error {
+	const op = "RepositoryRepository.Update"
+	log := r.logger.With(slog.String("op", op), slog.Int64("id", repo.ID))
+
+	commandTag, err := r.db.Exec(ctx, updateRepositoryQuery, repo.LastSeenTag, repo.ID)
+	if err != nil {
+		log.ErrorContext(ctx, "exec failed", slog.String("error", err.Error()))
+		return fmt.Errorf("%s: exec: %w", op, err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return fmt.Errorf("%s: %w", op, model.ErrRepositoryNotFound)
+	}
+
+	log.DebugContext(ctx, "repository updated")
+	return nil
 }

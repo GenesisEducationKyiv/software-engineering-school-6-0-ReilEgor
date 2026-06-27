@@ -13,10 +13,10 @@ import (
 
 type SubscriptionHandler struct {
 	pb.UnimplementedSubscriptionServiceServer
-	usecase usecase.SubscriptionUseCase
+	usecase usecase.UserUseCase
 }
 
-func NewSubscriptionHandler(uc usecase.SubscriptionUseCase) *SubscriptionHandler {
+func NewSubscriptionHandler(uc usecase.UserUseCase) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		usecase: uc,
 	}

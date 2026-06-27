@@ -18,13 +18,13 @@ import (
 )
 
 type GinServer struct {
-	router         *gin.Engine
-	subscriptionUC usecase.SubscriptionUseCase
-	logger         *slog.Logger
+	router *gin.Engine
+	userUC usecase.UserUseCase
+	logger *slog.Logger
 }
 
 func NewGinServer(
-	subscriptionUC usecase.SubscriptionUseCase,
+	userUC usecase.UserUseCase,
 	redisClient *redis.Client,
 	apiKey config.APIKeyType,
 ) *GinServer {
@@ -33,12 +33,12 @@ func NewGinServer(
 	middleware.SetupMiddleware(router, logger, redisClient)
 
 	s := &GinServer{
-		router:         router,
-		subscriptionUC: subscriptionUC,
-		logger:         logger,
+		router: router,
+		userUC: userUC,
+		logger: logger,
 	}
 
-	h := handler.NewHandler(subscriptionUC, string(apiKey))
+	h := handler.NewHandler(userUC, string(apiKey))
 	h.InitRoutes(s.router)
 
 	return s

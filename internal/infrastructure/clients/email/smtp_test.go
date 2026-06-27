@@ -7,278 +7,330 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 )
 
-func newTestClient(sendMail func(string, smtp.Auth, string, []string, []byte) error) *SMTPClient {
-	c := NewSMTPClient(
-		"localhost",
-		"25",
-		"from@example.com",
-		"pass",
-		"user",
-		"http://localhost:8080",
+func smtpCancelledCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
+}
+
+type capturedCall struct {
+	addr string
+	from string
+	to   []string
+	msg  []byte
+}
+
+func makeFakeSendMail(out *capturedCall, returnErr error) func(string, smtp.Auth, string, []string, []byte) error {
+	return func(addr string, _ smtp.Auth, from string, to []string, msg []byte) error {
+		out.addr = addr
+		out.from = from
+		out.to = to
+		out.msg = msg
+		return returnErr
+	}
+}
+
+func TestSMTPClient_Send(t *testing.T) {
+	t.Parallel()
+
+	const (
+		host = "smtp.example.com"
+		port = "587"
+		from = "noreply@example.com"
+		pass = "s3cr3t"
+		user = "noreply@example.com"
 	)
-	c.sendMail = sendMail
-	return c
-}
 
-func stubbedSendMail(err error) func(string, smtp.Auth, string, []string, []byte) error {
-	return func(_ string, _ smtp.Auth, _ string, _ []string, _ []byte) error {
-		return err
+	defaultMsg := model.EmailMessage{
+		To:      "user@test.com",
+		Subject: "Test Subject",
+		Body:    "Hello, world!",
 	}
-}
 
-func TestSmtpClient_SendNotification(t *testing.T) {
 	tests := []struct {
-		name        string
-		to          string
-		repoName    string
-		tagName     string
-		token       string
-		sendMailErr error
-		wantErr     error
+		name               string
+		ctx                context.Context
+		host               string
+		port               string
+		from               string
+		msg                model.EmailMessage
+		sendMailErr        error
+		wantErr            error
+		wantNoErr          bool
+		wantAddrContains   string
+		wantRawContains    []string
+		wantRawNotContains []string
+		wantRecipients     []string
+		wantFromArg        string
 	}{
 		{
-			name:        "success",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			tagName:     "v1.0.0",
-			token:       "test-token",
-			sendMailErr: nil,
-			wantErr:     nil,
+			name:             "success: standard message",
+			ctx:              context.Background(),
+			msg:              defaultMsg,
+			wantNoErr:        true,
+			wantAddrContains: host + ":" + port,
+			wantRawContains: []string{
+				"From: " + from,
+				"To: " + defaultMsg.To,
+				"Subject: " + defaultMsg.Subject,
+				"Content-Type: text/plain; charset=UTF-8",
+				defaultMsg.Body,
+				"\r\n",
+			},
+			wantRecipients: []string{defaultMsg.To},
+			wantFromArg:    from,
 		},
 		{
-			name:        "SMTP auth failed - code 535",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			tagName:     "v1.0.0",
-			token:       "test-token",
-			sendMailErr: errors.New("535 5.7.8 Authentication failed"),
-			wantErr:     service.ErrAuthFailed,
+			name: "success: multiline body preserved verbatim",
+			ctx:  context.Background(),
+			msg: model.EmailMessage{
+				To:      "a@b.com",
+				Subject: "Multiline",
+				Body:    "Line1\nLine2\nLine3",
+			},
+			wantNoErr: true,
+			wantRawContains: []string{
+				"Line1\nLine2\nLine3",
+			},
+			wantRecipients: []string{"a@b.com"},
+			wantFromArg:    from,
 		},
 		{
-			name:        "SMTP auth failed - text match",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			tagName:     "v1.0.0",
-			token:       "test-token",
-			sendMailErr: errors.New("authentication failed: bad credentials"),
-			wantErr:     service.ErrAuthFailed,
+			name: "boundary: empty subject",
+			ctx:  context.Background(),
+			msg: model.EmailMessage{
+				To:      "user@test.com",
+				Subject: "",
+				Body:    "body text",
+			},
+			wantNoErr: true,
+			wantRawContains: []string{
+				"Subject: \r\n",
+				"body text",
+			},
+			wantRecipients: []string{"user@test.com"},
 		},
 		{
-			name:        "SMTP server unavailable - connection refused",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			tagName:     "v1.0.0",
-			token:       "test-token",
-			sendMailErr: errors.New("connection refused"),
-			wantErr:     service.ErrSMTPUnavailable,
+			name: "boundary: empty body",
+			ctx:  context.Background(),
+			msg: model.EmailMessage{
+				To:      "user@test.com",
+				Subject: "Hi",
+				Body:    "",
+			},
+			wantNoErr: true,
+			wantRawContains: []string{
+				"Subject: Hi",
+			},
+			wantRecipients: []string{"user@test.com"},
 		},
 		{
-			name:        "SMTP server unavailable - timeout",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			tagName:     "v1.0.0",
-			token:       "test-token",
-			sendMailErr: errors.New("dial tcp: i/o timeout"),
-			wantErr:     service.ErrSMTPUnavailable,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := newTestClient(stubbedSendMail(tt.sendMailErr))
-			err := client.SendNotification(context.Background(), tt.to, tt.repoName, tt.tagName, tt.token)
-
-			if tt.wantErr == nil {
-				assert.NoError(t, err)
-			} else {
-				assert.ErrorIs(t, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestSmtpClient_SendConfirmation(t *testing.T) {
-	tests := []struct {
-		name        string
-		to          string
-		repoName    string
-		token       string
-		sendMailErr error
-		wantErr     error
-	}{
-		{
-			name:        "success",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			token:       "confirm-token",
-			sendMailErr: nil,
+			name: "boundary: unicode characters in body",
+			ctx:  context.Background(),
+			msg: model.EmailMessage{
+				To:      "user@test.com",
+				Subject: "Підтвердження",
+				Body:    "Привіт!\n\nПідтвердіть підписку.",
+			},
+			wantNoErr: true,
+			wantRawContains: []string{
+				"Підтвердження",
+				"Привіт!",
+			},
+			wantRecipients: []string{"user@test.com"},
 		},
 		{
-			name:        "auth failed",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			token:       "confirm-token",
+			name:             "boundary: custom host and port reflected in addr",
+			ctx:              context.Background(),
+			host:             "mail.custom.io",
+			port:             "2525",
+			msg:              defaultMsg,
+			wantNoErr:        true,
+			wantAddrContains: "mail.custom.io:2525",
+			wantRecipients:   []string{defaultMsg.To},
+		},
+		{
+			name:      "boundary: custom from address reflected in header and envelope",
+			ctx:       context.Background(),
+			from:      "custom@sender.io",
+			msg:       defaultMsg,
+			wantNoErr: true,
+			wantRawContains: []string{
+				"From: custom@sender.io",
+			},
+			wantFromArg: "custom@sender.io",
+		},
+		{
+			name:        "error: 535 code maps to ErrAuthFailed",
+			ctx:         context.Background(),
+			msg:         defaultMsg,
 			sendMailErr: errors.New("535 Authentication failed"),
 			wantErr:     service.ErrAuthFailed,
 		},
 		{
-			name:        "server unavailable",
-			to:          "user@example.com",
-			repoName:    "owner/repo",
-			token:       "confirm-token",
+			name:        "error: mixed-case authentication keyword maps to ErrAuthFailed",
+			ctx:         context.Background(),
+			msg:         defaultMsg,
+			sendMailErr: errors.New("authentication Failed"),
+			wantErr:     service.ErrAuthFailed,
+		},
+		{
+			name:        "error: lowercase authentication failed maps to ErrAuthFailed",
+			ctx:         context.Background(),
+			msg:         defaultMsg,
+			sendMailErr: errors.New("authentication failed"),
+			wantErr:     service.ErrAuthFailed,
+		},
+		{
+			name:        "error: 535 embedded in longer error message maps to ErrAuthFailed",
+			ctx:         context.Background(),
+			msg:         defaultMsg,
+			sendMailErr: errors.New("smtp: 535 5.7.8 Username and Password not accepted"),
+			wantErr:     service.ErrAuthFailed,
+		},
+		{
+			name:        "error: connection refused maps to ErrSMTPUnavailable",
+			ctx:         context.Background(),
+			msg:         defaultMsg,
 			sendMailErr: errors.New("connection refused"),
+			wantErr:     service.ErrSMTPUnavailable,
+		},
+		{
+			name:        "error: dial timeout maps to ErrSMTPUnavailable",
+			ctx:         context.Background(),
+			msg:         defaultMsg,
+			sendMailErr: errors.New("dial tcp: i/o timeout"),
+			wantErr:     service.ErrSMTPUnavailable,
+		},
+		{
+			name:        "error: generic one-word error maps to ErrSMTPUnavailable",
+			ctx:         context.Background(),
+			msg:         defaultMsg,
+			sendMailErr: errors.New("EOF"),
+			wantErr:     service.ErrSMTPUnavailable,
+		},
+		{
+			name:        "error: cancelled context error classified as ErrSMTPUnavailable",
+			ctx:         smtpCancelledCtx(),
+			msg:         defaultMsg,
+			sendMailErr: context.Canceled,
 			wantErr:     service.ErrSMTPUnavailable,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := newTestClient(stubbedSendMail(tt.sendMailErr))
-			err := client.SendConfirmation(context.Background(), tt.to, tt.repoName, tt.token)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			resolvedHost := host
+			if tc.host != "" {
+				resolvedHost = tc.host
+			}
+			resolvedPort := port
+			if tc.port != "" {
+				resolvedPort = tc.port
+			}
+			resolvedFrom := from
+			if tc.from != "" {
+				resolvedFrom = tc.from
+			}
 
-			if tt.wantErr == nil {
-				assert.NoError(t, err)
-			} else {
-				assert.ErrorIs(t, err, tt.wantErr)
+			client := NewSMTPClient(
+				config.EmailHostType(resolvedHost),
+				config.EmailPortType(resolvedPort),
+				config.EmailFromType(resolvedFrom),
+				pass,
+				user,
+			)
+
+			var captured capturedCall
+			client.sendMail = makeFakeSendMail(&captured, tc.sendMailErr)
+
+			err := client.Send(tc.ctx, tc.msg)
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				require.ErrorIs(t, err, tc.wantErr,
+					"errors.Is must identify the classified sentinel")
+				if tc.sendMailErr != nil {
+					require.NotErrorIs(t, err, tc.sendMailErr,
+						"raw sendMail error must not be returned directly")
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			rawStr := string(captured.msg)
+
+			if tc.wantAddrContains != "" {
+				assert.Contains(t, captured.addr, tc.wantAddrContains,
+					"addr argument must embed host:port")
+			}
+			if tc.wantFromArg != "" {
+				assert.Equal(t, tc.wantFromArg, captured.from,
+					"SMTP envelope from must match configured address")
+			}
+			if tc.wantRecipients != nil {
+				assert.Equal(t, tc.wantRecipients, captured.to,
+					"SMTP recipient list must contain exactly the message.To address")
+			}
+			for _, sub := range tc.wantRawContains {
+				assert.Contains(t, rawStr, sub, "raw SMTP message must contain %q", sub)
+			}
+
+			for _, sub := range tc.wantRawNotContains {
+				assert.NotContains(t, rawStr, sub, "raw SMTP message must NOT contain %q", sub)
 			}
 		})
 	}
 }
 
-func TestClassifySmtpError(t *testing.T) {
+func TestClassifySMTPError(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
+		name    string
 		errMsg  string
 		wantErr error
 	}{
-		{"535 5.7.8 Authentication failed", service.ErrAuthFailed},
-		{"Authentication failed: invalid credentials", service.ErrAuthFailed},
-		{"AUTHENTICATION FAILED", service.ErrAuthFailed},
-		{"connection refused", service.ErrSMTPUnavailable},
-		{"dial tcp: i/o timeout", service.ErrSMTPUnavailable},
-		{"unexpected EOF", service.ErrSMTPUnavailable},
+		{name: "535 alone", errMsg: "535", wantErr: service.ErrAuthFailed},
+		{
+			name:    "535 with description",
+			errMsg:  "535 Authentication credentials invalid",
+			wantErr: service.ErrAuthFailed,
+		},
+		{name: "535 embedded mid-message", errMsg: "smtp server said: 535 bad auth", wantErr: service.ErrAuthFailed},
+
+		{name: "authentication failed lowercase", errMsg: "authentication failed", wantErr: service.ErrAuthFailed},
+		{name: "Authentication Failed title-case", errMsg: "Authentication Failed", wantErr: service.ErrAuthFailed},
+		{name: "AUTHENTICATION FAILED uppercase", errMsg: "AUTHENTICATION FAILED", wantErr: service.ErrAuthFailed},
+		{
+			name:    "authentication failed embedded",
+			errMsg:  "smtp: 534 authentication failed please try again",
+			wantErr: service.ErrAuthFailed,
+		},
+		{name: "connection refused", errMsg: "connection refused", wantErr: service.ErrSMTPUnavailable},
+		{name: "i/o timeout", errMsg: "dial tcp: i/o timeout", wantErr: service.ErrSMTPUnavailable},
+		{name: "EOF", errMsg: "EOF", wantErr: service.ErrSMTPUnavailable},
+		{name: "TLS error", errMsg: "tls: handshake failure", wantErr: service.ErrSMTPUnavailable},
+		{name: "empty string", errMsg: "", wantErr: service.ErrSMTPUnavailable},
+		{name: "authentication without failed", errMsg: "authentication required", wantErr: service.ErrSMTPUnavailable},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.errMsg, func(t *testing.T) {
-			got := classifySMTPError(errors.New(tt.errMsg))
-			assert.ErrorIs(t, got, tt.wantErr)
-		})
-	}
-}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestSmtpClient_buildMessage(t *testing.T) {
-	const baseURL = "http://localhost:8080"
-
-	tests := []struct {
-		name          string
-		to            string
-		repoName      string
-		tagName       string
-		token         string
-		expectContain []string
-	}{
-		{
-			name:     "contains headers and release info",
-			to:       "user@example.com",
-			repoName: "owner/repo",
-			tagName:  "v2.0.0",
-			token:    "secret-abc",
-			expectContain: []string{
-				"From: from@example.com",
-				"To: user@example.com",
-				"Subject: New release in owner/repo!",
-				"A new version v2.0.0 has been released",
-			},
-		},
-		{
-			name:     "contains github release url",
-			to:       "user@example.com",
-			repoName: "owner/repo",
-			tagName:  "v3.0.0",
-			token:    "secret-abc",
-			expectContain: []string{
-				"https://github.com/owner/repo/releases/tag/v3.0.0",
-			},
-		},
-		{
-			name:     "contains unsubscribe link with token",
-			to:       "user@example.com",
-			repoName: "owner/repo",
-			tagName:  "v1.0.0",
-			token:    "unsub-token-xyz",
-			expectContain: []string{
-				"http://localhost:8080/api/v1/unsubscribe/unsub-token-xyz",
-			},
-		},
-		{
-			name:     "content type is plain text utf-8",
-			to:       "user@example.com",
-			repoName: "owner/repo",
-			tagName:  "v1.0.0",
-			token:    "tok",
-			expectContain: []string{
-				"Content-Type: text/plain; charset=UTF-8",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := NewSMTPClient("localhost", "25", "from@example.com", "pass", "user", baseURL)
-			msg := string(c.buildMessage(tt.to, tt.repoName, tt.tagName, tt.token))
-
-			for _, expected := range tt.expectContain {
-				assert.Contains(t, msg, expected)
-			}
-		})
-	}
-}
-
-func TestSmtpClient_buildConfirmMessage(t *testing.T) {
-	const baseURL = "http://localhost:8080"
-
-	tests := []struct {
-		name          string
-		to            string
-		repoName      string
-		token         string
-		expectContain []string
-	}{
-		{
-			name:     "contains confirm subject and link",
-			to:       "user@example.com",
-			repoName: "owner/repo",
-			token:    "confirm-xyz",
-			expectContain: []string{
-				"Subject: Confirm your subscription to owner/repo",
-				"http://localhost:8080/api/v1/confirm/confirm-xyz",
-				"From: from@example.com",
-				"To: user@example.com",
-			},
-		},
-		{
-			name:     "contains repo name in body",
-			to:       "user@example.com",
-			repoName: "torvalds/linux",
-			token:    "tok",
-			expectContain: []string{
-				"torvalds/linux",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := NewSMTPClient("localhost", "25", "from@example.com", "pass", "user", baseURL)
-			msg := string(c.buildConfirmMessage(tt.to, tt.repoName, tt.token))
-
-			for _, expected := range tt.expectContain {
-				assert.Contains(t, msg, expected)
-			}
+			got := classifySMTPError(errors.New(tc.errMsg))
+			assert.ErrorIs(t, got, tc.wantErr,
+				"classifySMTPError(%q) = %v, want %v", tc.errMsg, got, tc.wantErr)
 		})
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,7 +64,7 @@ func TestRepositoryRepository_GetAll(t *testing.T) {
 		{
 			name: "database query error",
 			mockSetup: func() {
-				mock.ExpectQuery("^SELECT (.+) FROM repositories").
+				mock.ExpectQuery("^SELECT (.+) FROM repositories r WHERE EXISTS").
 					WillReturnError(fmt.Errorf("db connection lost"))
 			},
 			expectError: true,
@@ -72,7 +73,7 @@ func TestRepositoryRepository_GetAll(t *testing.T) {
 		{
 			name: "row scan error - wrong id type",
 			mockSetup: func() {
-				mock.ExpectQuery("^SELECT (.+) FROM repositories").
+				mock.ExpectQuery("^SELECT (.+) FROM repositories r WHERE EXISTS").
 					WillReturnRows(pgxmock.NewRows([]string{"id", "full_name", "last_seen_tag", "updated_at"}).
 						AddRow("not-an-id", "owner/repo", "v1", now))
 			},
@@ -85,24 +86,11 @@ func TestRepositoryRepository_GetAll(t *testing.T) {
 				rows := pgxmock.NewRows([]string{"id", "full_name", "last_seen_tag", "updated_at"}).
 					AddRow(int64(1), "golang/go", "v1.25.0", now).
 					RowError(0, fmt.Errorf("network failure during iteration"))
-				mock.ExpectQuery("^SELECT (.+) FROM repositories").
+				mock.ExpectQuery("^SELECT (.+) FROM repositories r WHERE EXISTS").
 					WillReturnRows(rows)
 			},
 			expectError: true,
 			checkErrMsg: "scan:",
-		},
-		{
-			name: "success with single repo",
-			mockSetup: func() {
-				mock.ExpectQuery("^SELECT (.+) FROM repositories r WHERE EXISTS").
-					WillReturnRows(pgxmock.NewRows([]string{"id", "full_name", "last_seen_tag", "updated_at"}).
-						AddRow(int64(42), "torvalds/linux", "v6.9", now))
-			},
-			expectError: false,
-			expectedLen: 1,
-			expectedRepos: []model.Repository{
-				{ID: 42, FullName: "torvalds/linux", LastSeenTag: "v6.9", UpdatedAt: now},
-			},
 		},
 	}
 
@@ -129,87 +117,7 @@ func TestRepositoryRepository_GetAll(t *testing.T) {
 	}
 }
 
-func TestRepositoryRepository_UpdateLastSeenTag(t *testing.T) {
-	mock, err := pgxmock.NewPool()
-	require.NoError(t, err)
-	defer mock.Close()
-
-	repo := &RepositoryRepository{
-		db:     mock,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
-
-	tests := []struct {
-		name        string
-		repoName    string
-		tag         string
-		mockSetup   func(name, tag string)
-		expectError bool
-		checkErrMsg string
-	}{
-		{
-			name:     "success update",
-			repoName: "golang/go",
-			tag:      "v1.26.0",
-			mockSetup: func(name, tag string) {
-				mock.ExpectExec("^UPDATE repositories SET last_seen_tag = \\$1").
-					WithArgs(tag, name).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
-			},
-			expectError: false,
-		},
-		{
-			name:     "database exec error",
-			repoName: "golang/go",
-			tag:      "v1.26.0",
-			mockSetup: func(name, tag string) {
-				mock.ExpectExec("^UPDATE repositories SET last_seen_tag = \\$1").
-					WithArgs(tag, name).
-					WillReturnError(fmt.Errorf("connection refused"))
-			},
-			expectError: true,
-			checkErrMsg: "exec:",
-		},
-		{
-			name:     "update non-existent repo - zero rows affected",
-			repoName: "nonexistent/repo",
-			tag:      "v0.1.0",
-			mockSetup: func(name, tag string) {
-				mock.ExpectExec("^UPDATE repositories SET last_seen_tag = \\$1").
-					WithArgs(tag, name).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 0))
-			},
-			expectError: false,
-		},
-		{
-			name:     "empty tag string",
-			repoName: "golang/go",
-			tag:      "",
-			mockSetup: func(name, tag string) {
-				mock.ExpectExec("^UPDATE repositories SET last_seen_tag = \\$1").
-					WithArgs(tag, name).
-					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup(tt.repoName, tt.tag)
-			err := repo.UpdateLastSeenTag(context.Background(), tt.repoName, tt.tag)
-			if tt.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.checkErrMsg)
-			} else {
-				require.NoError(t, err)
-			}
-			assert.NoError(t, mock.ExpectationsWereMet())
-		})
-	}
-}
-
-func TestRepositoryRepository_GetOrCreate(t *testing.T) {
+func TestRepositoryRepository_GetByName(t *testing.T) {
 	mock, err := pgxmock.NewPool()
 	require.NoError(t, err)
 	defer mock.Close()
@@ -224,75 +132,38 @@ func TestRepositoryRepository_GetOrCreate(t *testing.T) {
 	tests := []struct {
 		name        string
 		repoName    string
-		tagName     string
-		mockSetup   func(name, tag string)
+		mockSetup   func(name string)
 		expectError bool
 		checkErrMsg string
-		checkResult func(t *testing.T, r *model.Repository)
 	}{
 		{
-			name:     "success upsert - new repo",
+			name:     "success",
 			repoName: "golang/go",
-			tagName:  "v1.25.0",
-			mockSetup: func(name, tag string) {
-				mock.ExpectQuery("^INSERT INTO repositories (.+) ON CONFLICT").
-					WithArgs(name, tag).
+			mockSetup: func(name string) {
+				mock.ExpectQuery("^SELECT id, full_name, last_seen_tag, updated_at FROM repositories").
+					WithArgs(name).
 					WillReturnRows(pgxmock.NewRows([]string{"id", "full_name", "last_seen_tag", "updated_at"}).
-						AddRow(int64(1), name, tag, now))
+						AddRow(int64(1), name, "v1.25.0", now))
 			},
 			expectError: false,
-			checkResult: func(t *testing.T, r *model.Repository) {
-				assert.Equal(t, int64(1), r.ID)
-				assert.Equal(t, "golang/go", r.FullName)
-				assert.Equal(t, "v1.25.0", r.LastSeenTag)
-			},
 		},
 		{
-			name:     "success upsert - existing repo returns same id",
-			repoName: "golang/go",
-			tagName:  "v1.26.0",
-			mockSetup: func(name, tag string) {
-				mock.ExpectQuery("^INSERT INTO repositories (.+) ON CONFLICT").
-					WithArgs(name, tag).
-					WillReturnRows(pgxmock.NewRows([]string{"id", "full_name", "last_seen_tag", "updated_at"}).
-						AddRow(int64(1), name, name, now))
-			},
-			expectError: false,
-			checkResult: func(t *testing.T, r *model.Repository) {
-				assert.Equal(t, int64(1), r.ID)
-				assert.NotNil(t, r)
-			},
-		},
-		{
-			name:     "database error on insert",
-			repoName: "golang/go",
-			tagName:  "v1.25.0",
-			mockSetup: func(name, tag string) {
-				mock.ExpectQuery("^INSERT INTO repositories (.+) ON CONFLICT").
-					WithArgs(name, tag).
-					WillReturnError(fmt.Errorf("deadlock detected"))
+			name:     "not found error",
+			repoName: "unknown/repo",
+			mockSetup: func(name string) {
+				mock.ExpectQuery("^SELECT id, full_name, last_seen_tag, updated_at FROM repositories").
+					WithArgs(name).
+					WillReturnError(pgx.ErrNoRows)
 			},
 			expectError: true,
-			checkErrMsg: "query row:",
-		},
-		{
-			name:     "scan error - unexpected column type",
-			repoName: "golang/go",
-			tagName:  "v1.25.0",
-			mockSetup: func(name, tag string) {
-				mock.ExpectQuery("^INSERT INTO repositories (.+) ON CONFLICT").
-					WithArgs(name, tag).
-					WillReturnError(fmt.Errorf("scan error: destination id has incompatible type"))
-			},
-			expectError: true,
-			checkErrMsg: "query row:",
+			checkErrMsg: model.ErrRepositoryNotFound.Error(),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup(tt.repoName, tt.tagName)
-			result, err := repo.GetOrCreate(context.Background(), tt.repoName, tt.tagName)
+			tt.mockSetup(tt.repoName)
+			result, err := repo.GetByName(context.Background(), tt.repoName)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -301,115 +172,137 @@ func TestRepositoryRepository_GetOrCreate(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, result)
-
-				if tt.checkResult != nil {
-					tt.checkResult(t, result)
-				}
+				assert.Equal(t, tt.repoName, result.FullName)
 			}
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }
 
-func TestSubscriptionRepository_CreatePending(t *testing.T) {
+func TestRepositoryRepository_Create(t *testing.T) {
 	mock, err := pgxmock.NewPool()
 	require.NoError(t, err)
 	defer mock.Close()
 
-	repo := &SubscriptionRepository{
+	repo := &RepositoryRepository{
+		db:     mock,
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	now := time.Now()
+
+	tests := []struct {
+		name        string
+		inputRepo   *model.Repository
+		mockSetup   func(r *model.Repository)
+		expectError bool
+		checkErrMsg string
+	}{
+		{
+			name: "success create",
+			inputRepo: &model.Repository{
+				FullName:    "golang/go",
+				LastSeenTag: "v1.25.0",
+			},
+			mockSetup: func(r *model.Repository) {
+				mock.ExpectQuery("^INSERT INTO repositories").
+					WithArgs(r.FullName, r.LastSeenTag).
+					WillReturnRows(pgxmock.NewRows([]string{"id", "updated_at"}).
+						AddRow(int64(1), now))
+			},
+			expectError: false,
+		},
+		{
+			name: "database error on insert",
+			inputRepo: &model.Repository{
+				FullName:    "golang/go",
+				LastSeenTag: "v1.25.0",
+			},
+			mockSetup: func(r *model.Repository) {
+				mock.ExpectQuery("^INSERT INTO repositories").
+					WithArgs(r.FullName, r.LastSeenTag).
+					WillReturnError(fmt.Errorf("unique constraint violation"))
+			},
+			expectError: true,
+			checkErrMsg: "insert:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mockSetup(tt.inputRepo)
+			err := repo.Create(context.Background(), tt.inputRepo)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.checkErrMsg)
+			} else {
+				require.NoError(t, err)
+				assert.NotZero(t, tt.inputRepo.ID)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestRepositoryRepository_Update(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mock.Close()
+
+	repo := &RepositoryRepository{
 		db:     mock,
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	tests := []struct {
 		name        string
-		userID      int64
-		repoID      int64
-		token       string
-		mockSetup   func(userID, repoID int64, token string)
+		inputRepo   *model.Repository
+		mockSetup   func(r *model.Repository)
 		expectError bool
-		expectedID  int64
+		checkErrMsg string
 	}{
 		{
-			name:   "success create pending",
-			userID: 10,
-			repoID: 20,
-			token:  "secure-token",
-			mockSetup: func(userID, repoID int64, token string) {
-				mock.ExpectQuery("^INSERT INTO subscriptions").
-					WithArgs(userID, repoID, token).
-					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(int64(100)))
+			name: "success update",
+			inputRepo: &model.Repository{
+				ID:          1,
+				LastSeenTag: "v1.26.0",
+			},
+			mockSetup: func(r *model.Repository) {
+				mock.ExpectExec("^UPDATE repositories").
+					WithArgs(r.LastSeenTag, r.ID).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 			},
 			expectError: false,
-			expectedID:  100,
 		},
 		{
-			name:   "unique constraint violation",
-			userID: 10,
-			repoID: 20,
-			token:  "secure-token",
-			mockSetup: func(userID, repoID int64, token string) {
-				mock.ExpectQuery("^INSERT INTO subscriptions").
-					WithArgs(userID, repoID, token).
-					WillReturnError(fmt.Errorf("unique constraint"))
+			name: "not found - zero rows affected",
+			inputRepo: &model.Repository{
+				ID:          999,
+				LastSeenTag: "v1.26.0",
+			},
+			mockSetup: func(r *model.Repository) {
+				mock.ExpectExec("^UPDATE repositories").
+					WithArgs(r.LastSeenTag, r.ID).
+					WillReturnResult(pgxmock.NewResult("UPDATE", 0))
 			},
 			expectError: true,
-			expectedID:  0,
-		},
-		{
-			name:   "database connection error",
-			userID: 10,
-			repoID: 20,
-			token:  "token",
-			mockSetup: func(userID, repoID int64, token string) {
-				mock.ExpectQuery("^INSERT INTO subscriptions").
-					WithArgs(userID, repoID, token).
-					WillReturnError(fmt.Errorf("connection reset by peer"))
-			},
-			expectError: true,
-			expectedID:  0,
-		},
-		{
-			name:   "re-subscribe - ON CONFLICT updates token, returns existing id",
-			userID: 5,
-			repoID: 99,
-			token:  "new-token",
-			mockSetup: func(userID, repoID int64, token string) {
-				mock.ExpectQuery("^INSERT INTO subscriptions").
-					WithArgs(userID, repoID, token).
-					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(int64(77)))
-			},
-			expectError: false,
-			expectedID:  77,
-		},
-		{
-			name:   "zero user id",
-			userID: 0,
-			repoID: 1,
-			token:  "token",
-			mockSetup: func(userID, repoID int64, token string) {
-				mock.ExpectQuery("^INSERT INTO subscriptions").
-					WithArgs(userID, repoID, token).
-					WillReturnError(fmt.Errorf("not null violation"))
-			},
-			expectError: true,
-			expectedID:  0,
+			checkErrMsg: model.ErrRepositoryNotFound.Error(),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup(tt.userID, tt.repoID, tt.token)
-			id, err := repo.CreatePending(context.Background(), tt.userID, tt.repoID, tt.token)
+			tt.mockSetup(tt.inputRepo)
+			err := repo.Update(context.Background(), tt.inputRepo)
 
 			if tt.expectError {
 				require.Error(t, err)
-				assert.Equal(t, int64(0), id)
+				assert.Contains(t, err.Error(), tt.checkErrMsg)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.expectedID, id)
 			}
-			require.NoError(t, mock.ExpectationsWereMet())
+			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }
