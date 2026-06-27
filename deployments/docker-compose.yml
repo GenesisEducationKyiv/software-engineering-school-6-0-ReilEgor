@@ -59,7 +59,7 @@ services:
   repo-notifier-service:
     build:
       context: ..
-      dockerfile: deployments/Dockerfile
+      dockerfile: deployments/Dockerfile.api
     container_name: repo-notifier-service
     restart: always
     environment:
@@ -96,10 +96,6 @@ services:
       GITHUB_CB_INTERVAL: ${GITHUB_CB_INTERVAL}
       GITHUB_CB_TIMEOUT: ${GITHUB_CB_TIMEOUT}
       GITHUB_CB_FAILURE_THRESHOLD: ${GITHUB_CB_FAILURE_THRESHOLD}
-      # Worker
-      NOTIFICATION_INTERVAL: ${NOTIFICATION_INTERVAL}
-      WORKER_MAX_SEND_WORKERS: ${WORKER_MAX_SEND_WORKERS}
-      WORKER_SEND_TIMEOUT: ${WORKER_SEND_TIMEOUT}
     ports:
       - "${APP_HTTP_PORT}:${APP_HTTP_PORT}"
       - "${APP_GRPC_PORT}:${APP_GRPC_PORT}"
@@ -109,11 +105,68 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${APP_HTTP_PORT}/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${APP_HTTP_PORT}/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notification-worker:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.notification-worker
+    container_name: notification-worker
+    restart: always
+    environment:
+      # Database
+      DB_SOURCE: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS}
+      DB_MAX_CONN_IDLE_TIME: ${DB_MAX_CONN_IDLE_TIME}
+      DB_HEALTH_CHECK_PERIOD: ${DB_HEALTH_CHECK_PERIOD}
+      # Application
+      APP_BASE_URL: ${APP_BASE_URL}
+      # Redis
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      # Email
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      # GitHub
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_HTTP_TIMEOUT: ${GITHUB_HTTP_TIMEOUT}
+      GITHUB_CB_MAX_REQUESTS: ${GITHUB_CB_MAX_REQUESTS}
+      GITHUB_CB_INTERVAL: ${GITHUB_CB_INTERVAL}
+      GITHUB_CB_TIMEOUT: ${GITHUB_CB_TIMEOUT}
+      GITHUB_CB_FAILURE_THRESHOLD: ${GITHUB_CB_FAILURE_THRESHOLD}
+      # Worker
+      NOTIFICATION_INTERVAL: ${NOTIFICATION_INTERVAL}
+      WORKER_MAX_SEND_WORKERS: ${WORKER_MAX_SEND_WORKERS}
+      WORKER_SEND_TIMEOUT: ${WORKER_SEND_TIMEOUT}
+      WORKER_HEALTH_PORT: ${WORKER_HEALTH_PORT}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${WORKER_HEALTH_PORT}/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - internal
       - monitoring

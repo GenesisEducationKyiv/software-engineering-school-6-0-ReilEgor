@@ -18,18 +18,25 @@ jobs:
           POSTGRES_PASSWORD=test_pass
           POSTGRES_DB=test_db
           POSTGRES_PORT=5432
-            
+
+          DB_SOURCE=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
+          DB_MAX_OPEN_CONNS=10
+          DB_MAX_CONN_IDLE_TIME=30m
+          DB_HEALTH_CHECK_PERIOD=1m
+
           REDIS_PASSWORD=test_redis_pass
           REDIS_PORT=6379
           REDIS_HOST=redis
-            
-          DB_URL=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
-            
-          APP_HTTP_PORT=8080
-          APP_GRPC_PORT=50051
-          APP_BASE_URL=http://localhost:8080
+          REDIS_DB=0
 
+          APP_HTTP_PORT=8080
+          APP_GRPC_PORT=9091
+          APP_BASE_URL=http://localhost:8080
           APP_API_KEY=my-super-secret-token-123
+
+          HTTP_SHUTDOWN_TIMEOUT=5s
+          HTTP_REQUEST_TIMEOUT=5s
+          RATE_LIMIT=100-S
 
           EMAIL_HOST=smtp.mailtrap.io
           EMAIL_PORT=2525
@@ -37,9 +44,21 @@ jobs:
           EMAIL_PASSWORD=test_pass
           EMAIL_FROM=noreply@example.com
 
+          GITHUB_TOKEN=
+          GITHUB_HTTP_TIMEOUT=10s
+          GITHUB_CB_MAX_REQUESTS=3
+          GITHUB_CB_INTERVAL=5s
+          GITHUB_CB_TIMEOUT=30s
+          GITHUB_CB_FAILURE_THRESHOLD=3
+
+          NOTIFICATION_INTERVAL=1m
+          WORKER_MAX_SEND_WORKERS=10
+          WORKER_SEND_TIMEOUT=5s
+          WORKER_HEALTH_PORT=8081
+
           PROMETHEUS_PORT=9090
           GRAFANA_PORT=3000
-          SWAGGER_PORT=8081
+          SWAGGER_PORT=9080
           EOF
 
       - name: Start Application Stack
