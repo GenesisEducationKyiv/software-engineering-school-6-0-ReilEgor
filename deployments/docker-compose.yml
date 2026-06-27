@@ -129,36 +129,36 @@ services:
   prometheus:
     image: prom/prometheus:v2.45.0
     restart: always
+    profiles: [observability]
     ports:
       - "${PROMETHEUS_PORT}:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheusdata:/prometheus
+      - prometheus_data:/prometheus
     networks:
       - monitoring
 
-  loki:
-    image: grafana/loki:2.9.1
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    platform: linux/amd64
+    container_name: fluent-bit
     restart: always
-    volumes:
-      - ./monitoring/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
-    networks:
-      - monitoring
-
-  promtail:
-    image: grafana/promtail:2.9.1
-    restart: always
+    profiles: [observability]
+    user: root
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./monitoring/promtail/promtail-config.yaml:/etc/promtail/config.yml:ro
-    command: -config.file=/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./monitoring/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+    depends_on:
+      - elasticsearch
     networks:
       - monitoring
 
   grafana:
     image: grafana/grafana:10.1.0
     restart: always
+    profiles: [observability]
     ports:
       - "${GRAFANA_PORT}:3000"
     environment:
@@ -166,13 +166,77 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - ./monitoring/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
-      - grafanadata:/var/lib/grafana
+      - ./monitoring/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
-      - loki
     networks:
       - monitoring
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    restart: always
+    profiles: [observability]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - monitoring
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    container_name: kibana
+    restart: always
+    profiles: [observability]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status | grep -q available"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - monitoring
+
+  kibana-init:
+    image: curlimages/curl:8.6.0
+    container_name: kibana-init
+    restart: on-failure
+    profiles: [observability]
+    depends_on:
+      kibana:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - |
+        curl -sf -X POST "http://kibana:5601/api/data_views/data_view" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"data_view":{"title":"repo-notifier-logs*","timeFieldName":"@timestamp","name":"RepoNotifier Logs"}}' || true
+        echo "Kibana data view provisioned."
+    networks:
+      - monitoring
+    
   # ============================
   # DOCS / SWAGGER
   # ============================
@@ -180,14 +244,13 @@ services:
     image: swaggerapi/swagger-ui:v5.32.2
     container_name: swagger-ui
     restart: always
+    profiles: [docs]
     ports:
       - "${SWAGGER_PORT}:8080"
     volumes:
       - ../docs/api/swagger.json:/usr/share/nginx/html/docs/swagger.json:ro
     environment:
-      URLS: '[
-        { "url": "/docs/swagger.json", "name": "RepoNotifier-service" }
-      ]'
+      URLS: '[{ "url": "/docs/swagger.json", "name": "RepoNotifier-service" }]'
     networks:
       - internal
 
@@ -200,5 +263,6 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-  grafanadata:
-  prometheusdata:
+  grafana_data:
+  prometheus_data:
+  elasticsearch_data:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/service"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/metrics"
 )
 
 const (
@@ -47,8 +49,19 @@ func NewNotificationUseCase(
 	}
 }
 
-func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) error {
+func (uc *NotificationUseCase) ProcessNotifications(ctx context.Context) (err error) {
 	const op = "NotificationUseCase.ProcessNotifications"
+
+	start := time.Now()
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.NotificationsProcessedTotal.WithLabelValues(status).Inc()
+		metrics.NotificationProcessingDurationSeconds.Observe(time.Since(start).Seconds())
+	}()
+
 	repos, err := uc.repoRepo.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: get repos: %w", op, err)
@@ -109,8 +122,17 @@ func (uc *NotificationUseCase) sendNotificationEmail(
 	ctx context.Context,
 	sub model.Subscriber,
 	repoName, tag string,
-) error {
+) (err error) {
 	const op = "NotificationUseCase.sendNotificationEmail"
+
+	defer func() {
+		status := "success"
+		if err != nil {
+			status = "error"
+		}
+		metrics.NotificationEmailsSentTotal.WithLabelValues(status).Inc()
+	}()
+
 	mailCtx, cancel := context.WithTimeout(ctx, uc.workerCfg.SendTimeout)
 	defer cancel()
 
