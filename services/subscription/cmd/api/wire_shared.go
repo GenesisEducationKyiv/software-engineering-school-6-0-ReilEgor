@@ -14,6 +14,7 @@ func ProvideSubscriptionPoolConfig(cfg sharedConfig.SubscriptionDBConfig) postgr
 	return postgres2.PoolConfig{
 		DSN:               cfg.DSN,
 		MaxOpenConns:      cfg.MaxOpenConns,
+		MinConns:          cfg.MinConns,
 		MaxConnIdleTime:   cfg.MaxConnIdleTime,
 		HealthCheckPeriod: cfg.HealthCheckPeriod,
 	}

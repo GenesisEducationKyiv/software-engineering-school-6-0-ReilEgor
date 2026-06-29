@@ -14,6 +14,7 @@ func ProvideTrackingPoolConfig(cfg sharedConfig.TrackingDBConfig) postgres2.Pool
 	return postgres2.PoolConfig{
 		DSN:               cfg.DSN,
 		MaxOpenConns:      cfg.MaxOpenConns,
+		MinConns:          cfg.MinConns,
 		MaxConnIdleTime:   cfg.MaxConnIdleTime,
 		HealthCheckPeriod: cfg.HealthCheckPeriod,
 	}

@@ -17,6 +17,7 @@ type Config struct {
 type SubscriptionDBConfig struct {
 	DSN               string        `env:"SUBSCRIPTION_DB_SOURCE"`
 	MaxOpenConns      int32         `env:"SUBSCRIPTION_DB_MAX_OPEN_CONNS"`
+	MinConns          int32         `env:"SUBSCRIPTION_DB_MIN_CONNS"`
 	MaxConnIdleTime   time.Duration `env:"SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME"`
 	HealthCheckPeriod time.Duration `env:"SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD"`
 }
@@ -24,6 +25,7 @@ type SubscriptionDBConfig struct {
 type TrackingDBConfig struct {
 	DSN               string        `env:"TRACKING_DB_SOURCE"`
 	MaxOpenConns      int32         `env:"TRACKING_DB_MAX_OPEN_CONNS"`
+	MinConns          int32         `env:"TRACKING_DB_MIN_CONNS"`
 	MaxConnIdleTime   time.Duration `env:"TRACKING_DB_MAX_CONN_IDLE_TIME"`
 	HealthCheckPeriod time.Duration `env:"TRACKING_DB_HEALTH_CHECK_PERIOD"`
 }

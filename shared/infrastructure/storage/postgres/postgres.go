@@ -13,6 +13,7 @@ import (
 type PoolConfig struct {
 	DSN               string
 	MaxOpenConns      int32
+	MinConns          int32
 	MaxConnIdleTime   time.Duration
 	HealthCheckPeriod time.Duration
 }
@@ -28,6 +29,7 @@ func New(ctx context.Context, cfg PoolConfig) (*pgxpool.Pool, func(), error) {
 	}
 
 	poolCfg.MaxConns = cfg.MaxOpenConns
+	poolCfg.MinConns = cfg.MinConns
 	poolCfg.MaxConnIdleTime = cfg.MaxConnIdleTime
 	poolCfg.HealthCheckPeriod = cfg.HealthCheckPeriod
 

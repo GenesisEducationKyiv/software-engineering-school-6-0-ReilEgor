@@ -1,8 +1,12 @@
 package grpc
 
 import (
+	"time"
+
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/reflection"
 
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 
@@ -11,9 +15,19 @@ import (
 
 func NewGrpcServer(h *SubscriptionHandler, appCfg config.AppConfig) *grpc.Server {
 	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(middleware.AuthInterceptor(appCfg.APIKey)),
+		grpc.ChainUnaryInterceptor(middleware.AuthInterceptor(appCfg.APIKey)),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle: 5 * time.Minute,
+			Time:              30 * time.Second,
+			Timeout:           5 * time.Second,
+		}),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             10 * time.Second,
+			PermitWithoutStream: true,
+		}),
 	)
 	pb.RegisterSubscriptionServiceServer(srv, h)
+	reflection.Register(srv)
 
 	return srv
 }
