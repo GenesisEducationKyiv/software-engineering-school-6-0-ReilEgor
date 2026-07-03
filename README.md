@@ -86,16 +86,21 @@ Email notification dispatched to all subscribers
 ## Quick Start
  
 > [!IMPORTANT]
-> Complete the `.env` configuration before starting the app. Without valid credentials, the email and GitHub API integrations will fail.
+> Complete the env configuration before starting the app. Without valid credentials, the email and GitHub API integrations will fail.
  
 ```bash
 # Clone the repository
 git clone https://github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor.git
 cd RepoNotifier
  
-# Copy and fill in environment variables
+# Copy and fill in environment variables:
+# - deployments/.env holds shared/infra values (DB, Redis, RabbitMQ, ports)
+# - deployments/env/*.env holds per-service config (subscription, tracking, notification)
 cp deployments/.env.example deployments/.env
-# Edit deployments/.env - see Configuration section below
+cp deployments/env/subscription.env.example deployments/env/subscription.env
+cp deployments/env/tracking.env.example deployments/env/tracking.env
+cp deployments/env/notification.env.example deployments/env/notification.env
+# Edit the copied files - see Configuration section below
  
 # Build and start all services
 docker compose --profile observability --profile docs -f deployments/docker-compose.yml up --build
@@ -113,15 +118,16 @@ Once running, verify the services are healthy:
  
 ## Configuration
  
-Edit `deployments/.env` with your credentials before starting:
+Env files live under `deployments/`: `.env` for shared/infra values, `env/subscription.env`, `env/tracking.env` and `env/notification.env` for each service's own config. Edit them with your credentials before starting:
  
-| Variable | Required | Description |
-|---|---|---|
-| `APP_API_KEY` | **Required** | Secret key for `X-API-Key` authentication. All protected endpoints reject requests without this. |
-| `EMAIL_USER` | **Required** | SMTP sender address (e.g. `you@gmail.com`). |
-| `EMAIL_PASSWORD` | **Required** | SMTP app password - not your account login password. |
-| `HTTP_PORT` | Optional | Port for the REST API. Default: `8080`. |
-| `GRPC_PORT` | Optional | Port for the gRPC server. Default: `50051`. |
+| Variable | File | Required | Description |
+|---|---|---|---|
+| `APP_API_KEY` | `env/subscription.env`, `env/tracking.env` | **Required** | Secret key for `X-API-Key` authentication. All protected endpoints reject requests without this. |
+| `EMAIL_USER` | `env/notification.env` | **Required** | SMTP sender address (e.g. `you@gmail.com`). |
+| `EMAIL_PASSWORD` | `env/notification.env` | **Required** | SMTP app password - not your account login password. |
+| `APP_HTTP_PORT` | `.env` | Optional | Port for the REST API. Default: `8080`. |
+| `APP_GRPC_PORT` | `.env` | Optional | Port for the subscription gRPC server. Default: `9091`. |
+| `TRACKING_GRPC_PORT` | `.env` | Optional | Port for the tracking gRPC server. Default: `50051`. |
  
 > **Gmail users**: generate an [App Password](https://myaccount.google.com/apppasswords) - standard account passwords are rejected by Gmail SMTP.
  

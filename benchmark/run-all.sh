@@ -8,13 +8,13 @@
 # Usage (from project root):
 #   bash benchmark/run-all.sh
 #
-# Reads API_KEY from deployments/.env automatically.
+# Reads API_KEY from deployments/env/subscription.env automatically.
 # Override any variable: VUS=100 DURATION=60s bash benchmark/run-all.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ENV_FILE="$(dirname "$SCRIPT_DIR")/deployments/.env"
+ENV_FILE="$(dirname "$SCRIPT_DIR")/deployments/env/subscription.env"
 
 if [[ -z "$API_KEY" && -f "$ENV_FILE" ]]; then
   API_KEY=$(grep '^APP_API_KEY=' "$ENV_FILE" | cut -d'=' -f2 | tr -d '\r')

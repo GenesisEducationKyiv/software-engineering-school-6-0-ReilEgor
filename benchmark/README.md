@@ -25,7 +25,7 @@ VUS=100 DURATION=60s bash benchmark/run-all.sh
 | `HOST` | `localhost` |
 | `HTTP_PORT` | `8080` |
 | `GRPC_PORT` | `9091` |
-| `API_KEY` | auto-loaded from `deployments/.env` |
+| `API_KEY` | auto-loaded from `deployments/env/subscription.env` |
 | `BENCH_EMAIL` | `bench@example.com` |
 | `VUS` | `50` |
 | `DURATION` | `30s` |
