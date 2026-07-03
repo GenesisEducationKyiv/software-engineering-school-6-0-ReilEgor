@@ -62,7 +62,7 @@ func (r *RepositoryRepository) UpdateTag(ctx context.Context, fullName, tag stri
 	log := r.log(ctx)
 	log.DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName), slog.String("tag", tag))
 
-	_, err := r.db.Exec(ctx, updateTagQuery, tag, fullName)
+	cmdTag, err := r.db.Exec(ctx, updateTagQuery, tag, fullName)
 	if err != nil {
 		log.ErrorContext(ctx, "update tag failed",
 			slog.String("op", op),
@@ -70,6 +70,14 @@ func (r *RepositoryRepository) UpdateTag(ctx context.Context, fullName, tag stri
 			slog.Any("error", err),
 		)
 		return fmt.Errorf("%s: exec: %w", op, err)
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		log.WarnContext(ctx, "update tag affected no rows",
+			slog.String("op", op),
+			slog.String("repo", fullName),
+		)
+		return fmt.Errorf("%s: %w", op, subModel.ErrRepositoryNotFound)
 	}
 
 	log.DebugContext(ctx, "tag updated in subscription DB",

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/usecase"
 )
 
@@ -185,6 +187,12 @@ func (h *SubscriptionHandler) UpdateTag(
 	}
 
 	if err := h.repoUC.UpdateTag(ctx, req.GetFullName(), req.GetTag()); err != nil {
+		if errors.Is(err, model.ErrRepositoryNotFound) {
+			log.WarnContext(ctx, "repository not found",
+				slog.String("repo", req.GetFullName()),
+			)
+			return nil, status.Error(codes.NotFound, "repository not found")
+		}
 		log.ErrorContext(ctx, "failed to update tag",
 			slog.String("repo", req.GetFullName()),
 			slog.Any("error", err),
