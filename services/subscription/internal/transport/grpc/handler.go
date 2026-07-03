@@ -177,6 +177,13 @@ func (h *SubscriptionHandler) UpdateTag(
 		)
 	}()
 
+	if req.GetFullName() == "" {
+		return nil, status.Error(codes.InvalidArgument, "full_name is required")
+	}
+	if req.GetTag() == "" {
+		return nil, status.Error(codes.InvalidArgument, "tag is required")
+	}
+
 	if err := h.repoUC.UpdateTag(ctx, req.GetFullName(), req.GetTag()); err != nil {
 		log.ErrorContext(ctx, "failed to update tag",
 			slog.String("repo", req.GetFullName()),
