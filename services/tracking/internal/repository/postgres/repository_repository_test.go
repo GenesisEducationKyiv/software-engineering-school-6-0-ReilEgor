@@ -3,8 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -21,10 +19,8 @@ func TestRepositoryRepository_GetAll(t *testing.T) {
 	require.NoError(t, err)
 	defer mock.Close()
 
-	discardLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := &RepositoryRepository{
-		db:     mock,
-		logger: discardLogger,
+		db: mock,
 	}
 
 	now := time.Now()
@@ -123,8 +119,7 @@ func TestRepositoryRepository_GetByName(t *testing.T) {
 	defer mock.Close()
 
 	repo := &RepositoryRepository{
-		db:     mock,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		db: mock,
 	}
 
 	now := time.Now()
@@ -185,8 +180,7 @@ func TestRepositoryRepository_Create(t *testing.T) {
 	defer mock.Close()
 
 	repo := &RepositoryRepository{
-		db:     mock,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		db: mock,
 	}
 
 	now := time.Now()
@@ -251,8 +245,7 @@ func TestRepositoryRepository_Update(t *testing.T) {
 	defer mock.Close()
 
 	repo := &RepositoryRepository{
-		db:     mock,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		db: mock,
 	}
 
 	tests := []struct {

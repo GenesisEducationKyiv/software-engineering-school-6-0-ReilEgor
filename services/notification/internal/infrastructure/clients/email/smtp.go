@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 
 	notifModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/service"
@@ -21,7 +22,6 @@ type SMTPClient struct {
 	from     string
 	auth     smtp.Auth
 	sendMail func(addr string, a smtp.Auth, from string, to []string, msg []byte) error
-	logger   *slog.Logger
 }
 
 func NewSMTPClient(cfg config.EmailConfig) *SMTPClient {
@@ -30,12 +30,19 @@ func NewSMTPClient(cfg config.EmailConfig) *SMTPClient {
 		port:     cfg.Port,
 		from:     cfg.From,
 		auth:     smtp.PlainAuth("", cfg.User, cfg.Password, cfg.Host),
-		logger:   slog.With(slog.String("component", componentEmailClient)),
 		sendMail: smtp.SendMail,
 	}
 }
 
+func (c *SMTPClient) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentEmailClient))
+}
+
 func (c *SMTPClient) Send(ctx context.Context, msg notifModel.EmailMessage) error {
+	const op = "SMTPClient.Send"
+	log := c.log(ctx).With(slog.String("op", op), slog.String("to", msg.To))
+	log.DebugContext(ctx, "called")
+
 	addr := fmt.Sprintf("%s:%s", c.host, c.port)
 
 	rawMsg := []byte(fmt.Sprintf(
@@ -44,9 +51,11 @@ func (c *SMTPClient) Send(ctx context.Context, msg notifModel.EmailMessage) erro
 	))
 
 	if err := c.sendMail(addr, c.auth, c.from, []string{msg.To}, rawMsg); err != nil {
-		c.logger.ErrorContext(ctx, "failed to send email", slog.String("to", msg.To), slog.Any("error", err))
+		log.ErrorContext(ctx, "failed to send email", slog.String("error", err.Error()))
 		return classifySMTPError(err)
 	}
+
+	log.DebugContext(ctx, "email sent")
 	return nil
 }
 

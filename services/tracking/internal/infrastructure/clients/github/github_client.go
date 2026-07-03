@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/sony/gobreaker"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
@@ -29,7 +30,6 @@ var ErrUnexpectedStatus = errors.New("unexpected github api status")
 
 type GitHubClient struct {
 	httpClient *http.Client
-	logger     *slog.Logger
 	cb         *gobreaker.CircuitBreaker
 	apiBase    string
 	token      string
@@ -55,15 +55,19 @@ func NewGitHubClient(cfg config.GitHubConfig) *GitHubClient {
 	}
 	return &GitHubClient{
 		httpClient: &http.Client{Timeout: cfg.HTTPTimeout},
-		logger:     slog.With(slog.String("component", componentGithubClient)),
 		cb:         gobreaker.NewCircuitBreaker(settings),
 		apiBase:    githubAPIBase,
 		token:      cfg.Token,
 	}
 }
 
+func (c *GitHubClient) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentGithubClient))
+}
+
 func (c *GitHubClient) RepoExists(ctx context.Context, fullName string) (bool, error) {
 	const op = "GitHubClient.RepoExists"
+	c.log(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName))
 
 	result, err := c.cb.Execute(func() (any, error) {
 		return c.repoExistsRequest(ctx, fullName)
@@ -81,6 +85,7 @@ func (c *GitHubClient) RepoExists(ctx context.Context, fullName string) (bool, e
 
 func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*model.ReleaseInfo, error) {
 	const op = "GitHubClient.GetLatestRelease"
+	c.log(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName))
 
 	result, err := c.cb.Execute(func() (any, error) {
 		return c.latestReleaseRequest(ctx, fullName)
@@ -98,7 +103,7 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*
 
 func (c *GitHubClient) handleCBError(ctx context.Context, op string, err error) error {
 	if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
-		c.logger.WarnContext(ctx, "circuit breaker open", slog.String("op", op))
+		c.log(ctx).WarnContext(ctx, "circuit breaker open", slog.String("op", op))
 		return model.ErrGitHubUnavailable
 	}
 	return fmt.Errorf("%s: %w", op, err)
@@ -112,7 +117,7 @@ func (c *GitHubClient) repoExistsRequest(ctx context.Context, fullName string) (
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
-			c.logger.WarnContext(ctx, "failed to close response body", slog.String("error", closeErr.Error()))
+			c.log(ctx).WarnContext(ctx, "failed to close response body", slog.String("error", closeErr.Error()))
 		}
 	}()
 
@@ -122,7 +127,7 @@ func (c *GitHubClient) repoExistsRequest(ctx context.Context, fullName string) (
 	case http.StatusNotFound:
 		return false, nil
 	case http.StatusForbidden:
-		c.logger.WarnContext(ctx, "github rate limit exceeded", slog.String("repo", fullName))
+		c.log(ctx).WarnContext(ctx, "github rate limit exceeded", slog.String("repo", fullName))
 		return false, model.ErrRateLimitExceeded
 	default:
 		return false, fmt.Errorf("%w: %s", ErrUnexpectedStatus, resp.Status)
@@ -137,7 +142,7 @@ func (c *GitHubClient) latestReleaseRequest(ctx context.Context, fullName string
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
-			c.logger.WarnContext(ctx, "failed to close response body", slog.String("error", closeErr.Error()))
+			c.log(ctx).WarnContext(ctx, "failed to close response body", slog.String("error", closeErr.Error()))
 		}
 	}()
 

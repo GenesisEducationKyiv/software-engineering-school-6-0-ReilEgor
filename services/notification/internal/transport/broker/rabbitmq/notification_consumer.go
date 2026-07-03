@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -49,6 +50,8 @@ func (c *NotificationConsumer) Start(ctx context.Context) error {
 }
 
 func (c *NotificationConsumer) consume(ctx context.Context) error {
+	c.logger.DebugContext(ctx, "called", slog.String("op", "NotificationConsumer.consume"))
+
 	ch, err := c.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("open channel: %w", err)
@@ -92,18 +95,25 @@ func (c *NotificationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 		return
 	}
 
+	if cmd.RequestID != "" {
+		ctx = ctxlog.WithRequestID(ctx, cmd.RequestID)
+		ctx = ctxlog.WithLogger(ctx, c.logger.With(slog.String("request_id", cmd.RequestID)))
+	}
+	log := ctxlog.FromCtx(ctx)
+	log.DebugContext(ctx, "called", slog.String("op", "NotificationConsumer.handle"))
+
 	sendCtx, cancel := context.WithTimeout(ctx, c.sendTimeout)
 	defer cancel()
 
 	if err := c.notificationUC.Send(sendCtx, cmd); err != nil {
-		c.logger.Error("rabbitmq: send notification failed", slog.Any("error", err))
+		log.Error("rabbitmq: send notification failed", slog.Any("error", err))
 		if nackErr := d.Nack(false, true); nackErr != nil {
-			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+			log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
 	}
 
 	if ackErr := d.Ack(false); ackErr != nil {
-		c.logger.Error("rabbitmq: ack failed", slog.Any("error", ackErr))
+		log.Error("rabbitmq: ack failed", slog.Any("error", ackErr))
 	}
 }

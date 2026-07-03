@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -46,6 +47,8 @@ func (c *SagaResultConsumer) Start(ctx context.Context) error {
 }
 
 func (c *SagaResultConsumer) consume(ctx context.Context) error {
+	c.logger.DebugContext(ctx, "called", slog.String("op", "SagaResultConsumer.consume"))
+
 	ch, err := c.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("open channel: %w", err)
@@ -87,8 +90,15 @@ func (c *SagaResultConsumer) handle(ctx context.Context, d amqp.Delivery) {
 		return
 	}
 
+	if reply.RequestID != "" {
+		ctx = ctxlog.WithRequestID(ctx, reply.RequestID)
+		ctx = ctxlog.WithLogger(ctx, c.logger.With(slog.String("request_id", reply.RequestID)))
+	}
+	log := ctxlog.FromCtx(ctx)
+	log.DebugContext(ctx, "called", slog.String("op", "SagaResultConsumer.handle"))
+
 	if err := c.orchestrator.HandleConfirmationReply(ctx, reply); err != nil {
-		c.logger.Error("rabbitmq: saga orchestrator error", slog.Any("error", err))
+		log.Error("rabbitmq: saga orchestrator error", slog.Any("error", err))
 		c.nack(d, true)
 		return
 	}

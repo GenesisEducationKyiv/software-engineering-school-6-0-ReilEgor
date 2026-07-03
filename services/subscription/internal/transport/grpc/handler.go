@@ -3,7 +3,9 @@ package grpc
 import (
 	"context"
 	"log/slog"
+	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -17,19 +19,30 @@ type SubscriptionHandler struct {
 	v2.UnimplementedSubscriptionServiceServer
 	userUC usecase.UserUseCase
 	repoUC usecase.RepositoryUseCase
-	logger *slog.Logger
 }
 
 func NewSubscriptionHandler(userUC usecase.UserUseCase, repoUC usecase.RepositoryUseCase) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		userUC: userUC,
 		repoUC: repoUC,
-		logger: slog.With(slog.String("component", "grpc_handler")),
 	}
 }
 
-func (h *SubscriptionHandler) Subscribe(ctx context.Context, req *v2.SubscribeRequest) (*v2.SubscribeResponse, error) {
-	log := h.logger.With(slog.String("handler", "Subscribe"))
+func (h *SubscriptionHandler) Subscribe(
+	ctx context.Context,
+	req *v2.SubscribeRequest,
+) (_ *v2.SubscribeResponse, retErr error) {
+	start := time.Now()
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "Subscribe"))
+	log.DebugContext(ctx, "called")
+	defer func() {
+		log.InfoContext(
+			ctx,
+			"handler completed",
+			slog.Duration("duration", time.Since(start)),
+			slog.Bool("ok", retErr == nil),
+		)
+	}()
 
 	email, repo := req.GetEmail(), req.GetRepository()
 	log.InfoContext(ctx, "subscribe request received",
@@ -37,8 +50,7 @@ func (h *SubscriptionHandler) Subscribe(ctx context.Context, req *v2.SubscribeRe
 		slog.String("repo", repo),
 	)
 
-	err := h.userUC.Subscribe(ctx, email, repo)
-	if err != nil {
+	if err := h.userUC.Subscribe(ctx, email, repo); err != nil {
 		log.ErrorContext(ctx, "failed to initiate subscription",
 			slog.String("email", email),
 			slog.String("repo", repo),
@@ -60,8 +72,18 @@ func (h *SubscriptionHandler) Subscribe(ctx context.Context, req *v2.SubscribeRe
 func (h *SubscriptionHandler) Unsubscribe(
 	ctx context.Context,
 	req *v2.UnsubscribeRequest,
-) (*v2.UnsubscribeResponse, error) {
-	log := h.logger.With(slog.String("handler", "Unsubscribe"))
+) (_ *v2.UnsubscribeResponse, retErr error) {
+	start := time.Now()
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "Unsubscribe"))
+	log.DebugContext(ctx, "called")
+	defer func() {
+		log.InfoContext(
+			ctx,
+			"handler completed",
+			slog.Duration("duration", time.Since(start)),
+			slog.Bool("ok", retErr == nil),
+		)
+	}()
 
 	token := req.GetToken()
 	if token == "" {
@@ -71,8 +93,7 @@ func (h *SubscriptionHandler) Unsubscribe(
 
 	log.InfoContext(ctx, "unsubscribe request received")
 
-	err := h.userUC.UnsubscribeByToken(ctx, token)
-	if err != nil {
+	if err := h.userUC.UnsubscribeByToken(ctx, token); err != nil {
 		log.ErrorContext(ctx, "failed to unsubscribe", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Internal, "failed to unsubscribe: %v", err)
 	}
@@ -87,8 +108,18 @@ func (h *SubscriptionHandler) Unsubscribe(
 func (h *SubscriptionHandler) ListSubscriptions(
 	ctx context.Context,
 	req *v2.ListSubscriptionsRequest,
-) (*v2.ListSubscriptionsResponse, error) {
-	log := h.logger.With(slog.String("handler", "ListSubscriptions"))
+) (_ *v2.ListSubscriptionsResponse, retErr error) {
+	start := time.Now()
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "ListSubscriptions"))
+	log.DebugContext(ctx, "called")
+	defer func() {
+		log.InfoContext(
+			ctx,
+			"handler completed",
+			slog.Duration("duration", time.Since(start)),
+			slog.Bool("ok", retErr == nil),
+		)
+	}()
 
 	email := req.GetEmail()
 	log.InfoContext(ctx, "list subscriptions request received", slog.String("email", email))
@@ -104,11 +135,15 @@ func (h *SubscriptionHandler) ListSubscriptions(
 
 	pbSubs := make([]*v2.Subscription, 0, len(subs))
 	for _, s := range subs {
+		var lastSeenTag string
+		if s.LastSeenTag != nil {
+			lastSeenTag = *s.LastSeenTag
+		}
 		pbSubs = append(pbSubs, &v2.Subscription{
 			Id:          s.ID,
 			Repo:        s.RepositoryName,
 			Confirmed:   s.Confirmed,
-			LastSeenTag: s.LastSeenTag,
+			LastSeenTag: lastSeenTag,
 			CreatedAt:   timestamppb.New(s.CreatedAt),
 		})
 	}
@@ -123,9 +158,27 @@ func (h *SubscriptionHandler) ListSubscriptions(
 	}, nil
 }
 
-func (h *SubscriptionHandler) UpdateTag(ctx context.Context, req *v2.UpdateTagRequest) (*v2.UpdateTagResponse, error) {
+func (h *SubscriptionHandler) UpdateTag(
+	ctx context.Context,
+	req *v2.UpdateTagRequest,
+) (_ *v2.UpdateTagResponse, retErr error) {
+	start := time.Now()
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "UpdateTag"))
+	log.DebugContext(ctx, "called",
+		slog.String("repo", req.GetFullName()),
+		slog.String("tag", req.GetTag()),
+	)
+	defer func() {
+		log.InfoContext(
+			ctx,
+			"handler completed",
+			slog.Duration("duration", time.Since(start)),
+			slog.Bool("ok", retErr == nil),
+		)
+	}()
+
 	if err := h.repoUC.UpdateTag(ctx, req.GetFullName(), req.GetTag()); err != nil {
-		h.logger.ErrorContext(ctx, "failed to update tag",
+		log.ErrorContext(ctx, "failed to update tag",
 			slog.String("repo", req.GetFullName()),
 			slog.Any("error", err),
 		)

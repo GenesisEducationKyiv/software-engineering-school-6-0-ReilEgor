@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -58,6 +59,8 @@ func (c *ConfirmationConsumer) Start(ctx context.Context) error {
 }
 
 func (c *ConfirmationConsumer) consume(ctx context.Context) error {
+	c.logger.DebugContext(ctx, "called", slog.String("op", "ConfirmationConsumer.consume"))
+
 	ch, err := c.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("open channel: %w", err)
@@ -101,15 +104,22 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 		return
 	}
 
+	if cmd.RequestID != "" {
+		ctx = ctxlog.WithRequestID(ctx, cmd.RequestID)
+		ctx = ctxlog.WithLogger(ctx, c.logger.With(slog.String("request_id", cmd.RequestID)))
+	}
+	log := ctxlog.FromCtx(ctx)
+	log.DebugContext(ctx, "called", slog.String("op", "ConfirmationConsumer.handle"))
+
 	sendCtx, cancel := context.WithTimeout(ctx, c.sendTimeout)
 	defer cancel()
 
 	if err := c.emailSvc.SendConfirmation(sendCtx, cmd.Email, cmd.RepoName, cmd.Token); err != nil {
-		c.logger.Error("rabbitmq: send confirmation email failed",
+		log.Error("rabbitmq: send confirmation email failed",
 			slog.String("to", cmd.Email),
 			slog.Any("error", err),
 		)
-		c.handleEmailError(ctx, d, cmd, err)
+		c.handleEmailError(ctx, d, cmd, err, log)
 		return
 	}
 
@@ -120,16 +130,17 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 		Email:          cmd.Email,
 		RepoName:       cmd.RepoName,
 		Token:          cmd.Token,
+		RequestID:      cmd.RequestID,
 	}); pubErr != nil {
-		c.logger.Error("rabbitmq: publish saga result failed, will retry", slog.Any("error", pubErr))
+		log.Error("rabbitmq: publish saga result failed, will retry", slog.Any("error", pubErr))
 		if nackErr := d.Nack(false, true); nackErr != nil {
-			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+			log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
 	}
 
 	if ackErr := d.Ack(false); ackErr != nil {
-		c.logger.Error("rabbitmq: ack failed", slog.Any("error", ackErr))
+		log.Error("rabbitmq: ack failed", slog.Any("error", ackErr))
 	}
 }
 
@@ -138,10 +149,11 @@ func (c *ConfirmationConsumer) handleEmailError(
 	d amqp.Delivery,
 	cmd contracts.SendConfirmationCommand,
 	err error,
+	log *slog.Logger,
 ) {
 	if errors.Is(err, service.ErrSMTPUnavailable) {
 		if nackErr := d.Nack(false, true); nackErr != nil {
-			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+			log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
 	}
@@ -153,14 +165,15 @@ func (c *ConfirmationConsumer) handleEmailError(
 		Email:          cmd.Email,
 		RepoName:       cmd.RepoName,
 		Token:          cmd.Token,
+		RequestID:      cmd.RequestID,
 	}); pubErr != nil {
-		c.logger.Error("rabbitmq: publish saga result failed, requeuing", slog.Any("error", pubErr))
+		log.Error("rabbitmq: publish saga result failed, requeuing", slog.Any("error", pubErr))
 		if nackErr := d.Nack(false, true); nackErr != nil {
-			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+			log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
 	}
 	if nackErr := d.Nack(false, false); nackErr != nil {
-		c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+		log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 	}
 }

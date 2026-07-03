@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -35,6 +37,9 @@ func NewSagaResultPublisher(conn *sharedRabbitmq.Connection) (*SagaResultPublish
 }
 
 func (p *SagaResultPublisher) Publish(ctx context.Context, event contracts.ConfirmationResultEvent) error {
+	const op = "SagaResultPublisher.Publish"
+	ctxlog.FromCtx(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.Int64("saga_id", event.SagaID))
+
 	body, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("saga result publisher: marshal: %w", err)

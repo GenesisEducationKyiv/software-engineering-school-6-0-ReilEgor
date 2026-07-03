@@ -13,5 +13,5 @@ type RepositoryUpdater interface {
 
 //go:generate mockery --name RepositoryRepository --output ../../mocks --case underscore --outpkg mocks
 type RepositoryRepository interface {
-	GetOrCreate(ctx context.Context, fullName string) (*model.RepositoryRef, error)
+	GetOrCreate(ctx context.Context, fullName, lastSeenTag string) (*model.RepositoryRef, error)
 }

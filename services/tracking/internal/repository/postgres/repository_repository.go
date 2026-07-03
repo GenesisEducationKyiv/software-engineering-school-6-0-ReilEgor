@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
@@ -18,15 +19,15 @@ const (
 )
 
 type RepositoryRepository struct {
-	db     sharedPostgres.PgxInterface
-	logger *slog.Logger
+	db sharedPostgres.PgxInterface
 }
 
 func NewRepositoryRepository(db sharedPostgres.PgxInterface) *RepositoryRepository {
-	return &RepositoryRepository{
-		db:     db,
-		logger: slog.With(slog.String("component", componentRepositoryRepository)),
-	}
+	return &RepositoryRepository{db: db}
+}
+
+func (r *RepositoryRepository) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentRepositoryRepository))
 }
 
 const getActiveRepositoriesQuery = `
@@ -39,7 +40,8 @@ const getActiveRepositoriesQuery = `
 
 func (r *RepositoryRepository) GetAll(ctx context.Context) ([]model.Repository, error) {
 	const op = "RepositoryRepository.GetAll"
-	log := r.logger.With(slog.String("op", op))
+	log := r.log(ctx).With(slog.String("op", op))
+	log.DebugContext(ctx, "called")
 
 	rows, err := r.db.Query(ctx, getActiveRepositoriesQuery)
 	if err != nil {
@@ -75,7 +77,8 @@ const getRepositoryByNameQuery = `
 
 func (r *RepositoryRepository) GetByName(ctx context.Context, name string) (*model.Repository, error) {
 	const op = "RepositoryRepository.GetByName"
-	log := r.logger.With(slog.String("op", op), slog.String("name", name))
+	log := r.log(ctx).With(slog.String("op", op), slog.String("name", name))
+	log.DebugContext(ctx, "called")
 
 	var repo model.Repository
 	err := r.db.QueryRow(ctx, getRepositoryByNameQuery, name).Scan(
@@ -107,7 +110,8 @@ const createRepositoryQuery = `
 
 func (r *RepositoryRepository) Create(ctx context.Context, repo *model.Repository) error {
 	const op = "RepositoryRepository.Create"
-	log := r.logger.With(slog.String("op", op), slog.String("name", repo.FullName))
+	log := r.log(ctx).With(slog.String("op", op), slog.String("name", repo.FullName))
+	log.DebugContext(ctx, "called")
 
 	err := r.db.QueryRow(ctx, createRepositoryQuery, repo.FullName, repo.LastSeenTag).Scan(
 		&repo.ID,
@@ -126,7 +130,8 @@ const deleteRepositoryQuery = `DELETE FROM repositories WHERE full_name = $1`
 
 func (r *RepositoryRepository) Delete(ctx context.Context, name string) error {
 	const op = "RepositoryRepository.Delete"
-	log := r.logger.With(slog.String("op", op), slog.String("name", name))
+	log := r.log(ctx).With(slog.String("op", op), slog.String("name", name))
+	log.DebugContext(ctx, "called")
 
 	_, err := r.db.Exec(ctx, deleteRepositoryQuery, name)
 	if err != nil {
@@ -146,7 +151,8 @@ const updateRepositoryQuery = `
 
 func (r *RepositoryRepository) Update(ctx context.Context, repo *model.Repository) error {
 	const op = "RepositoryRepository.Update"
-	log := r.logger.With(slog.String("op", op), slog.Int64("id", repo.ID))
+	log := r.log(ctx).With(slog.String("op", op), slog.Int64("id", repo.ID))
+	log.DebugContext(ctx, "called")
 
 	commandTag, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, updateRepositoryQuery, repo.LastSeenTag, repo.ID)
 	if err != nil {

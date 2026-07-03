@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/gin-gonic/gin"
 
 	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
@@ -29,6 +30,7 @@ const (
 	errFailedToSubscribe   = "failed to subscribe"
 	errFailedToUnsubscribe = "failed to unsubscribe"
 	errFailedToList        = "failed to list subscriptions"
+	lastSeenTagPending     = "tag not seen yet, please wait"
 )
 
 var (
@@ -59,6 +61,7 @@ func validateSubscription(email, repo string) []string {
 
 func (h *Handler) handleTokenAction(
 	c *gin.Context,
+	handlerName string,
 	timeout time.Duration,
 	action func(ctx context.Context, token string) error,
 	notFoundMsg string,
@@ -73,12 +76,15 @@ func (h *Handler) handleTokenAction(
 	ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
 	defer cancel()
 
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", handlerName))
+	log.DebugContext(ctx, "called")
+
 	if err := action(ctx, token); err != nil {
 		if errors.Is(err, model2.ErrInvalidToken) {
 			c.JSON(http.StatusNotFound, gin.H{"error": notFoundMsg})
 			return
 		}
-		h.logger.ErrorContext(ctx, internalMsg, slog.String("error", err.Error()))
+		log.ErrorContext(ctx, internalMsg, slog.String("error", err.Error()))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": internalMsg})
 		return
 	}
@@ -102,7 +108,8 @@ func (h *Handler) Subscribe(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), timeoutSubscribe)
 	defer cancel()
 
-	log := h.logger.With(slog.String("handler", "Subscribe"))
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "Subscribe"))
+	log.DebugContext(ctx, "called")
 
 	var req dto.CreateSubscriptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -172,6 +179,7 @@ func (h *Handler) Subscribe(c *gin.Context) {
 func (h *Handler) UnsubscribeByToken(c *gin.Context) {
 	h.handleTokenAction(
 		c,
+		"UnsubscribeByToken",
 		timeoutUnsubscribe,
 		h.userUC.UnsubscribeByToken,
 		"invalid or expired unsubscribe link",
@@ -198,10 +206,8 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), timeoutList)
 	defer cancel()
 
-	log := h.logger.With(
-		slog.String("op", "Handler.ListSubscriptions"),
-		slog.String("handler", "ListSubscriptions"),
-	)
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "ListSubscriptions"))
+	log.DebugContext(ctx, "called")
 
 	email := strings.TrimSpace(c.Query("email"))
 	if email == "" {
@@ -228,12 +234,16 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 
 	responseSubs := make([]dto.SubscriptionResponse, 0, len(subs))
 	for _, s := range subs {
+		lastSeenTag := lastSeenTagPending
+		if s.LastSeenTag != nil {
+			lastSeenTag = *s.LastSeenTag
+		}
 		responseSubs = append(responseSubs, dto.SubscriptionResponse{
 			ID:             s.ID,
 			Email:          email,
 			RepositoryName: s.RepositoryName,
 			CreatedAt:      s.CreatedAt,
-			LastSeenTag:    s.LastSeenTag,
+			LastSeenTag:    lastSeenTag,
 			Confirmed:      s.Confirmed,
 		})
 	}
@@ -264,6 +274,7 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 func (h *Handler) Confirm(c *gin.Context) {
 	h.handleTokenAction(
 		c,
+		"Confirm",
 		timeoutConfirm,
 		h.userUC.Confirm,
 		"invalid or expired token",
@@ -275,14 +286,18 @@ func (h *Handler) Confirm(c *gin.Context) {
 }
 
 func (h *Handler) UpdateTag(c *gin.Context) {
+	ctx := c.Request.Context()
+	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "UpdateTag"))
+	log.DebugContext(ctx, "called")
+
 	var req dto.UpdateTagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidRequestBody})
 		return
 	}
 
-	if err := h.repoUC.UpdateTag(c.Request.Context(), req.FullName, req.Tag); err != nil {
-		h.logger.ErrorContext(c.Request.Context(), "failed to update tag",
+	if err := h.repoUC.UpdateTag(ctx, req.FullName, req.Tag); err != nil {
+		log.ErrorContext(ctx, "failed to update tag",
 			slog.String("repo", req.FullName),
 			slog.Any("error", err),
 		)

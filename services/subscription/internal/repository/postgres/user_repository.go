@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/jackc/pgx/v5"
 
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
@@ -18,22 +19,23 @@ const (
 )
 
 type UserRepository struct {
-	db     sharedPostgres.PgxInterface
-	logger *slog.Logger
+	db sharedPostgres.PgxInterface
 }
 
 func NewUserRepository(db sharedPostgres.PgxInterface) *UserRepository {
-	return &UserRepository{
-		db:     db,
-		logger: slog.With(slog.String("component", componentUserRepository)),
-	}
+	return &UserRepository{db: db}
+}
+
+func (r *UserRepository) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentUserRepository))
 }
 
 const getByEmailUserRepositoryQuery = `SELECT id, email, created_at FROM users WHERE email = $1`
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (model.User, error) {
 	const op = "UserRepository.GetByEmail"
-	log := r.logger.With(slog.String("op", op))
+	log := r.log(ctx).With(slog.String("op", op))
+	log.DebugContext(ctx, "called", slog.String("email", email))
 
 	var user model.User
 	err := r.db.QueryRow(ctx, getByEmailUserRepositoryQuery, email).Scan(&user.ID, &user.Email, &user.CreatedAt)
@@ -62,7 +64,8 @@ const createUserQuery = `
 
 func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 	const op = "UserRepository.Create"
-	log := r.logger.With(slog.String("op", op), slog.String("email", user.Email))
+	log := r.log(ctx).With(slog.String("op", op), slog.String("email", user.Email))
+	log.DebugContext(ctx, "called")
 
 	err := r.db.QueryRow(ctx, createUserQuery, user.Email).Scan(&user.ID, &user.CreatedAt)
 	if err != nil {

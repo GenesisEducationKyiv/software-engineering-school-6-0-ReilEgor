@@ -5,26 +5,34 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+
 	notifModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/service"
 )
 
+const componentEmailService = "EmailService"
+
 type EmailService struct {
 	sender  service.EmailSender
 	baseURL string
-	logger  *slog.Logger
 }
 
 func NewEmailService(sender service.EmailSender, baseURL string) *EmailService {
 	return &EmailService{
 		sender:  sender,
 		baseURL: baseURL,
-		logger:  slog.With(slog.String("component", "EmailService")),
 	}
+}
+
+func (s *EmailService) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentEmailService))
 }
 
 func (s *EmailService) SendConfirmation(ctx context.Context, to, repoName, token string) error {
 	const op = "EmailService.SendConfirmation"
+	log := s.log(ctx).With(slog.String("op", op), slog.String("to", to), slog.String("repo", repoName))
+	log.DebugContext(ctx, "called")
 
 	msg := notifModel.EmailMessage{
 		To:      to,
@@ -34,18 +42,23 @@ func (s *EmailService) SendConfirmation(ctx context.Context, to, repoName, token
 	}
 
 	if err := s.sender.Send(ctx, msg); err != nil {
+		log.ErrorContext(ctx, "failed to send confirmation email", slog.String("error", err.Error()))
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	s.logger.DebugContext(ctx, "confirmation email sent",
-		slog.String("op", op),
-		slog.String("to", to),
-		slog.String("repo", repoName),
-	)
+
+	log.DebugContext(ctx, "confirmation email sent")
 	return nil
 }
 
 func (s *EmailService) SendNotification(ctx context.Context, to, repoName, tag, token string) error {
 	const op = "EmailService.SendNotification"
+	log := s.log(ctx).With(
+		slog.String("op", op),
+		slog.String("to", to),
+		slog.String("repo", repoName),
+		slog.String("tag", tag),
+	)
+	log.DebugContext(ctx, "called")
 
 	msg := notifModel.EmailMessage{
 		To:      to,
@@ -59,13 +72,10 @@ func (s *EmailService) SendNotification(ctx context.Context, to, repoName, tag, 
 		),
 	}
 	if err := s.sender.Send(ctx, msg); err != nil {
+		log.ErrorContext(ctx, "failed to send release notification email", slog.String("error", err.Error()))
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	s.logger.DebugContext(ctx, "release notification email sent",
-		slog.String("op", op),
-		slog.String("to", to),
-		slog.String("repo", repoName),
-		slog.String("tag", tag),
-	)
+
+	log.DebugContext(ctx, "release notification email sent")
 	return nil
 }

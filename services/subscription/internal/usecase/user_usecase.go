@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/metrics"
 	"github.com/google/uuid"
 
@@ -30,13 +31,16 @@ const (
 )
 
 type UserUseCase struct {
-	logger       *slog.Logger
 	subsRepo     repository.SubscriptionRepository
 	userRepo     repository.UserRepository
 	repoUC       TrackingRepository
 	orchestrator *saga.Orchestrator
 	transactor   repository.Transactor
 	outBox       repository.OutboxRepository
+}
+
+func (uc *UserUseCase) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentUserUseCase))
 }
 
 func NewUserUseCase(
@@ -49,7 +53,6 @@ func NewUserUseCase(
 	outBox repository.OutboxRepository,
 ) (*UserUseCase, func()) {
 	uc := &UserUseCase{
-		logger:       slog.With(slog.String("component", componentUserUseCase)),
 		subsRepo:     sr,
 		userRepo:     ur,
 		repoUC:       ru,
@@ -63,21 +66,23 @@ func NewUserUseCase(
 func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (err error) {
 	const op = "UserUseCase.Subscribe"
 	start := time.Now()
+	log := uc.log(ctx).With(
+		slog.String("op", op),
+		slog.String("email", email),
+		slog.String("repo", repoName),
+	)
+	log.DebugContext(ctx, "called")
 
 	defer func() {
+		elapsed := time.Since(start)
 		status := "success"
 		if err != nil {
 			status = "error"
 		}
 		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
-		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(elapsed.Seconds())
+		log.InfoContext(ctx, "done", slog.String("status", status), slog.Duration("duration", elapsed))
 	}()
-
-	log := uc.logger.With(
-		slog.String("op", op),
-		slog.String("email", email),
-		slog.String("repo", repoName),
-	)
 
 	repoRef, err := uc.repoUC.GetOrCreate(ctx, repoName)
 	if err != nil {
@@ -121,19 +126,20 @@ func (uc *UserUseCase) Subscribe(ctx context.Context, email, repoName string) (e
 
 func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) (err error) {
 	const op = "UserUseCase.Unsubscribe"
-
 	start := time.Now()
+	log := uc.log(ctx).With(slog.String("op", op), slog.String("email", email), slog.String("repo", repoName))
+	log.DebugContext(ctx, "called")
 
 	defer func() {
+		elapsed := time.Since(start)
 		status := "success"
 		if err != nil {
 			status = "error"
 		}
 		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
-		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(elapsed.Seconds())
+		log.InfoContext(ctx, "done", slog.String("status", status), slog.Duration("duration", elapsed))
 	}()
-
-	log := uc.logger.With(slog.String("op", op), slog.String("email", email), slog.String("repo", repoName))
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
@@ -151,8 +157,9 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 			return fmt.Errorf("delete pending: %w", txErr)
 		}
 		payload, marshalErr := json.Marshal(contracts.UnsubscriptionActivatedEvent{
-			Email:    email,
-			RepoName: repoName,
+			Email:     email,
+			RepoName:  repoName,
+			RequestID: ctxlog.RequestID(ctx),
 		})
 		if marshalErr != nil {
 			return fmt.Errorf("marshal confirmation command: %w", marshalErr)
@@ -168,25 +175,24 @@ func (uc *UserUseCase) Unsubscribe(ctx context.Context, email, repoName string) 
 
 func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model.Subscription, err error) {
 	const op = "UserUseCase.ListByEmail"
-
 	start := time.Now()
+	log := uc.log(ctx).With(slog.String("op", op), slog.String("email", email))
+	log.DebugContext(ctx, "called")
 
 	defer func() {
+		elapsed := time.Since(start)
 		status := "success"
 		if err != nil {
 			status = "error"
 		}
 		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
-		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(elapsed.Seconds())
+		log.InfoContext(ctx, "done", slog.String("status", status), slog.Duration("duration", elapsed))
 	}()
 
 	subs, err := uc.subsRepo.GetByEmail(ctx, email)
 	if err != nil {
-		uc.logger.ErrorContext(ctx, "failed to list subscriptions",
-			slog.String("op", op),
-			slog.String("email", email),
-			slog.String("error", err.Error()),
-		)
+		log.ErrorContext(ctx, "failed to list subscriptions", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -195,19 +201,20 @@ func (uc *UserUseCase) ListByEmail(ctx context.Context, email string) (_ []model
 
 func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 	const op = "UserUseCase.Confirm"
-
 	start := time.Now()
+	log := uc.log(ctx).With(slog.String("op", op))
+	log.DebugContext(ctx, "called")
 
 	defer func() {
+		elapsed := time.Since(start)
 		status := "success"
 		if err != nil {
 			status = "error"
 		}
 		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
-		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(elapsed.Seconds())
+		log.InfoContext(ctx, "done", slog.String("status", status), slog.Duration("duration", elapsed))
 	}()
-
-	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
 		return model.ErrInvalidToken
@@ -229,9 +236,10 @@ func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 		}
 
 		payload, txErr := json.Marshal(contracts.SubscriptionActivatedEvent{
-			FullName: sub.RepositoryName,
-			Email:    sub.Email,
-			Token:    sub.Token,
+			FullName:  sub.RepositoryName,
+			Email:     sub.Email,
+			Token:     sub.Token,
+			RequestID: ctxlog.RequestID(ctx),
 		})
 		if txErr != nil {
 			return fmt.Errorf("marshal activation event: %w", txErr)
@@ -248,19 +256,20 @@ func (uc *UserUseCase) Confirm(ctx context.Context, token string) (err error) {
 
 func (uc *UserUseCase) UnsubscribeByToken(ctx context.Context, token string) (err error) {
 	const op = "UserUseCase.UnsubscribeByToken"
-
 	start := time.Now()
+	log := uc.log(ctx).With(slog.String("op", op))
+	log.DebugContext(ctx, "called")
 
 	defer func() {
+		elapsed := time.Since(start)
 		status := "success"
 		if err != nil {
 			status = "error"
 		}
 		metrics.UsecaseOperationsTotal.WithLabelValues(op, status).Inc()
-		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(time.Since(start).Seconds())
+		metrics.UsecaseOperationDurationSeconds.WithLabelValues(op).Observe(elapsed.Seconds())
+		log.InfoContext(ctx, "done", slog.String("status", status), slog.Duration("duration", elapsed))
 	}()
-
-	log := uc.logger.With(slog.String("op", op))
 
 	if token == "" {
 		return model.ErrInvalidToken

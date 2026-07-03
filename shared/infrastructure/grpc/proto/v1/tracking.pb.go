@@ -69,6 +69,7 @@ type GetOrCreateRepositoryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	FullName      string                 `protobuf:"bytes,2,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
+	LastSeenTag   string                 `protobuf:"bytes,3,opt,name=last_seen_tag,json=lastSeenTag,proto3" json:"last_seen_tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -117,16 +118,24 @@ func (x *GetOrCreateRepositoryResponse) GetFullName() string {
 	return ""
 }
 
+func (x *GetOrCreateRepositoryResponse) GetLastSeenTag() string {
+	if x != nil {
+		return x.LastSeenTag
+	}
+	return ""
+}
+
 var File_v1_tracking_proto protoreflect.FileDescriptor
 
 const file_v1_tracking_proto_rawDesc = "" +
 	"\n" +
 	"\x11v1/tracking.proto\x12\vtracking.v1\";\n" +
 	"\x1cGetOrCreateRepositoryRequest\x12\x1b\n" +
-	"\tfull_name\x18\x01 \x01(\tR\bfullName\"L\n" +
+	"\tfull_name\x18\x01 \x01(\tR\bfullName\"p\n" +
 	"\x1dGetOrCreateRepositoryResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
-	"\tfull_name\x18\x02 \x01(\tR\bfullName2\x81\x01\n" +
+	"\tfull_name\x18\x02 \x01(\tR\bfullName\x12\"\n" +
+	"\rlast_seen_tag\x18\x03 \x01(\tR\vlastSeenTag2\x81\x01\n" +
 	"\x0fTrackingService\x12n\n" +
 	"\x15GetOrCreateRepository\x12).tracking.v1.GetOrCreateRepositoryRequest\x1a*.tracking.v1.GetOrCreateRepositoryResponseBnZlgithub.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1b\x06proto3"
 

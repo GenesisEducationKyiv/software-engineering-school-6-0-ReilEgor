@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 
 	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
 	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/repository"
 	domainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/usecase"
 )
+
+const componentReleaseProcessor = "ReleaseProcessor"
 
 //go:generate mockery --name RepositoryReader --output ../mocks --case underscore --outpkg mocks
 type RepositoryReader interface {
@@ -41,7 +45,6 @@ type ReleaseProcessor struct {
 	tagUpdatedPub TagUpdatedPublisher
 	outboxRepo    repository2.OutboxRepository
 	transactor    repository2.Transactor
-	logger        *slog.Logger
 }
 
 func NewReleaseProcessor(
@@ -61,24 +64,34 @@ func NewReleaseProcessor(
 		tagUpdatedPub: tagUpdatedPub,
 		outboxRepo:    outboxRepo,
 		transactor:    transactor,
-		logger:        slog.With(slog.String("component", "ReleaseProcessor")),
 	}
 }
 
+func (rp *ReleaseProcessor) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentReleaseProcessor))
+}
+
 func (rp *ReleaseProcessor) ProcessReleases(ctx context.Context) error {
+	const op = "ReleaseProcessor.ProcessReleases"
+	log := rp.log(ctx).With(slog.String("op", op))
+	log.DebugContext(ctx, "called")
+
 	repos, err := rp.repoReader.GetAll(ctx)
 	if err != nil {
-		return fmt.Errorf("ReleaseProcessor.ProcessReleases: get all repos: %w", err)
+		log.ErrorContext(ctx, "failed to get all repos", slog.String("error", err.Error()))
+		return fmt.Errorf("%s: get all repos: %w", op, err)
 	}
 
 	for _, repo := range repos {
 		if err := rp.processRepo(ctx, repo); err != nil {
-			rp.logger.ErrorContext(ctx, "process release failed",
+			log.ErrorContext(ctx, "process release failed",
 				slog.String("repo", repo.FullName),
-				slog.Any("error", err),
+				slog.String("error", err.Error()),
 			)
 		}
 	}
+
+	log.InfoContext(ctx, "done", slog.Int("repos_checked", len(repos)))
 	return nil
 }
 
@@ -106,9 +119,9 @@ func (rp *ReleaseProcessor) processRepo(ctx context.Context, repo model2.Reposit
 		FullName: updatedRepo.FullName,
 		Tag:      updatedRepo.LastSeenTag,
 	}); pubErr != nil {
-		rp.logger.ErrorContext(ctx, "tag updated publish failed",
+		rp.log(ctx).ErrorContext(ctx, "tag updated publish failed",
 			slog.String("repo", updatedRepo.FullName),
-			slog.Any("error", pubErr),
+			slog.String("error", pubErr.Error()),
 		)
 	}
 

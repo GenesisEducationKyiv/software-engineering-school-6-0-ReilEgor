@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/jackc/pgx/v5"
 
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
@@ -18,15 +19,15 @@ const (
 )
 
 type SubscriptionRepository struct {
-	db     sharedPostgres.PgxInterface
-	logger *slog.Logger
+	db sharedPostgres.PgxInterface
 }
 
 func NewSubscriptionRepository(db sharedPostgres.PgxInterface) *SubscriptionRepository {
-	return &SubscriptionRepository{
-		db:     db,
-		logger: slog.With(slog.String("component", componentSubscriptionRepository)),
-	}
+	return &SubscriptionRepository{db: db}
+}
+
+func (r *SubscriptionRepository) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentSubscriptionRepository))
 }
 
 const deleteSubscriptionQuery = `
@@ -36,7 +37,8 @@ const deleteSubscriptionQuery = `
 
 func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repoName string) error {
 	const op = "SubscriptionRepository.Delete"
-	log := r.logger.With(slog.String("op", op))
+	log := r.log(ctx).With(slog.String("op", op))
+	log.DebugContext(ctx, "called", slog.Int64("user_id", userID), slog.String("repo", repoName))
 
 	res, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, deleteSubscriptionQuery, userID, repoName)
 	if err != nil {
@@ -60,13 +62,15 @@ const deleteSubscriptionByIDQuery = `DELETE FROM subscriptions WHERE id = $1`
 
 func (r *SubscriptionRepository) DeleteByID(ctx context.Context, subscriptionID int64) error {
 	const op = "SubscriptionRepository.DeleteByID"
+	log := r.log(ctx).With(slog.String("op", op))
+	log.DebugContext(ctx, "called", slog.Int64("subscription_id", subscriptionID))
 
 	res, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, deleteSubscriptionByIDQuery, subscriptionID)
 	if err != nil {
 		return fmt.Errorf("%s: exec: %w", op, err)
 	}
 
-	r.logger.DebugContext(ctx, "subscription deleted by id",
+	log.DebugContext(ctx, "subscription deleted by id",
 		slog.Int64("subscription_id", subscriptionID),
 		slog.Int64("affected", res.RowsAffected()),
 	)
@@ -83,6 +87,7 @@ const getByTokenQuery = `
 
 func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (*subModel.Subscription, error) {
 	const op = "SubscriptionRepository.GetByToken"
+	r.log(ctx).DebugContext(ctx, "called", slog.String("op", op))
 
 	var sub subModel.Subscription
 	err := r.db.QueryRow(ctx, getByTokenQuery, token).Scan(
@@ -106,13 +111,13 @@ func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (
 }
 
 const listByEmailQuery = `
-	SELECT 
-		s.id, 
+	SELECT
+		s.id,
 		r.id as repository_id,
-		r.full_name, 
+		r.full_name,
 		s.token,
-		s.is_confirmed, 
-		r.last_seen_tag, 
+		s.is_confirmed,
+		r.last_seen_tag,
 		s.created_at
 	FROM subscriptions s
 	JOIN users u ON s.user_id = u.id
@@ -123,6 +128,7 @@ const listByEmailQuery = `
 
 func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) ([]subModel.Subscription, error) {
 	const op = "SubscriptionRepository.GetByEmail"
+	r.log(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.String("email", email))
 
 	rows, err := r.db.Query(ctx, listByEmailQuery, email)
 	if err != nil {
@@ -162,13 +168,14 @@ func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) (
 const saveSubscriptionQuery = `
 	INSERT INTO subscriptions (user_id, repository_id, token, is_confirmed)
 	VALUES ($1, $2, $3, $4)
-	ON CONFLICT (user_id, repository_id) 
+	ON CONFLICT (user_id, repository_id)
 	DO UPDATE SET token = EXCLUDED.token, is_confirmed = EXCLUDED.is_confirmed
 	RETURNING id
 `
 
 func (r *SubscriptionRepository) Save(ctx context.Context, sub *subModel.Subscription) error {
 	const op = "SubscriptionRepository.Save"
+	r.log(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.Int64("user_id", sub.UserID))
 
 	err := sharedPostgres.Extract(ctx, r.db).QueryRow(
 		ctx,

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -49,6 +51,9 @@ func (p *Publisher) SendConfirmation(
 }
 
 func (p *Publisher) Publish(ctx context.Context, cmd contracts.SendConfirmationCommand) error {
+	const op = "Publisher.Publish"
+	ctxlog.FromCtx(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.Int64("saga_id", cmd.SagaID))
+
 	ch, err := p.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("open channel: %w", err)

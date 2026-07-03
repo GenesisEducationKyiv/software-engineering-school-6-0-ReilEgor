@@ -3,8 +3,10 @@ package adapter
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -14,6 +16,8 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/repository"
 )
+
+const componentRepositoryUseCaseAdapter = "RepositoryUseCaseAdapter"
 
 type RepositoryUseCaseAdapter struct {
 	client    pb.TrackingServiceClient
@@ -34,13 +38,20 @@ func NewRepositoryUseCaseAdapter(
 }
 
 func (a *RepositoryUseCaseAdapter) GetOrCreate(ctx context.Context, repoName string) (*model.RepositoryRef, error) {
+	const op = "RepositoryUseCaseAdapter.GetOrCreate"
+	ctxlog.FromCtx(ctx).With(slog.String("component", componentRepositoryUseCaseAdapter)).
+		DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", repoName))
+
 	ctx = metadata.AppendToOutgoingContext(ctx, "x-api-key", a.apiKey)
-	_, err := a.client.GetOrCreateRepository(ctx, &pb.GetOrCreateRepositoryRequest{FullName: repoName})
+	if reqID := ctxlog.RequestID(ctx); reqID != "" {
+		ctx = metadata.AppendToOutgoingContext(ctx, "x-request-id", reqID)
+	}
+	resp, err := a.client.GetOrCreateRepository(ctx, &pb.GetOrCreateRepositoryRequest{FullName: repoName})
 	if err != nil {
 		return nil, translateGRPCError(err)
 	}
 
-	ref, err := a.repoStore.GetOrCreate(ctx, repoName)
+	ref, err := a.repoStore.GetOrCreate(ctx, repoName, resp.GetLastSeenTag())
 	if err != nil {
 		return nil, fmt.Errorf("upsert local repo: %w", err)
 	}

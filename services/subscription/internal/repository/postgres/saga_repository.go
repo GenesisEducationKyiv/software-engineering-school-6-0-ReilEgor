@@ -5,21 +5,25 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 
 	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 )
 
+const componentSagaRepository = "SagaRepository"
+
 type SagaRepository struct {
-	db     sharedPostgres.PgxInterface
-	logger *slog.Logger
+	db sharedPostgres.PgxInterface
 }
 
 func NewSagaRepository(db sharedPostgres.PgxInterface) *SagaRepository {
-	return &SagaRepository{
-		db:     db,
-		logger: slog.With(slog.String("component", "SagaRepository")),
-	}
+	return &SagaRepository{db: db}
+}
+
+func (sr *SagaRepository) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentSagaRepository))
 }
 
 const createSagaQuery = `
@@ -30,6 +34,8 @@ const createSagaQuery = `
 
 func (sr *SagaRepository) Create(ctx context.Context, subscriptionID int64) (*sharedModel.SubscriptionSaga, error) {
 	const op = "SagaRepository.Create"
+	log := sr.log(ctx)
+	log.DebugContext(ctx, "called", slog.String("op", op), slog.Int64("subscription_id", subscriptionID))
 
 	saga := &sharedModel.SubscriptionSaga{}
 	err := sharedPostgres.Extract(ctx, sr.db).
@@ -39,7 +45,7 @@ func (sr *SagaRepository) Create(ctx context.Context, subscriptionID int64) (*sh
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	sr.logger.DebugContext(
+	log.DebugContext(
 		ctx,
 		"saga created",
 		slog.Int64("saga_id", saga.ID),
@@ -57,6 +63,7 @@ const getSagaByIDQuery = `
 
 func (sr *SagaRepository) GetByID(ctx context.Context, sagaID int64) (*sharedModel.SubscriptionSaga, error) {
 	const op = "SagaRepository.GetByID"
+	sr.log(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.Int64("saga_id", sagaID))
 
 	saga := &sharedModel.SubscriptionSaga{}
 	err := sharedPostgres.Extract(ctx, sr.db).
@@ -76,13 +83,21 @@ const updateSagaStatusQuery = `
 
 func (sr *SagaRepository) UpdateStatus(ctx context.Context, sagaID int64, status sharedModel.SagaStatus) error {
 	const op = "SagaRepository.UpdateStatus"
+	log := sr.log(ctx)
+	log.DebugContext(
+		ctx,
+		"called",
+		slog.String("op", op),
+		slog.Int64("saga_id", sagaID),
+		slog.String("status", string(status)),
+	)
 
 	_, err := sharedPostgres.Extract(ctx, sr.db).Exec(ctx, updateSagaStatusQuery, status, sagaID)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	sr.logger.DebugContext(
+	log.DebugContext(
 		ctx,
 		"saga status updated",
 		slog.Int64("saga_id", sagaID),
@@ -104,13 +119,20 @@ func (sr *SagaRepository) UpdateStatusAndStep(
 	step sharedModel.SagaStep,
 ) error {
 	const op = "SagaRepository.UpdateStatusAndStep"
+	log := sr.log(ctx)
+	log.DebugContext(ctx, "called",
+		slog.String("op", op),
+		slog.Int64("saga_id", sagaID),
+		slog.String("status", string(status)),
+		slog.String("step", string(step)),
+	)
 
 	_, err := sharedPostgres.Extract(ctx, sr.db).Exec(ctx, updateSagaStatusAndStepQuery, status, step, sagaID)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	sr.logger.DebugContext(
+	log.DebugContext(
 		ctx,
 		"saga status and step updated",
 		slog.Int64("saga_id", sagaID),

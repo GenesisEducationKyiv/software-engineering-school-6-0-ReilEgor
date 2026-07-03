@@ -5,21 +5,25 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 )
 
+const componentRepositoryRepository = "SubRepositoryRepository"
+
 type RepositoryRepository struct {
-	db     sharedPostgres.PgxInterface
-	logger *slog.Logger
+	db sharedPostgres.PgxInterface
 }
 
 func NewRepositoryRepository(db sharedPostgres.PgxInterface) *RepositoryRepository {
-	return &RepositoryRepository{
-		db:     db,
-		logger: slog.With(slog.String("component", "SubRepositoryRepository")),
-	}
+	return &RepositoryRepository{db: db}
+}
+
+func (r *RepositoryRepository) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentRepositoryRepository))
 }
 
 const updateTagQuery = `
@@ -27,18 +31,20 @@ const updateTagQuery = `
 `
 
 const getOrCreateRepositoryQuery = `
-	INSERT INTO repositories (full_name) VALUES ($1)
+	INSERT INTO repositories (full_name, last_seen_tag) VALUES ($1, NULLIF($2, ''))
 	ON CONFLICT (full_name) DO UPDATE SET full_name = EXCLUDED.full_name
 	RETURNING id, full_name
 `
 
-func (r *RepositoryRepository) GetOrCreate(ctx context.Context, fullName string) (*subModel.RepositoryRef, error) {
+func (r *RepositoryRepository) GetOrCreate(ctx context.Context, fullName, lastSeenTag string) (*subModel.RepositoryRef, error) {
 	const op = "SubRepositoryRepository.GetOrCreate"
+	log := r.log(ctx)
+	log.DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName))
 
 	var ref subModel.RepositoryRef
-	err := r.db.QueryRow(ctx, getOrCreateRepositoryQuery, fullName).Scan(&ref.ID, &ref.FullName)
+	err := r.db.QueryRow(ctx, getOrCreateRepositoryQuery, fullName, lastSeenTag).Scan(&ref.ID, &ref.FullName)
 	if err != nil {
-		r.logger.ErrorContext(ctx, "get or create repository failed",
+		log.ErrorContext(ctx, "get or create repository failed",
 			slog.String("op", op),
 			slog.String("repo", fullName),
 			slog.Any("error", err),
@@ -50,10 +56,12 @@ func (r *RepositoryRepository) GetOrCreate(ctx context.Context, fullName string)
 
 func (r *RepositoryRepository) UpdateTag(ctx context.Context, fullName, tag string) error {
 	const op = "SubRepositoryRepository.UpdateTag"
+	log := r.log(ctx)
+	log.DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName), slog.String("tag", tag))
 
 	_, err := r.db.Exec(ctx, updateTagQuery, tag, fullName)
 	if err != nil {
-		r.logger.ErrorContext(ctx, "update tag failed",
+		log.ErrorContext(ctx, "update tag failed",
 			slog.String("op", op),
 			slog.String("repo", fullName),
 			slog.Any("error", err),
@@ -61,7 +69,7 @@ func (r *RepositoryRepository) UpdateTag(ctx context.Context, fullName, tag stri
 		return fmt.Errorf("%s: exec: %w", op, err)
 	}
 
-	r.logger.DebugContext(ctx, "tag updated in subscription DB",
+	log.DebugContext(ctx, "tag updated in subscription DB",
 		slog.String("repo", fullName),
 		slog.String("tag", tag),
 	)

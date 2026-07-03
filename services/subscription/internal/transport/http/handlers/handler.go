@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,7 +16,6 @@ import (
 type Handler struct {
 	userUC usecase.UserUseCase
 	repoUC usecase.RepositoryUseCase
-	logger *slog.Logger
 	apiKey string
 }
 
@@ -25,7 +23,6 @@ func NewHandler(userUC usecase.UserUseCase, repoUC usecase.RepositoryUseCase, ap
 	return &Handler{
 		userUC: userUC,
 		repoUC: repoUC,
-		logger: slog.With(slog.String("component", "handler")),
 		apiKey: apiKey,
 	}
 }

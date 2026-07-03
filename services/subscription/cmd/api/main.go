@@ -85,7 +85,7 @@ func main() {
 }
 
 func setupLogger() *slog.Logger {
-	myLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	myLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})).With(slog.String("service", "subscription"))
 	slog.SetDefault(myLogger)
 	return myLogger
 }

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -53,6 +54,8 @@ func (c *SubscriptionActivatedConsumer) Start(ctx context.Context) error {
 }
 
 func (c *SubscriptionActivatedConsumer) consume(ctx context.Context) error {
+	c.logger.DebugContext(ctx, "called", slog.String("op", "SubscriptionActivatedConsumer.consume"))
+
 	ch, err := c.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("open channel: %w", err)
@@ -95,31 +98,38 @@ func (c *SubscriptionActivatedConsumer) handle(ctx context.Context, d amqp.Deliv
 		return
 	}
 
+	if event.RequestID != "" {
+		ctx = ctxlog.WithRequestID(ctx, event.RequestID)
+		ctx = ctxlog.WithLogger(ctx, c.logger.With(slog.String("request_id", event.RequestID)))
+	}
+	log := ctxlog.FromCtx(ctx)
+	log.DebugContext(ctx, "called", slog.String("op", "SubscriptionActivatedConsumer.handle"))
+
 	repo, err := c.repoUC.GetOrCreate(ctx, event.FullName)
 	if err != nil {
-		c.logger.Error("subscription activated: get or create repo failed",
+		log.Error("subscription activated: get or create repo failed",
 			slog.String("repo", event.FullName),
 			slog.Any("error", err),
 		)
 		if nackErr := d.Nack(false, true); nackErr != nil {
-			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+			log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
 	}
 
 	if err := c.subRepo.Upsert(ctx, repo.ID, event.Email, event.Token); err != nil {
-		c.logger.Error("subscription activated: upsert tracker subscription failed",
+		log.Error("subscription activated: upsert tracker subscription failed",
 			slog.String("repo", event.FullName),
 			slog.String("email", event.Email),
 			slog.Any("error", err),
 		)
 		if nackErr := d.Nack(false, true); nackErr != nil {
-			c.logger.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
+			log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
 		return
 	}
 
 	if ackErr := d.Ack(false); ackErr != nil {
-		c.logger.Error("rabbitmq: ack failed", slog.Any("error", ackErr))
+		log.Error("rabbitmq: ack failed", slog.Any("error", ackErr))
 	}
 }

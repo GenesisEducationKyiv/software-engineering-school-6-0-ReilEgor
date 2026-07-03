@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -24,6 +26,9 @@ func NewPublisher(conn *sharedRabbitmq.Connection) (*Publisher, error) {
 }
 
 func (p *Publisher) Publish(ctx context.Context, cmd contracts.SendNotificationCommand) error {
+	const op = "Publisher.Publish"
+	ctxlog.FromCtx(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.String("email", cmd.Email))
+
 	body, err := json.Marshal(cmd)
 	if err != nil {
 		return fmt.Errorf("rabbitmq: marshal: %w", err)

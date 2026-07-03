@@ -15,4 +15,5 @@ message GetOrCreateRepositoryRequest {
 message GetOrCreateRepositoryResponse {
   int64 id       = 1;
   string full_name = 2;
+  string last_seen_tag = 3;
 }

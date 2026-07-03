@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -21,7 +22,8 @@ func SetupMiddleware(
 	router.Use(customCORS())
 	router.Use(PrometheusMiddleware())
 	router.Use(gin.Recovery())
-	router.Use(slogMiddleware(logger))
+	router.Use(RequestID(logger))
+	router.Use(slogMiddleware())
 	router.Use(Timeout(requestTimeout))
 
 	rateLimiter, err := RateLimit(redisClient, rateLimit)
@@ -42,14 +44,14 @@ func customCORS() gin.HandlerFunc {
 	})
 }
 
-func slogMiddleware(logger *slog.Logger) gin.HandlerFunc {
+func slogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
 
 		c.Next()
 
-		logger.Info("request handled",
+		ctxlog.FromCtx(c.Request.Context()).Info("request handled",
 			slog.String("method", c.Request.Method),
 			slog.String("path", path),
 			slog.Int("status", c.Writer.Status()),
