@@ -1,17 +1,17 @@
 package main
 
 import (
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/cache/redis"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 	"github.com/google/wire"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
-	redis2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/cache/redis"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 )
 
-func ProvideTrackingPoolConfig(cfg sharedConfig.TrackingDBConfig) postgres2.PoolConfig {
-	return postgres2.PoolConfig{
+func ProvideTrackingPoolConfig(cfg sharedConfig.TrackingDBConfig) postgres.PoolConfig {
+	return postgres.PoolConfig{
 		DSN:               cfg.DSN,
 		MaxOpenConns:      cfg.MaxOpenConns,
 		MinConns:          cfg.MinConns,
@@ -22,12 +22,12 @@ func ProvideTrackingPoolConfig(cfg sharedConfig.TrackingDBConfig) postgres2.Pool
 
 var SharedSet = wire.NewSet(
 	ProvideTrackingPoolConfig,
-	postgres2.New,
-	wire.Bind(new(postgres2.PgxInterface), new(*pgxpool.Pool)),
+	postgres.New,
+	wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)),
 )
 
 var CacheSet = wire.NewSet(
-	redis2.NewRedisClient,
-	redis2.NewCache,
-	wire.Bind(new(sharedcache.Cache), new(*redis2.Cache)),
+	redis.NewRedisClient,
+	redis.NewCache,
+	wire.Bind(new(sharedcache.Cache), new(*redis.Cache)),
 )

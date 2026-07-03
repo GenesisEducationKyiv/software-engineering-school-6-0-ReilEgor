@@ -9,23 +9,22 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"time"
-
 	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/clients/github"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/outbox"
-	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/repository/postgres"
-	rabbitmq4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/broker/rabbitmq"
-	grpc3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/grpc"
-	usecase3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/usecase"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/repository/postgres"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/grpc"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	rabbitmq3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/cache/redis"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 	grpc2 "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"net/http"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -37,7 +36,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	repositoryRepository := postgres3.NewRepositoryRepository(pool)
+	repositoryRepository := postgres2.NewRepositoryRepository(pool)
 	gitHubConfig := ProvideGitHubConfig(cfg)
 	gitHubClient := github.NewGitHubClient(gitHubConfig)
 	redisConfig := ProvideRedisConfig(cfg)
@@ -48,11 +47,11 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	}
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
-	repositoryUseCase := usecase3.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
-	trackingHandler := grpc3.NewTrackingHandler(repositoryUseCase)
+	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
+	trackingHandler := grpc.NewTrackingHandler(repositoryUseCase)
 	appConfig := ProvideAppConfig(cfg)
-	server := grpc3.NewGrpcServer(trackingHandler, appConfig)
-	subscriptionRepository := postgres3.NewTrackerSubscriptionRepository(pool)
+	server := grpc.NewGrpcServer(trackingHandler, appConfig)
+	subscriptionRepository := postgres2.NewTrackerSubscriptionRepository(pool)
 	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
 	connection, cleanup2, err := ProvideRabbitMQConnection(rabbitMQConfig)
 	if err != nil {
@@ -76,11 +75,11 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	httpClient := ProvideHTTPClient()
 	httpTagUpdatedPublisher := ProvideTagUpdatedHTTPPublisher(httpClient, subscriptionClientConfig)
 	usecaseTagUpdatedPublisher := ProvideTagUpdatedPublisher(subscriptionClientConfig, tagUpdatedPublisher, httpTagUpdatedPublisher)
-	outboxRepository := postgres3.NewOutboxRepository(pool)
+	outboxRepository := postgres2.NewOutboxRepository(pool)
 	transactor := postgres.NewTransactor(pool)
-	releaseProcessor := usecase3.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher, usecaseTagUpdatedPublisher, outboxRepository, transactor)
-	subscriptionActivatedConsumer := rabbitmq4.NewSubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
-	unsubscriptionActivatedConsumer := rabbitmq4.NewUnsubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
+	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher, usecaseTagUpdatedPublisher, outboxRepository, transactor)
+	subscriptionActivatedConsumer := rabbitmq2.NewSubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
+	unsubscriptionActivatedConsumer := rabbitmq2.NewUnsubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
 	duration := ProvideOutboxInterval()
 	relay := outbox.NewRelay(outboxRepository, connection, duration)
 	app := &App{
@@ -136,7 +135,7 @@ func ProvideOutboxInterval() time.Duration {
 type App struct {
 	GrpcServer                      *grpc2.Server
 	ReleaseProcessor                usecase2.ReleaseProcessorUseCase
-	SubscriptionActivatedConsumer   *rabbitmq4.SubscriptionActivatedConsumer
-	UnsubscriptionActivatedConsumer *rabbitmq4.UnsubscriptionActivatedConsumer
+	SubscriptionActivatedConsumer   *rabbitmq2.SubscriptionActivatedConsumer
+	UnsubscriptionActivatedConsumer *rabbitmq2.UnsubscriptionActivatedConsumer
 	OutboxRelay                     *outbox.Relay
 }

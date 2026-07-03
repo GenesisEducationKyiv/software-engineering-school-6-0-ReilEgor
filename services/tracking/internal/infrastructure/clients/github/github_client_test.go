@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/service"
 )
 
@@ -96,7 +96,7 @@ func TestGitHubClient_RepoExists(t *testing.T) {
 				w.WriteHeader(http.StatusForbidden)
 			},
 			wantErr:   true,
-			wantErrIs: model2.ErrRateLimitExceeded,
+			wantErrIs: model.ErrRateLimitExceeded,
 		},
 		{
 			name:     "error: HTTP 500 maps to ErrUnexpectedStatus",
@@ -202,7 +202,7 @@ func TestGitHubClient_RepoExists(t *testing.T) {
 func TestGitHubClient_GetLatestRelease(t *testing.T) {
 	t.Parallel()
 
-	baseRelease := model2.ReleaseInfo{
+	baseRelease := model.ReleaseInfo{
 		TagName:     "v1.2.3",
 		PublishedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
@@ -380,7 +380,7 @@ func TestGitHubClient_CircuitBreaker(t *testing.T) {
 
 		_, err := client.RepoExists(context.Background(), "test/repo")
 
-		require.ErrorIs(t, err, model2.ErrGitHubUnavailable,
+		require.ErrorIs(t, err, model.ErrGitHubUnavailable,
 			"open breaker must return ErrGitHubUnavailable")
 		assert.Equal(t, countBeforeOpenCall, callCount.Load(),
 			"server must not receive any request when breaker is open")
@@ -403,7 +403,7 @@ func TestGitHubClient_CircuitBreaker(t *testing.T) {
 
 		_, err := client.GetLatestRelease(context.Background(), "owner/repo")
 
-		require.ErrorIs(t, err, model2.ErrGitHubUnavailable,
+		require.ErrorIs(t, err, model.ErrGitHubUnavailable,
 			"open breaker must return ErrGitHubUnavailable for GetLatestRelease too")
 		assert.Equal(t, countBefore, callCount.Load(),
 			"server must not receive any request when breaker is open")
@@ -422,7 +422,7 @@ func TestGitHubClient_CircuitBreaker(t *testing.T) {
 		for i := 0; i < 3-1; i++ {
 			_, err := client.RepoExists(context.Background(), "test/repo")
 			require.Error(t, err)
-			assert.NotErrorIs(t, err, model2.ErrGitHubUnavailable,
+			assert.NotErrorIs(t, err, model.ErrGitHubUnavailable,
 				"iteration %d: breaker must still be closed", i)
 		}
 	})
@@ -450,12 +450,12 @@ func TestGitHubClient_CircuitBreaker(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			_, err := client.RepoExists(context.Background(), "trip/repo")
 			require.Error(t, err, "iteration %d: trip request must fail to increment failure counter", i)
-			require.NotErrorIs(t, err, model2.ErrGitHubUnavailable,
+			require.NotErrorIs(t, err, model.ErrGitHubUnavailable,
 				"iteration %d: breaker must not be open yet during trip phase", i)
 		}
 
 		_, err := client.RepoExists(context.Background(), "trip/repo")
-		require.ErrorIs(t, err, model2.ErrGitHubUnavailable, "breaker must be open")
+		require.ErrorIs(t, err, model.ErrGitHubUnavailable, "breaker must be open")
 
 		time.Sleep(100 * time.Millisecond)
 

@@ -9,16 +9,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/adapter"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/outbox"
-	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/broker/rabbitmq"
-	grpc3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/grpc"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/grpc"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/http"
-	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/cache/redis"
@@ -26,6 +24,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 	grpc2 "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -37,8 +36,8 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	subscriptionRepository := postgres3.NewSubscriptionRepository(pool)
-	userRepository := postgres3.NewUserRepository(pool)
+	subscriptionRepository := postgres2.NewSubscriptionRepository(pool)
+	userRepository := postgres2.NewUserRepository(pool)
 	trackingClientConfig := ProvideTrackingClientConfig(cfg)
 	clientConn, cleanup2, err := ProvideTrackingGRPCConn(trackingClientConfig)
 	if err != nil {
@@ -46,14 +45,14 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	trackingServiceClient := ProvideTrackingServiceClient(clientConn)
-	repositoryRepository := postgres3.NewRepositoryRepository(pool)
+	repositoryRepository := postgres2.NewRepositoryRepository(pool)
 	repositoryUseCaseAdapter := adapter.NewRepositoryUseCaseAdapter(trackingServiceClient, repositoryRepository, trackingClientConfig)
-	sagaRepository := postgres3.NewSagaRepository(pool)
-	outboxRepository := postgres3.NewOutboxRepository(pool)
+	sagaRepository := postgres2.NewSagaRepository(pool)
+	outboxRepository := postgres2.NewOutboxRepository(pool)
 	transactor := postgres.NewTransactor(pool)
 	orchestrator := saga.NewOrchestrator(sagaRepository, subscriptionRepository, outboxRepository, transactor)
-	userUseCase, cleanup3 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCaseAdapter, orchestrator, transactor, outboxRepository)
-	repositoryUseCase := usecase2.NewRepositoryUseCase(repositoryRepository)
+	userUseCase, cleanup3 := usecase.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCaseAdapter, orchestrator, transactor, outboxRepository)
+	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository)
 	redisConfig := ProvideRedisConfig(cfg)
 	client, err := redis.NewRedisClient(redisConfig)
 	if err != nil {
@@ -65,8 +64,8 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	httpConfig := ProvideHTTPConfig(cfg)
 	appConfig := ProvideAppConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, repositoryUseCase, client, httpConfig, appConfig)
-	subscriptionHandler := grpc3.NewSubscriptionHandler(userUseCase, repositoryUseCase)
-	server := grpc3.NewGrpcServer(subscriptionHandler, appConfig)
+	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase, repositoryUseCase)
+	server := grpc.NewGrpcServer(subscriptionHandler, appConfig)
 	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
 	connection, cleanup4, err := ProvideRabbitMQConnection(rabbitMQConfig)
 	if err != nil {

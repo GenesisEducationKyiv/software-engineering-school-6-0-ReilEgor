@@ -8,13 +8,12 @@ package main
 
 import (
 	"context"
-
-	infraRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/infrastructure/broker/rabbitmq"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/infrastructure/clients/email"
-	rabbitmq3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/transport/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/transport/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/usecase"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
-	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
+	rabbitmq3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 )
 
 // Injectors from wire.go:
@@ -31,13 +30,13 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	notificationUseCase := usecase.NewNotificationUseCase(emailService)
 	senderConfig := ProvideSenderConfig(cfg)
 	duration := ProvideSendTimeout(senderConfig)
-	notificationConsumer := rabbitmq3.NewNotificationConsumer(connection, notificationUseCase, duration)
-	sagaResultPublisher, err := infraRabbitmq.NewSagaResultPublisher(connection)
+	notificationConsumer := rabbitmq.NewNotificationConsumer(connection, notificationUseCase, duration)
+	sagaResultPublisher, err := rabbitmq2.NewSagaResultPublisher(connection)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	confirmationConsumer := rabbitmq3.NewConfirmationConsumer(connection, emailService, duration, sagaResultPublisher)
+	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, emailService, duration, sagaResultPublisher)
 	app := &App{
 		NotificationConsumer: notificationConsumer,
 		ConfirmationConsumer: confirmationConsumer,
@@ -55,11 +54,11 @@ func ProvideSenderConfig(cfg Config) config.SenderConfig { return cfg.Sender }
 
 func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
 
-func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection, func(), error) {
-	return rabbitmq2.NewConnection(cfg.URL)
+func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq3.Connection, func(), error) {
+	return rabbitmq3.NewConnection(cfg.URL)
 }
 
 type App struct {
-	NotificationConsumer *rabbitmq3.NotificationConsumer
-	ConfirmationConsumer *rabbitmq3.ConfirmationConsumer
+	NotificationConsumer *rabbitmq.NotificationConsumer
+	ConfirmationConsumer *rabbitmq.ConfirmationConsumer
 }

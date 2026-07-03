@@ -27,8 +27,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	subAdapter "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/adapter"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
-	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
+	postgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
@@ -127,21 +127,21 @@ func (s *APITestSuite) TearDownTest() {
 }
 
 func (s *APITestSuite) buildRouter() {
-	userRepo := postgres2.NewUserRepository(s.dbPool)
-	subsRepo := postgres2.NewSubscriptionRepository(s.dbPool)
-	sagaRepo := postgres2.NewSagaRepository(s.dbPool)
-	outboxRepo := postgres2.NewOutboxRepository(s.dbPool)
+	userRepo := postgres.NewUserRepository(s.dbPool)
+	subsRepo := postgres.NewSubscriptionRepository(s.dbPool)
+	sagaRepo := postgres.NewSagaRepository(s.dbPool)
+	outboxRepo := postgres.NewOutboxRepository(s.dbPool)
 	transactor := sharedPostgres.NewTransactor(s.dbPool)
 	orchestrator := saga.NewOrchestrator(sagaRepo, subsRepo, outboxRepo, transactor)
 
-	repoRepo := postgres2.NewRepositoryRepository(s.dbPool)
+	repoRepo := postgres.NewRepositoryRepository(s.dbPool)
 	trackingAdapter := subAdapter.NewRepositoryUseCaseAdapter(
 		s.mockTracking,
 		repoRepo,
 		sharedConfig.TrackingClientConfig{},
 	)
 
-	userUseCase, _ := usecase2.NewUserUseCase(
+	userUseCase, _ := usecase.NewUserUseCase(
 		context.Background(),
 		subsRepo,
 		userRepo,
@@ -151,8 +151,8 @@ func (s *APITestSuite) buildRouter() {
 		outboxRepo,
 	)
 
-	subRepoRepo := postgres2.NewRepositoryRepository(s.dbPool)
-	repoUC := usecase2.NewRepositoryUseCase(subRepoRepo)
+	subRepoRepo := postgres.NewRepositoryRepository(s.dbPool)
+	repoUC := usecase.NewRepositoryUseCase(subRepoRepo)
 
 	handler := handlers.NewHandler(userUseCase, repoUC, testAPIKey)
 

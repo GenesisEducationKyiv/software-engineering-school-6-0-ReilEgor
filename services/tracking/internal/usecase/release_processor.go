@@ -10,8 +10,8 @@ import (
 
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
-	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/repository"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/repository"
 	domainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/usecase"
 )
 
@@ -19,12 +19,12 @@ const componentReleaseProcessor = "ReleaseProcessor"
 
 //go:generate mockery --name RepositoryReader --output ../mocks --case underscore --outpkg mocks
 type RepositoryReader interface {
-	GetAll(ctx context.Context) ([]model2.Repository, error)
+	GetAll(ctx context.Context) ([]model.Repository, error)
 }
 
 //go:generate mockery --name SubscriberReader --output ../mocks --case underscore --outpkg mocks
 type SubscriberReader interface {
-	GetByRepoID(ctx context.Context, repoID int64) ([]model2.Subscriber, error)
+	GetByRepoID(ctx context.Context, repoID int64) ([]model.Subscriber, error)
 }
 
 //go:generate mockery --name NotificationPublisher --output ../mocks --case underscore --outpkg mocks
@@ -43,8 +43,8 @@ type ReleaseProcessor struct {
 	subReader     SubscriberReader
 	publisher     NotificationPublisher
 	tagUpdatedPub TagUpdatedPublisher
-	outboxRepo    repository2.OutboxRepository
-	transactor    repository2.Transactor
+	outboxRepo    repository.OutboxRepository
+	transactor    repository.Transactor
 }
 
 func NewReleaseProcessor(
@@ -53,8 +53,8 @@ func NewReleaseProcessor(
 	subReader SubscriberReader,
 	publisher NotificationPublisher,
 	tagUpdatedPub TagUpdatedPublisher,
-	outboxRepo repository2.OutboxRepository,
-	transactor repository2.Transactor,
+	outboxRepo repository.OutboxRepository,
+	transactor repository.Transactor,
 ) *ReleaseProcessor {
 	return &ReleaseProcessor{
 		repoReader:    repoReader,
@@ -95,7 +95,7 @@ func (rp *ReleaseProcessor) ProcessReleases(ctx context.Context) error {
 	return nil
 }
 
-func (rp *ReleaseProcessor) processRepo(ctx context.Context, repo model2.Repository) error {
+func (rp *ReleaseProcessor) processRepo(ctx context.Context, repo model.Repository) error {
 	updatedRepo, err := rp.repoUC.CheckForUpdates(ctx, repo)
 	if err != nil {
 		return fmt.Errorf("check for updates: %w", err)
@@ -130,8 +130,8 @@ func (rp *ReleaseProcessor) processRepo(ctx context.Context, repo model2.Reposit
 
 func (rp *ReleaseProcessor) commitRelease(
 	ctx context.Context,
-	repo *model2.Repository,
-	subs []model2.Subscriber,
+	repo *model.Repository,
+	subs []model.Subscriber,
 ) error {
 	if err := rp.repoUC.UpdateRepo(ctx, repo); err != nil {
 		return fmt.Errorf("update repo tag: %w", err)
@@ -147,8 +147,8 @@ func (rp *ReleaseProcessor) commitRelease(
 
 func (rp *ReleaseProcessor) insertNotificationOutbox(
 	ctx context.Context,
-	sub model2.Subscriber,
-	repo *model2.Repository,
+	sub model.Subscriber,
+	repo *model.Repository,
 ) error {
 	payload, err := json.Marshal(contracts.SendNotificationCommand{
 		Email:    sub.Email,

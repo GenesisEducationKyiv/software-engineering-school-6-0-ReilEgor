@@ -14,7 +14,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/gin-gonic/gin"
 
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/http/dto"
 )
 
@@ -80,7 +80,7 @@ func (h *Handler) handleTokenAction(
 	log.DebugContext(ctx, "called")
 
 	if err := action(ctx, token); err != nil {
-		if errors.Is(err, model2.ErrInvalidToken) {
+		if errors.Is(err, model.ErrInvalidToken) {
 			c.JSON(http.StatusNotFound, gin.H{"error": notFoundMsg})
 			return
 		}
@@ -130,13 +130,13 @@ func (h *Handler) Subscribe(c *gin.Context) {
 
 	if err := h.userUC.Subscribe(ctx, req.Email, req.Repository); err != nil {
 		switch {
-		case errors.Is(err, model2.ErrRepositoryNotFound):
+		case errors.Is(err, model.ErrRepositoryNotFound):
 			log.WarnContext(ctx, "repository not found",
 				slog.String("email", req.Email),
 				slog.String("repo", req.Repository),
 			)
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		case errors.Is(err, model2.ErrServiceUnavailable):
+		case errors.Is(err, model.ErrServiceUnavailable):
 			c.JSON(
 				http.StatusServiceUnavailable,
 				gin.H{"error": "GitHub API is currently unavailable, please try again later"},

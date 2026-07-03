@@ -10,35 +10,35 @@ import (
 	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
 
-	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/repository"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/repository"
 	trackingService "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/service"
 	trackingDomainUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/usecase"
 	trackingGrpc "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/adapter/grpc"
 	trackingHttp "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/adapter/http"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/broker/rabbitmq"
-	github2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/clients/github"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/repository/postgres"
-	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/broker/rabbitmq"
-	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/usecase"
+	rabbitmqPublisher "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/infrastructure/clients/github"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/repository/postgres"
+	rabbitmqConsumer "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/transport/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/usecase"
 )
 
-func ProvideCachedClient(c *github2.GitHubClient, cache sharedcache.Cache) trackingService.GitHubClient {
-	return github2.NewCachedGitHubClient(c, cache)
+func ProvideCachedClient(c *github.GitHubClient, cache sharedcache.Cache) trackingService.GitHubClient {
+	return github.NewCachedGitHubClient(c, cache)
 }
 
 var GitHubSet = wire.NewSet(
-	github2.NewGitHubClient,
+	github.NewGitHubClient,
 	ProvideCachedClient,
 )
 
 var TrackingRepositorySet = wire.NewSet(
-	postgres2.NewRepositoryRepository,
-	postgres2.NewOutboxRepository,
+	postgres.NewRepositoryRepository,
+	postgres.NewOutboxRepository,
 	sharedPostgres.NewTransactor,
-	wire.Bind(new(repository2.RepositoryRepository), new(*postgres2.RepositoryRepository)),
-	wire.Bind(new(usecase2.RepositoryReader), new(*postgres2.RepositoryRepository)),
-	wire.Bind(new(repository2.OutboxRepository), new(*postgres2.OutboxRepository)),
-	wire.Bind(new(repository2.Transactor), new(*sharedPostgres.Transactor)),
+	wire.Bind(new(repository.RepositoryRepository), new(*postgres.RepositoryRepository)),
+	wire.Bind(new(usecase.RepositoryReader), new(*postgres.RepositoryRepository)),
+	wire.Bind(new(repository.OutboxRepository), new(*postgres.OutboxRepository)),
+	wire.Bind(new(repository.Transactor), new(*sharedPostgres.Transactor)),
 )
 
 func ProvideTagUpdatedGRPCPublisher(
@@ -59,7 +59,7 @@ func ProvideTagUpdatedPublisher(
 	cfg config.SubscriptionClientConfig,
 	grpcPub *trackingGrpc.TagUpdatedPublisher,
 	httpPub *trackingHttp.TagUpdatedPublisher,
-) usecase2.TagUpdatedPublisher {
+) usecase.TagUpdatedPublisher {
 	if cfg.TagPublisherType == "http" {
 		return httpPub
 	}
@@ -68,18 +68,18 @@ func ProvideTagUpdatedPublisher(
 
 var BrokerSet = wire.NewSet(
 	ProvideRabbitMQConnection,
-	rabbitmq.NewPublisher,
-	rabbitmq2.NewSubscriptionActivatedConsumer,
-	rabbitmq2.NewUnsubscriptionActivatedConsumer,
+	rabbitmqPublisher.NewPublisher,
+	rabbitmqConsumer.NewSubscriptionActivatedConsumer,
+	rabbitmqConsumer.NewUnsubscriptionActivatedConsumer,
 	ProvideTagUpdatedGRPCPublisher,
 	ProvideTagUpdatedHTTPPublisher,
 	ProvideTagUpdatedPublisher,
-	wire.Bind(new(usecase2.NotificationPublisher), new(*rabbitmq.Publisher)),
+	wire.Bind(new(usecase.NotificationPublisher), new(*rabbitmqPublisher.Publisher)),
 )
 
 var UseCaseSet = wire.NewSet(
-	usecase2.NewRepositoryUseCase,
-	usecase2.NewReleaseProcessor,
-	wire.Bind(new(trackingDomainUsecase.RepositoryUseCase), new(*usecase2.RepositoryUseCase)),
-	wire.Bind(new(trackingDomainUsecase.ReleaseProcessorUseCase), new(*usecase2.ReleaseProcessor)),
+	usecase.NewRepositoryUseCase,
+	usecase.NewReleaseProcessor,
+	wire.Bind(new(trackingDomainUsecase.RepositoryUseCase), new(*usecase.RepositoryUseCase)),
+	wire.Bind(new(trackingDomainUsecase.ReleaseProcessorUseCase), new(*usecase.ReleaseProcessor)),
 )

@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
-	middleware2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/middleware"
+	sharedMiddleware "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/middleware"
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/grpc/middleware"
@@ -17,7 +17,7 @@ import (
 func NewGrpcServer(h *SubscriptionHandler, appCfg config.AppConfig) *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			middleware2.RequestIDInterceptor(),
+			sharedMiddleware.RequestIDInterceptor(),
 			middleware.AuthInterceptor(appCfg.APIKey),
 		),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
