@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -47,14 +45,9 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-func discardLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
-}
-
 func newTestHandler(uc *mocks.UserUseCase) *Handler {
 	return &Handler{
 		userUC: uc,
-		logger: discardLogger(),
 	}
 }
 

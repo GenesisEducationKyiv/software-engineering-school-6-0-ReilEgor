@@ -3,8 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -16,13 +14,14 @@ import (
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 )
 
+func strPtr(s string) *string { return &s }
+
 func newSubRepo(t *testing.T) (*SubscriptionRepository, pgxmock.PgxPoolIface) {
 	t.Helper()
 	mock, err := pgxmock.NewPool()
 	require.NoError(t, err)
 	repo := &SubscriptionRepository{
-		db:     mock,
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		db: mock,
 	}
 	return repo, mock
 }
@@ -108,8 +107,8 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 				mock.ExpectQuery("SELECT (.+) FROM subscriptions s").
 					WithArgs(email).
 					WillReturnRows(pgxmock.NewRows(cols).
-						AddRow(int64(1), int64(101), "golang/go", "token1", true, "v1.25.0", now).
-						AddRow(int64(2), int64(102), "google/uuid", "token2", false, "v1.6.0", now))
+						AddRow(int64(1), int64(101), "golang/go", "token1", true, strPtr("v1.25.0"), now).
+						AddRow(int64(2), int64(102), "google/uuid", "token2", false, strPtr("v1.6.0"), now))
 			},
 			checkResult: func(t *testing.T, subs []subModel.Subscription) {
 				assert.Len(t, subs, 2)

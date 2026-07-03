@@ -3,8 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -21,10 +19,8 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 	require.NoError(t, err)
 	defer mock.Close()
 
-	discardLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := &UserRepository{
-		db:     mock,
-		logger: discardLogger,
+		db: mock,
 	}
 
 	userEmail := "test@example.com"
@@ -111,10 +107,8 @@ func TestUserRepository_Create(t *testing.T) {
 	require.NoError(t, err)
 	defer mock.Close()
 
-	discardLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := &UserRepository{
-		db:     mock,
-		logger: discardLogger,
+		db: mock,
 	}
 
 	now := time.Now()

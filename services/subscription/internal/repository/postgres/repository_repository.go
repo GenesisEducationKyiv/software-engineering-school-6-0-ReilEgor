@@ -36,7 +36,10 @@ const getOrCreateRepositoryQuery = `
 	RETURNING id, full_name
 `
 
-func (r *RepositoryRepository) GetOrCreate(ctx context.Context, fullName, lastSeenTag string) (*subModel.RepositoryRef, error) {
+func (r *RepositoryRepository) GetOrCreate(
+	ctx context.Context,
+	fullName, lastSeenTag string,
+) (*subModel.RepositoryRef, error) {
 	const op = "SubRepositoryRepository.GetOrCreate"
 	log := r.log(ctx)
 	log.DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName))
