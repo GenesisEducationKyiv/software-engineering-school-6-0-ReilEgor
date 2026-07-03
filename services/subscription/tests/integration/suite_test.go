@@ -27,7 +27,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	subAdapter "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/adapter"
-	postgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
+	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
@@ -127,14 +127,14 @@ func (s *APITestSuite) TearDownTest() {
 }
 
 func (s *APITestSuite) buildRouter() {
-	userRepo := postgres.NewUserRepository(s.dbPool)
-	subsRepo := postgres.NewSubscriptionRepository(s.dbPool)
-	sagaRepo := postgres.NewSagaRepository(s.dbPool)
-	outboxRepo := postgres.NewOutboxRepository(s.dbPool)
+	userRepo := subPostgres.NewUserRepository(s.dbPool)
+	subsRepo := subPostgres.NewSubscriptionRepository(s.dbPool)
+	sagaRepo := subPostgres.NewSagaRepository(s.dbPool)
+	outboxRepo := subPostgres.NewOutboxRepository(s.dbPool)
 	transactor := sharedPostgres.NewTransactor(s.dbPool)
 	orchestrator := saga.NewOrchestrator(sagaRepo, subsRepo, outboxRepo, transactor)
 
-	repoRepo := postgres.NewRepositoryRepository(s.dbPool)
+	repoRepo := subPostgres.NewRepositoryRepository(s.dbPool)
 	trackingAdapter := subAdapter.NewRepositoryUseCaseAdapter(
 		s.mockTracking,
 		repoRepo,
@@ -151,7 +151,7 @@ func (s *APITestSuite) buildRouter() {
 		outboxRepo,
 	)
 
-	subRepoRepo := postgres.NewRepositoryRepository(s.dbPool)
+	subRepoRepo := subPostgres.NewRepositoryRepository(s.dbPool)
 	repoUC := usecase.NewRepositoryUseCase(subRepoRepo)
 
 	handler := handlers.NewHandler(userUseCase, repoUC, testAPIKey)
