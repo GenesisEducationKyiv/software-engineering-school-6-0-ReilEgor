@@ -10,13 +10,13 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	v2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
+	v1 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/usecase"
 )
 
 type SubscriptionHandler struct {
-	v2.UnimplementedSubscriptionServiceServer
+	v1.UnimplementedSubscriptionServiceServer
 	userUC usecase.UserUseCase
 	repoUC usecase.RepositoryUseCase
 }
@@ -30,8 +30,8 @@ func NewSubscriptionHandler(userUC usecase.UserUseCase, repoUC usecase.Repositor
 
 func (h *SubscriptionHandler) Subscribe(
 	ctx context.Context,
-	req *v2.SubscribeRequest,
-) (_ *v2.SubscribeResponse, retErr error) {
+	req *v1.SubscribeRequest,
+) (_ *v1.SubscribeResponse, retErr error) {
 	start := time.Now()
 	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "Subscribe"))
 	log.DebugContext(ctx, "called")
@@ -63,7 +63,7 @@ func (h *SubscriptionHandler) Subscribe(
 		slog.String("email", email),
 		slog.String("repo", repo),
 	)
-	return &v2.SubscribeResponse{
+	return &v1.SubscribeResponse{
 		Message: "Subscription initiated. Please check your email to confirm.",
 		Success: true,
 	}, nil
@@ -71,8 +71,8 @@ func (h *SubscriptionHandler) Subscribe(
 
 func (h *SubscriptionHandler) Unsubscribe(
 	ctx context.Context,
-	req *v2.UnsubscribeRequest,
-) (_ *v2.UnsubscribeResponse, retErr error) {
+	req *v1.UnsubscribeRequest,
+) (_ *v1.UnsubscribeResponse, retErr error) {
 	start := time.Now()
 	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "Unsubscribe"))
 	log.DebugContext(ctx, "called")
@@ -99,7 +99,7 @@ func (h *SubscriptionHandler) Unsubscribe(
 	}
 
 	log.InfoContext(ctx, "unsubscribed successfully")
-	return &v2.UnsubscribeResponse{
+	return &v1.UnsubscribeResponse{
 		Message: "Successfully unsubscribed",
 		Success: true,
 	}, nil
@@ -107,8 +107,8 @@ func (h *SubscriptionHandler) Unsubscribe(
 
 func (h *SubscriptionHandler) ListSubscriptions(
 	ctx context.Context,
-	req *v2.ListSubscriptionsRequest,
-) (_ *v2.ListSubscriptionsResponse, retErr error) {
+	req *v1.ListSubscriptionsRequest,
+) (_ *v1.ListSubscriptionsResponse, retErr error) {
 	start := time.Now()
 	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "ListSubscriptions"))
 	log.DebugContext(ctx, "called")
@@ -133,13 +133,13 @@ func (h *SubscriptionHandler) ListSubscriptions(
 		return nil, status.Errorf(codes.Internal, "failed to list subscriptions: %v", err)
 	}
 
-	pbSubs := make([]*v2.Subscription, 0, len(subs))
+	pbSubs := make([]*v1.Subscription, 0, len(subs))
 	for _, s := range subs {
 		var lastSeenTag string
 		if s.LastSeenTag != nil {
 			lastSeenTag = *s.LastSeenTag
 		}
-		pbSubs = append(pbSubs, &v2.Subscription{
+		pbSubs = append(pbSubs, &v1.Subscription{
 			Id:          s.ID,
 			Repo:        s.RepositoryName,
 			Confirmed:   s.Confirmed,
@@ -152,7 +152,7 @@ func (h *SubscriptionHandler) ListSubscriptions(
 		slog.String("email", email),
 		slog.Int("count", len(pbSubs)),
 	)
-	return &v2.ListSubscriptionsResponse{
+	return &v1.ListSubscriptionsResponse{
 		Subscriptions: pbSubs,
 		Total:         int32(len(pbSubs)),
 	}, nil
@@ -160,8 +160,8 @@ func (h *SubscriptionHandler) ListSubscriptions(
 
 func (h *SubscriptionHandler) UpdateTag(
 	ctx context.Context,
-	req *v2.UpdateTagRequest,
-) (_ *v2.UpdateTagResponse, retErr error) {
+	req *v1.UpdateTagRequest,
+) (_ *v1.UpdateTagResponse, retErr error) {
 	start := time.Now()
 	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "UpdateTag"))
 	log.DebugContext(ctx, "called",
@@ -184,5 +184,5 @@ func (h *SubscriptionHandler) UpdateTag(
 		)
 		return nil, status.Errorf(codes.Internal, "update tag: %v", err)
 	}
-	return &v2.UpdateTagResponse{}, nil
+	return &v1.UpdateTagResponse{}, nil
 }
