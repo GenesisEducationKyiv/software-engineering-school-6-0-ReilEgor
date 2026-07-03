@@ -5,8 +5,10 @@ import (
 	"log/slog"
 )
 
-type logKey struct{}
-type reqIDKey struct{}
+type (
+	logKey   struct{}
+	reqIDKey struct{}
+)
 
 func WithLogger(ctx context.Context, l *slog.Logger) context.Context {
 	return context.WithValue(ctx, logKey{}, l)

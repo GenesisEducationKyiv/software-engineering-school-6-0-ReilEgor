@@ -4,10 +4,11 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
 )
 
 func RequestIDInterceptor() grpc.UnaryServerInterceptor {
