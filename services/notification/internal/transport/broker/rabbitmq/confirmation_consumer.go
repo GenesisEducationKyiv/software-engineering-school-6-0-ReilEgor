@@ -14,7 +14,7 @@ import (
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/notification/internal/domain/usecase"
 )
 
 //go:generate mockery --name SagaResultPublisher --output ../../mocks --case underscore --outpkg mocks
@@ -23,25 +23,25 @@ type SagaResultPublisher interface {
 }
 
 type ConfirmationConsumer struct {
-	conn          *sharedRabbitmq.Connection
-	emailSvc      service.EmailService
-	sendTimeout   time.Duration
-	sagaResultPub SagaResultPublisher
-	logger        *slog.Logger
+	conn           *sharedRabbitmq.Connection
+	notificationUC usecase.NotificationUseCase
+	sendTimeout    time.Duration
+	sagaResultPub  SagaResultPublisher
+	logger         *slog.Logger
 }
 
 func NewConfirmationConsumer(
 	conn *sharedRabbitmq.Connection,
-	emailSvc service.EmailService,
+	notificationUC usecase.NotificationUseCase,
 	sendTimeout time.Duration,
 	sagaResultPub SagaResultPublisher,
 ) *ConfirmationConsumer {
 	return &ConfirmationConsumer{
-		conn:          conn,
-		emailSvc:      emailSvc,
-		sendTimeout:   sendTimeout,
-		sagaResultPub: sagaResultPub,
-		logger:        slog.With(slog.String("component", "ConfirmationConsumer")),
+		conn:           conn,
+		notificationUC: notificationUC,
+		sendTimeout:    sendTimeout,
+		sagaResultPub:  sagaResultPub,
+		logger:         slog.With(slog.String("component", "ConfirmationConsumer")),
 	}
 }
 
@@ -115,7 +115,7 @@ func (c *ConfirmationConsumer) handle(ctx context.Context, d amqp.Delivery) {
 	sendCtx, cancel := context.WithTimeout(ctx, c.sendTimeout)
 	defer cancel()
 
-	if err := c.emailSvc.SendConfirmation(sendCtx, cmd.Email, cmd.RepoName, cmd.Token); err != nil {
+	if err := c.notificationUC.SendConfirmation(sendCtx, cmd); err != nil {
 		log.Error("rabbitmq: send confirmation email failed",
 			slog.String("to", cmd.Email),
 			slog.Any("error", err),
@@ -152,7 +152,7 @@ func (c *ConfirmationConsumer) handleEmailError(
 	err error,
 	log *slog.Logger,
 ) {
-	if errors.Is(err, service.ErrSMTPUnavailable) {
+	if errors.Is(err, usecase.ErrEmailUnavailable) {
 		if nackErr := d.Nack(false, true); nackErr != nil {
 			log.Error("rabbitmq: nack failed", slog.Any("error", nackErr))
 		}
