@@ -47,6 +47,26 @@ Run integration tests with:
 go test -v ./services/subscription/tests/integration/...
 ```
 
+## Architecture Lint
+
+This project uses [go-arch-lint](https://github.com/fe3dback/go-arch-lint) to enforce the
+clean-architecture dependency rules described in [ADR-0002](docs/adr/0002-use-clean-architecture.md).
+
+Install (one-time, pinned to the version used in CI):
+
+```bash
+go install github.com/fe3dback/go-arch-lint@v1.15.0
+```
+
+Run for all modules:
+
+```bash
+go-arch-lint check --project-path ./services/subscription
+go-arch-lint check --project-path ./services/tracking
+go-arch-lint check --project-path ./services/notification
+go-arch-lint check --project-path ./shared
+```
+
 ## End-to-End (E2E) Tests
 
 E2E tests are written using Playwright and validate the application from the user's perspective.

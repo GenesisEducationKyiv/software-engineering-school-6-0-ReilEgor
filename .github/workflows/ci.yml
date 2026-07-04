@@ -29,6 +29,10 @@ jobs:
           version: v2.12.1
           working-directory: ${{ matrix.module }}
           args: --timeout=5m
+      - name: Install go-arch-lint
+        run: go install github.com/fe3dback/go-arch-lint@v1.15.0
+      - name: Run go-arch-lint (${{ matrix.module }})
+        run: go-arch-lint check --project-path ./${{ matrix.module }}
 
   unit-tests:
     name: Unit Tests
