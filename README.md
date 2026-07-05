@@ -1,10 +1,9 @@
 # RepoNotifier
  
-> Production-ready Go service that tracks GitHub repository releases and sends real-time email notifications to subscribers.
+> Go system that tracks GitHub repository releases and sends real-time email notifications to subscribers. Built as three independently deployable services communicating over gRPC and RabbitMQ.
  
 [![codecov](https://codecov.io/gh/ReilEgor/NotifierTest/graph/badge.svg?token=S8KWDBMUQ7)](https://codecov.io/gh/ReilEgor/NotifierTest)
 ![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
  
 ---
 
@@ -17,6 +16,7 @@
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
+- [Testing](#testing)
 - [Observability](#observability)
 - [Tech Stack](#tech-stack)
 - [Contributing](#contributing)
@@ -25,33 +25,17 @@
 
 ## Overview
  
-RepoNotifier continuously monitors GitHub repositories and notifies users when new releases are published. It is built with **Clean Architecture**, resilience patterns, and observability in mind - ready to run in production from day one.
+RepoNotifier continuously monitors GitHub repositories and notifies users when new releases are published. It is split into three services - **subscription**, **tracking**, and **notification** - each with Clean Architecture internals, resilience patterns, and observability built in. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full breakdown and [docs/adr](docs/adr/) for the reasoning behind each major decision.
  
 ---
 
 ## How It Works
- 
-```
-User subscribes to a repo
-        |
-        ▼
-Background worker polls GitHub API on schedule
-        |
-        ▼
-New release detected via last_seen_tag comparison
-        |
-        ▼
-Release event cached in Redis
-        |
-        ▼
-Email notification dispatched to all subscribers
-```
 
-1. **Subscribe** - a user registers their email and a target GitHub repository via REST or gRPC.
-2. **Scan** - a background worker periodically queries the GitHub API for each tracked repository.
+1. **Subscribe** - a user registers their email and a target GitHub repository via the subscription service's REST or gRPC API; a confirmation email is sent (saga-coordinated).
+2. **Scan** - the tracking service periodically queries the GitHub API for each tracked repository.
 3. **Detect** - new releases are identified by comparing the current tag against the stored `last_seen_tag`.
-4. **Cache** - release events are cached in Redis to prevent duplicate notifications and reduce API pressure.
-5. **Notify** - matching subscribers receive an email with release details.
+4. **Publish** - release/notification events are written transactionally via the outbox pattern and relayed to RabbitMQ.
+5. **Notify** - the notification service consumes the queue and emails matching subscribers via SMTP.
  
 ---
 
@@ -64,21 +48,31 @@ Email notification dispatched to all subscribers
 | 🛡 Rate limit handling | Graceful handling of GitHub API `429 Too Many Requests` |
 | ⚡ Caching layer | Redis caching reduces redundant API calls and prevents duplicate emails |
 | 🌐 Dual interface | REST API (Gin) + gRPC support |
+| 📨 Async messaging | RabbitMQ + outbox pattern for reliable event delivery between services |
 | 🔥 Resilience patterns | Circuit Breaker (gobreaker), retry strategy, graceful shutdown |
-| 📊 Observability | Prometheus metrics + Grafana dashboards |
+| 📊 Observability | Prometheus metrics, Grafana dashboards, ELK log aggregation |
 | 🔐 API key auth | All sensitive endpoints require `X-API-Key` header |
-| 🧱 Clean Architecture | Decoupled layers with dependency injection |
+| 🧱 Clean Architecture | Decoupled layers per service, enforced in CI via go-arch-lint |
  
 ---
 
 ## Architecture
+
+RepoNotifier is split into three independently deployable Go services, each with its own database, plus a shared `shared/` module for common infrastructure code. Full details, diagrams, and the "why" behind each decision live in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+| Service | Responsibility | Storage | Ports |
+|---|---|---|---|
+| **subscription** | Manages users/subscriptions, confirmation saga; REST (Gin) + gRPC API | PostgreSQL (`subscription_db`) | HTTP `8080`, gRPC `9091` |
+| **tracking** | Polls GitHub API, detects new releases via `last_seen_tag`, gRPC API | PostgreSQL (`tracker_db`) | health/metrics `8081`, gRPC `50051` |
+| **notification** | Consumes RabbitMQ commands and sends email via SMTP | stateless | health/metrics `8082` |
 
 ### C4 Model
 
 ![component_worker.png](docs/%D1%814/component_worker.png)
 ![container.png](docs/%D1%814/container.png)
 ![component_api.png](docs/%D1%814/component_api.png)
-![component_sender.png](docs/%D1%814/component_sender.png)<img width="4524" height="1768" src="https://github.com/user-attachments/assets/15231bf2-ac06-43d8-b861-b3b8e1e63163" />
+![component_sender.png](docs/%D1%814/component_sender.png)
+<img width="4524" height="1768" src="https://github.com/user-attachments/assets/15231bf2-ac06-43d8-b861-b3b8e1e63163" />
 <img width="1837" height="849" alt="image" src="https://github.com/user-attachments/assets/a45bff06-2bcd-4f16-9b7a-f9ba8a153202" />
 
 ---
@@ -91,7 +85,7 @@ Email notification dispatched to all subscribers
 ```bash
 # Clone the repository
 git clone https://github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor.git
-cd RepoNotifier
+cd software-engineering-school-6-0-ReilEgor
  
 # Copy and fill in environment variables:
 # - deployments/.env holds shared/infra values (DB, Redis, RabbitMQ, ports)
@@ -110,9 +104,14 @@ Once running, verify the services are healthy:
  
 | Service | URL |
 |---|---|
-| REST API | http://localhost:8080 |
+| Subscription REST API | http://localhost:8080 |
+| Tracking health/metrics | http://localhost:8081/health |
+| Notification health/metrics | http://localhost:8082/health |
 | Swagger UI | http://localhost:9080 |
-| Prometheus metrics | http://localhost:8080/metrics |
+| RabbitMQ management | http://localhost:15672 |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3030 |
+| Kibana | http://localhost:5601 |
  
 ---
  
@@ -123,11 +122,14 @@ Env files live under `deployments/`: `.env` for shared/infra values, `env/subscr
 | Variable | File | Required | Description |
 |---|---|---|---|
 | `APP_API_KEY` | `env/subscription.env`, `env/tracking.env` | **Required** | Secret key for `X-API-Key` authentication. All protected endpoints reject requests without this. |
+| `GITHUB_TOKEN` | `env/tracking.env` | **Required** | GitHub personal access token used to poll the releases API. |
 | `EMAIL_USER` | `env/notification.env` | **Required** | SMTP sender address (e.g. `you@gmail.com`). |
 | `EMAIL_PASSWORD` | `env/notification.env` | **Required** | SMTP app password - not your account login password. |
-| `APP_HTTP_PORT` | `.env` | Optional | Port for the REST API. Default: `8080`. |
+| `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | `.env` | **Required** | Credentials for the shared RabbitMQ broker. |
+| `APP_HTTP_PORT` | `.env` | Optional | Port for the subscription REST API. Default: `8080`. |
 | `APP_GRPC_PORT` | `.env` | Optional | Port for the subscription gRPC server. Default: `9091`. |
 | `TRACKING_GRPC_PORT` | `.env` | Optional | Port for the tracking gRPC server. Default: `50051`. |
+| `WORKER_HEALTH_PORT` / `SENDER_HEALTH_PORT` | `.env` | Optional | Health/metrics ports for tracking and notification. Defaults: `8081` / `8082`. |
  
 > **Gmail users**: generate an [App Password](https://myaccount.google.com/apppasswords) - standard account passwords are rejected by Gmail SMTP.
  
@@ -135,7 +137,7 @@ Env files live under `deployments/`: `.env` for shared/infra values, `env/subscr
  
 ## API Reference
  
-All protected endpoints require the `X-API-Key` header. Public endpoints (Swagger, healthcheck) do not.
+All endpoints below belong to the **subscription** service (`http://localhost:8080/api/v1`). Protected endpoints require the `X-API-Key` header. Public endpoints (confirm, unsubscribe, Swagger, healthcheck) do not.
  
 ### Subscribe to a repository
  
@@ -151,7 +153,7 @@ curl -X 'POST' \
 }'
 ```
  
-**Success response** `201 Created`:
+**Success response** `202 Accepted`:
 ```json
 {
   "message": "Subscription initiated. Please check your email to confirm."
@@ -159,20 +161,43 @@ curl -X 'POST' \
 ```
  
 ---
+
+### Confirm a subscription
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8080/api/v1/confirm/{token}' \
+  -H 'accept: application/json'
+```
+
+The `{token}` comes from the confirmation link emailed to the subscriber.
+
+---
  
 ### Unsubscribe from a repository
  
 ```bash
 curl -X 'GET' \
-  'http://localhost:8080/api/v1/unsubscribe/123' \
+  'http://localhost:8080/api/v1/unsubscribe/{token}' \
   -H 'accept: application/json'
 ```
  
 **Success response** `200 OK`:
 ```json
 {
-  "error": "invalid or expired unsubscribe link"
+  "message": "You have been successfully unsubscribed"
 }
+```
+
+---
+
+### List subscriptions
+
+```bash
+curl -X 'GET' \
+  'http://localhost:8080/api/v1/subscriptions?email=test@gmail.com' \
+  -H 'accept: application/json' \
+  -H 'X-API-Key: my-super-secret-token-123'
 ```
 
 ---
@@ -183,36 +208,43 @@ curl -X 'GET' \
 |---|---|
 | `400 Bad Request` | Missing or malformed request body |
 | `401 Unauthorized` | Missing or invalid `X-API-Key` |
-| `404 Not Found` | Subscription not found |
+| `404 Not Found` | Subscription or token not found/expired |
 | `429 Too Many Requests` | GitHub API rate limit reached |
 | `500 Internal Server Error` | Unexpected server error |
  
 Full interactive documentation is available at **http://localhost:9080** (Swagger UI).
+
+---
+
+## Testing
+
+Unit tests, integration tests (Testcontainers), architecture-boundary checks (go-arch-lint), and E2E tests (Playwright) are all documented in [testing.md](testing.md).
  
 ---
 
 ## Observability
  
-RepoNotifier exposes Prometheus metrics at `/metrics`. Recommended Grafana dashboards cover:
+Each service exposes Prometheus metrics at `/metrics` (subscription on `8080`, tracking on `8081`, notification on `8082`) and structured logs shipped to Elasticsearch via Fluent Bit. Grafana and Kibana dashboards cover:
  
 - GitHub API request rate and error rate
 - Email delivery success/failure
 - Background scanner cycle duration
 - Circuit breaker state transitions
 - Redis cache hit/miss ratio
+- Centralized service logs (Kibana)
 
 ```bash
-Core only
-docker compose up -d
+# Core only
+docker compose -f deployments/docker-compose.yml up -d
 
-With monitoring
-docker compose --profile observability up -d
+# With monitoring (Prometheus, Grafana, ELK)
+docker compose -f deployments/docker-compose.yml --profile observability up -d
 
-With documentation
-docker compose --profile docs up -d
+# With API documentation (Swagger UI)
+docker compose -f deployments/docker-compose.yml --profile docs up -d
 
-All at once
-docker compose --profile observability --profile docs up -d
+# All at once
+docker compose -f deployments/docker-compose.yml --profile observability --profile docs up -d
 ```
 
 ---
@@ -223,13 +255,16 @@ docker compose --profile observability --profile docs up -d
 |---|---|
 | Language | Go 1.25+ |
 | HTTP framework | Gin |
-| RPC | gRPC |
+| RPC | gRPC (google.golang.org/grpc) |
+| Message broker | RabbitMQ |
 | Database | PostgreSQL |
 | Cache | Redis |
 | Resilience | gobreaker (Circuit Breaker) |
 | Metrics | Prometheus |
 | Dashboards | Grafana |
+| Logs | Fluent Bit + Elasticsearch + Kibana |
 | API docs | Swagger / OpenAPI |
+| Architecture linting | go-arch-lint |
 | Infrastructure | Docker, Docker Compose |
 | External API | GitHub REST API |
  
@@ -244,10 +279,4 @@ Contributions, bug reports, and feature requests are welcome.
 3. Commit your changes: `git commit -m 'feat: add your feature'`
 4. Push and open a pull request
  
-Please follow the existing code style and add tests for any new functionality.
- 
----
- 
-## License
- 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Please follow the existing code style, keep changes within their service's architecture boundaries (`go-arch-lint check`), and add tests for any new functionality.
