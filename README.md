@@ -14,9 +14,11 @@
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
+- [Running the Project](#running-the-project)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
 - [Testing](#testing)
+- [Linting](#linting)
 - [Observability](#observability)
 - [Tech Stack](#tech-stack)
 - [Contributing](#contributing)
@@ -109,6 +111,26 @@ Once running, verify the services are healthy:
 | Kibana | http://localhost:5601 |
  
 ---
+
+## Running the Project
+
+The `observability` and `docs` profiles are optional and can be combined or dropped independently:
+
+```bash
+# Core services only (subscription, tracking, notification, DB, Redis, RabbitMQ)
+docker compose -f deployments/docker-compose.yml up -d
+
+# + monitoring stack (Prometheus, Grafana, ELK)
+docker compose -f deployments/docker-compose.yml --profile observability up -d
+
+# + API documentation (Swagger UI)
+docker compose -f deployments/docker-compose.yml --profile docs up -d
+
+# Everything
+docker compose -f deployments/docker-compose.yml --profile observability --profile docs up -d
+```
+
+---
  
 ## Configuration
  
@@ -132,34 +154,45 @@ Env files live under `deployments/`: `.env` for shared/infra values, `env/subscr
  
 ## Testing
 
-Unit tests, integration tests (Testcontainers), architecture-boundary checks (go-arch-lint), and E2E tests (Playwright) are all documented in [testing.md](testing.md).
+| Type | Location | Run |
+|---|---|---|
+| Unit | co-located `_test.go` files under each service's `internal/` (e.g. `services/subscription/internal/...`) and `shared/` | `go test ./services/subscription/... ./services/tracking/... ./services/notification/... ./shared/...` |
+| Integration | `services/subscription/tests/integration/` (Testcontainers spin up real Postgres/Redis/RabbitMQ) | `go test -v ./services/subscription/tests/integration/...` |
+| E2E | `tests/e2e/` (Playwright) | `npx --prefix tests/e2e playwright test` |
+
+Requirements, per-service commands, and more detail on each test type are in [testing.md](testing.md). Static/architecture checks (go-arch-lint, golangci-lint) are covered separately in [Linting](#linting).
  
+---
+
+## Linting
+
+Every module (`services/subscription`, `services/tracking`, `services/notification`, `shared`) is checked by two linters in CI ([`ci.yml`](.github/workflows/ci.yml)):
+
+| Linter | Checks | Config | Run |
+|---|---|---|---|
+| [golangci-lint](https://golangci-lint.run/) v2.12.1 | Style and correctness - `govet`, `staticcheck`, `errcheck`, `gocyclo`/`gocognit`, `wrapcheck`, `revive`, and more (see config for the full list) | [`.golangci.yml`](.golangci.yml) at the repo root, shared by every module | `golangci-lint run --timeout=5m` (from inside the module directory) |
+| [go-arch-lint](https://github.com/fe3dback/go-arch-lint) v1.15.0 | Clean Architecture layering boundaries between `model` / `usecase` / `repository` / `transport` / etc., per [ARCHITECTURE.md](ARCHITECTURE.md) | `.go-arch-lint.yml` in each module's root | `go-arch-lint check --project-path ./services/subscription` |
+
+Both run against each module independently rather than the whole repo at once, since `go.work` ties the modules together for local development but each still has its own `go.mod` and its own architecture boundaries.
+
 ---
 
 ## Observability
  
-Each service exposes Prometheus metrics at `/metrics` (subscription on `8080`, tracking on `8081`, notification on `8082`) and structured logs shipped to Elasticsearch via Fluent Bit. Grafana and Kibana dashboards cover:
- 
-- GitHub API request rate and error rate
-- Email delivery success/failure
-- Background scanner cycle duration
-- Circuit breaker state transitions
-- Redis cache hit/miss ratio
-- Centralized service logs (Kibana)
+Each service exposes Prometheus metrics at `/metrics` (subscription on `8080`, tracking on `8081`, notification on `8082`), scraped every 3s per [`prometheus.yml`](deployments/monitoring/prometheus/prometheus.yml):
 
-```bash
-# Core only
-docker compose -f deployments/docker-compose.yml up -d
+- **HTTP RED metrics** - `app_http_requests_total` / `app_http_request_duration_seconds`, labeled by method, route, and status code.
+- **Use-case RED metrics** - `app_usecase_operations_total` / `app_usecase_operation_duration_seconds`, labeled by operation name (subscribe, confirm, scan, etc.) and status.
+- **Notification/email counters** - `app_notifications_processed_total`, `app_notification_processing_duration_seconds`, `app_notification_emails_sent_total`, `app_confirmation_emails_sent_total`.
+- **Go runtime metrics** - goroutines, OS threads, heap memory, GC duration (from the standard Prometheus Go collector).
 
-# With monitoring (Prometheus, Grafana, ELK)
-docker compose -f deployments/docker-compose.yml --profile observability up -d
+All of the above are defined in [`shared/infrastructure/metrics`](shared/infrastructure/metrics/metrics.go) and visualized in the pre-provisioned Grafana dashboard **"RepoNotifier — RED Metrics"** ([`red_metrics.json`](deployments/monitoring/grafana/dashboards/red_metrics.json)), with rows for HTTP RED, Use-Case RED, Notifications & Emails, and Go Runtime.
 
-# With API documentation (Swagger UI)
-docker compose -f deployments/docker-compose.yml --profile docs up -d
+Structured JSON logs (`log/slog`) are tailed from Docker container output by Fluent Bit, filtered down to entries with a recognized log level, and shipped to Elasticsearch under the `repo-notifier-logs` index; a `kibana-init` job auto-creates the matching Kibana data view on startup.
 
-# All at once
-docker compose -f deployments/docker-compose.yml --profile observability --profile docs up -d
-```
+> **Known gap**: there is no Alertmanager / alerting rules configured yet - Prometheus and Grafana are query/dashboard-only for now.
+
+The monitoring stack sits behind the `observability` profile - see [Running the Project](#running-the-project) to start it.
 
 ---
  

@@ -126,11 +126,11 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  notification-worker:
+  tracking-service:
     build:
       context: ..
       dockerfile: services/tracking/Dockerfile
-    container_name: notification-worker
+    container_name: tracking-service
     restart: always
     env_file:
       - ./env/tracking.env
