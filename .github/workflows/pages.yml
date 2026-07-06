@@ -2,9 +2,10 @@ name: Deploy API docs to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
     paths:
       - "docs/api/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
