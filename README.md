@@ -31,11 +31,14 @@ RepoNotifier continuously monitors GitHub repositories and notifies users when n
 
 ## How It Works
 
-1. **Subscribe** - a user registers their email and a target GitHub repository via the subscription service's REST or gRPC API; a confirmation email is sent (saga-coordinated).
-2. **Scan** - the tracking service periodically queries the GitHub API for each tracked repository.
-3. **Detect** - new releases are identified by comparing the current tag against the stored `last_seen_tag`.
-4. **Publish** - release/notification events are written transactionally via the outbox pattern and relayed to RabbitMQ.
-5. **Notify** - the notification service consumes the queue and emails matching subscribers via SMTP.
+1. **Subscribe** - a user submits an email + repo via the subscription service's REST/gRPC API. Subscription resolves the repo through a gRPC call to tracking (registering it there if unseen), saves a pending subscription, and starts a **saga** that queues a confirmation command via the outbox pattern.
+2. **Confirm** - an outbox relay publishes the command to RabbitMQ; the notification service emails the confirmation link over SMTP and reports success/failure back as a saga reply. A failure compensates by rolling back the pending subscription; success leaves the saga waiting for the user to click the link.
+3. **Activate** - clicking the link marks the subscription confirmed and emits a `SubscriptionActivatedEvent`; tracking consumes it and upserts the subscriber into its own local subscriber list.
+4. **Scan** - tracking polls the GitHub API for every tracked repository on a timer, comparing the latest tag against the stored `last_seen_tag`.
+5. **Detect & Publish** - on a new tag, tracking updates the repo record, queues a notification command per subscriber through its own outbox, and reports the new tag back to subscription (gRPC/HTTP) to keep its cached copy in sync.
+6. **Notify** - the notification service consumes the queue and emails matching subscribers via SMTP.
+
+Each service runs its own outbox relay, so events only cross service boundaries after being durably committed in the same transaction as the state change.
  
 ---
 
@@ -66,15 +69,7 @@ RepoNotifier is split into three independently deployable Go services, each with
 | **tracking** | Polls GitHub API, detects new releases via `last_seen_tag`, gRPC API | PostgreSQL (`tracker_db`) | health/metrics `8081`, gRPC `50051` |
 | **notification** | Consumes RabbitMQ commands and sends email via SMTP | stateless | health/metrics `8082` |
 
-### C4 Model
-
-![component_worker.png](docs/%D1%814/component_worker.png)
-![container.png](docs/%D1%814/container.png)
-![component_api.png](docs/%D1%814/component_api.png)
-![component_sender.png](docs/%D1%814/component_sender.png)
-<img width="4524" height="1768" src="https://github.com/user-attachments/assets/15231bf2-ac06-43d8-b861-b3b8e1e63163" />
-<img width="1837" height="849" alt="image" src="https://github.com/user-attachments/assets/a45bff06-2bcd-4f16-9b7a-f9ba8a153202" />
-
+![Untitled-2026-03-23-0055.png](img/Untitled-2026-03-23-0055.png)
 ---
  
 ## Quick Start
@@ -135,87 +130,6 @@ Env files live under `deployments/`: `.env` for shared/infra values, `env/subscr
  
 ---
  
-## API Reference
- 
-All endpoints below belong to the **subscription** service (`http://localhost:8080/api/v1`). Protected endpoints require the `X-API-Key` header. Public endpoints (confirm, unsubscribe, Swagger, healthcheck) do not.
- 
-### Subscribe to a repository
- 
-```bash
-curl -X 'POST' \
-  'http://localhost:8080/api/v1/subscribe' \
-  -H 'accept: application/json' \
-  -H 'X-API-Key: my-super-secret-token-123' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "email": "test@gmail.com",
-  "repository": "ReilEgor/NotifierTest"
-}'
-```
- 
-**Success response** `202 Accepted`:
-```json
-{
-  "message": "Subscription initiated. Please check your email to confirm."
-}
-```
- 
----
-
-### Confirm a subscription
-
-```bash
-curl -X 'GET' \
-  'http://localhost:8080/api/v1/confirm/{token}' \
-  -H 'accept: application/json'
-```
-
-The `{token}` comes from the confirmation link emailed to the subscriber.
-
----
- 
-### Unsubscribe from a repository
- 
-```bash
-curl -X 'GET' \
-  'http://localhost:8080/api/v1/unsubscribe/{token}' \
-  -H 'accept: application/json'
-```
- 
-**Success response** `200 OK`:
-```json
-{
-  "message": "You have been successfully unsubscribed"
-}
-```
-
----
-
-### List subscriptions
-
-```bash
-curl -X 'GET' \
-  'http://localhost:8080/api/v1/subscriptions?email=test@gmail.com' \
-  -H 'accept: application/json' \
-  -H 'X-API-Key: my-super-secret-token-123'
-```
-
----
- 
-### Error responses
- 
-| Status | Meaning |
-|---|---|
-| `400 Bad Request` | Missing or malformed request body |
-| `401 Unauthorized` | Missing or invalid `X-API-Key` |
-| `404 Not Found` | Subscription or token not found/expired |
-| `429 Too Many Requests` | GitHub API rate limit reached |
-| `500 Internal Server Error` | Unexpected server error |
- 
-Full interactive documentation is available at **http://localhost:9080** (Swagger UI).
-
----
-
 ## Testing
 
 Unit tests, integration tests (Testcontainers), architecture-boundary checks (go-arch-lint), and E2E tests (Playwright) are all documented in [testing.md](testing.md).

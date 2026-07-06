@@ -11,15 +11,13 @@ RepoNotifier відстежує релізи GitHub-репозиторіїв і 
 що спілкуються через RabbitMQ (asynchronous messaging) та gRPC (synchronous
 calls), і спільного модуля `shared`.
 
-![img_1.png](img/img_1.png)
+![img_1.png](img/Untitled-2026-03-23-0055.png)
 
 | Сервіс | Відповідальність | Сховище | Порти |
 |---|---|---|---|
 | **subscription** | Керує користувачами, підписками, saga підтвердження email; REST (Gin) + gRPC API | PostgreSQL (subscription_db) | HTTP 8080, gRPC 9091 |
 | **tracking** | Періодично опитує GitHub API, детектує нові релізи за `last_seen_tag`, тримає денормалізовану копію підписок | PostgreSQL (tracker_db) | HTTP 8081, gRPC 50051 |
 | **notification** | Споживає команди з RabbitMQ і надсилає email через SMTP | — (stateless) | HTTP 8082 |
-
-![img_2.png](img/img_2.png)
 
 Детальні C4-діаграми (контейнери й компоненти кожного сервісу) — у
 [docs/с4](docs/с4/с4.svg). Пронумеровані рішення та їх обґрунтування — у
