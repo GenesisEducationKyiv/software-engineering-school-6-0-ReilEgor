@@ -93,16 +93,17 @@ func (h *Handler) handleTokenAction(
 // Subscribe GoDoc
 //
 //	@Summary		Subscribe to a repository
-//	@Description	Create a pending subscription and send a confirmation email.
+//	@Description	Create a pending subscription and send a confirmation email. Requires an API key.
 //	@Tags			subscriptions
-//	@Accept			JSON
-//	@Produce		JSON
+//	@Accept			json
+//	@Produce		json
 //	@Param			request	body		dto.CreateSubscriptionRequest	true	"Subscription details"
 //	@Success		202		{object}	dto.CreateSubscriptionResponse
-//	@Failure		400		{object}	map[string]string	"Invalid request body or validation errors"
-//	@Failure		404		{object}	map[string]string	"Repository not found"
-//	@Failure		409		{object}	map[string]string	"Already subscribed"
-//	@Failure		503		{object}	map[string]string	"GitHub API unavailable"
+//	@Failure		400		{object}	dto.ValidationErrorResponse	"Malformed JSON body, or email/repository failed validation"
+//	@Failure		404		{object}	dto.ErrorResponse			"Repository not found on GitHub"
+//	@Failure		500		{object}	dto.ErrorResponse			"Unexpected internal error"
+//	@Failure		503		{object}	dto.ErrorResponse			"GitHub API is currently unavailable"
+//	@Security		ApiKeyAuth
 //	@Router			/subscribe [post].
 func (h *Handler) Subscribe(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), timeoutSubscribe)
@@ -167,14 +168,14 @@ func (h *Handler) Subscribe(c *gin.Context) {
 // UnsubscribeByToken GoDoc
 //
 //	@Summary		Unsubscribe via token
-//	@Description	Remove a subscription using the one-time token from the unsubscribe link.
+//	@Description	Remove a subscription using the one-time token from the unsubscribe link. This route is public (no API key) since it is reached from an email link.
 //	@Tags			subscriptions
-//	@Produce		JSON
+//	@Produce		json
 //	@Param			token	path		string	true	"Unsubscribe token"
-//	@Success		200		{object}	map[string]string
-//	@Failure		400		{object}	map[string]string	"Token is required"
-//	@Failure		404		{object}	map[string]string	"Invalid or expired token"
-//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Success		200		{object}	dto.MessageResponse	"You have been successfully unsubscribed"
+//	@Failure		400		{object}	dto.ErrorResponse	"Token is required"
+//	@Failure		404		{object}	dto.ErrorResponse	"Invalid or expired token"
+//	@Failure		500		{object}	dto.ErrorResponse	"Internal server error"
 //	@Router			/unsubscribe/{token} [get].
 func (h *Handler) UnsubscribeByToken(c *gin.Context) {
 	h.handleTokenAction(
@@ -193,13 +194,13 @@ func (h *Handler) UnsubscribeByToken(c *gin.Context) {
 // ListSubscriptions GoDoc
 //
 //	@Summary		Get all subscriptions by email
-//	@Description	Retrieve a list of all subscriptions (confirmed and pending) for a given email.
+//	@Description	Retrieve a list of all subscriptions (confirmed and pending) for a given email. Requires an API key.
 //	@Tags			subscriptions
-//	@Produce		JSON
+//	@Produce		json
 //	@Param			email	query		string	true	"User email address"
 //	@Success		200		{object}	dto.ListSubscriptionsResponse
-//	@Failure		400		{object}	map[string]string	"Email is required or invalid"
-//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Failure		400		{object}	dto.ErrorResponse	"Email query param is missing or not a valid email address"
+//	@Failure		500		{object}	dto.ErrorResponse	"Internal server error"
 //	@Security		ApiKeyAuth
 //	@Router			/subscriptions [get].
 func (h *Handler) ListSubscriptions(c *gin.Context) {
@@ -262,14 +263,14 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 // Confirm GoDoc
 //
 //	@Summary		Confirm email subscription
-//	@Description	Confirm a pending subscription using the token sent via email.
+//	@Description	Confirm a pending subscription using the token sent via email. This route is public (no API key) since it is reached from an email link.
 //	@Tags			subscriptions
-//	@Produce		JSON
+//	@Produce		json
 //	@Param			token	path		string				true	"Confirmation token"
-//	@Success		200		{object}	map[string]string	"subscription confirmed successfully"
-//	@Failure		400		{object}	map[string]string	"Token is required"
-//	@Failure		404		{object}	map[string]string	"Invalid or expired token"
-//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Success		200		{object}	dto.MessageResponse	"subscription confirmed successfully"
+//	@Failure		400		{object}	dto.ErrorResponse	"Token is required"
+//	@Failure		404		{object}	dto.ErrorResponse	"Invalid or expired token"
+//	@Failure		500		{object}	dto.ErrorResponse	"Internal server error"
 //	@Router			/confirm/{token} [get].
 func (h *Handler) Confirm(c *gin.Context) {
 	h.handleTokenAction(
@@ -285,6 +286,10 @@ func (h *Handler) Confirm(c *gin.Context) {
 	}
 }
 
+// UpdateTag is a service-to-service endpoint (mounted under /internal, protected by the same
+// API key) used by the tracking service to push newly seen release tags. It is intentionally
+// left out of the Swagger spec: /internal routes sit outside the documented /api/v1 base path,
+// so a @Router annotation here would render a "Try it out" URL that doesn't match the real route.
 func (h *Handler) UpdateTag(c *gin.Context) {
 	ctx := c.Request.Context()
 	log := ctxlog.FromCtx(ctx).With(slog.String("handler", "UpdateTag"))
