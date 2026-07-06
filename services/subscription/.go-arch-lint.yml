@@ -8,6 +8,7 @@ allow:
 
 exclude:
   - internal/mocks
+  - docs
 
 excludeFiles:
   - '_test\.go$'
