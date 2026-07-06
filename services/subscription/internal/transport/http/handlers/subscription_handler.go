@@ -168,10 +168,13 @@ func (h *Handler) Subscribe(c *gin.Context) {
 // UnsubscribeByToken GoDoc
 //
 //	@Summary		Unsubscribe via token
-//	@Description	Remove a subscription using the one-time token from the unsubscribe link. This route is public (no API key) since it is reached from an email link.
+//	@Description	Remove a subscription using the one-time token from the unsubscribe link. This route is public (no API
+//
+// key) since it is reached from an email link.
+//
 //	@Tags			subscriptions
 //	@Produce		json
-//	@Param			token	path		string	true	"Unsubscribe token"
+//	@Param			token	path		string				true	"Unsubscribe token"
 //	@Success		200		{object}	dto.MessageResponse	"You have been successfully unsubscribed"
 //	@Failure		400		{object}	dto.ErrorResponse	"Token is required"
 //	@Failure		404		{object}	dto.ErrorResponse	"Invalid or expired token"
@@ -263,7 +266,10 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 // Confirm GoDoc
 //
 //	@Summary		Confirm email subscription
-//	@Description	Confirm a pending subscription using the token sent via email. This route is public (no API key) since it is reached from an email link.
+//	@Description	Confirm a pending subscription using the token sent via email. This route is public (no API key) since
+//
+// it is reached from an email link.
+//
 //	@Tags			subscriptions
 //	@Produce		json
 //	@Param			token	path		string				true	"Confirmation token"

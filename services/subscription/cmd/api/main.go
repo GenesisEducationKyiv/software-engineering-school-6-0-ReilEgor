@@ -34,7 +34,10 @@ type Config struct {
 //
 //	@title						RepoNotifier API
 //	@version					1.0
-//	@description				Subscription service: manages email subscriptions to GitHub repositories and notifies subscribers about new releases.
+//	@description				Subscription service: manages email subscriptions to GitHub repositories and notifies subscribers
+//
+// about new releases.
+//
 //	@securityDefinitions.apiKey	ApiKeyAuth
 //	@in							header
 //	@name						X-API-Key
