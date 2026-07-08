@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-tracking
+spec:
+  serviceName: postgres-tracking
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-tracking
+  template:
+    metadata:
+      labels:
+        app: postgres-tracking
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          envFrom:
+            - configMapRef:
+                name: postgres-tracking-config
+            - secretRef:
+                name: postgres-tracking-secret
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ReilYehor", "-d", "tracker_db"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

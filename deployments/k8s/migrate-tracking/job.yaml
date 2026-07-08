@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-tracking
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z postgres-tracking 5432; do echo "waiting for postgres..."; sleep 2; done
+      containers:
+        - name: migrate
+          image: migrate/migrate
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-tracking-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-tracking-secret
+                  key: POSTGRES_PASSWORD
+          args:
+            - "-path"
+            - "/migrations"
+            - "-database"
+            - "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-tracking:5432/tracker_db?sslmode=disable"
+            - "up"
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: tracking-migrations

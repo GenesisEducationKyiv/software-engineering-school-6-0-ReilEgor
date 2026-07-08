@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tracking
+  template:
+    metadata:
+      labels:
+        app: tracking
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z postgres-tracking 5432; do echo "waiting for postgres-tracking..."; sleep 2; done
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z redis 6379; do echo "waiting for redis..."; sleep 2; done
+        - name: wait-for-rabbitmq
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z rabbitmq 5672; do echo "waiting for rabbitmq..."; sleep 2; done
+        - name: wait-for-subscription
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z subscription 9091; do echo "waiting for subscription..."; sleep 2; done
+      containers:
+        - name: tracking
+          image: tracking:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 50051
+              name: grpc
+            - containerPort: 8081
+              name: health
+          envFrom:
+            - configMapRef:
+                name: tracking-config
+            - secretRef:
+                name: tracking-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 10

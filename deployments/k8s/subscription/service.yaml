@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: subscription
+spec:
+  selector:
+    app: subscription
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: grpc
+      port: 9091
+      targetPort: 9091
+  type: ClusterIP

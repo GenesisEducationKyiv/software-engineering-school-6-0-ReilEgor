@@ -10,3 +10,5 @@ node_modules/
 /playwright/.auth/
 
 benchmark/**/results.json
+
+**/secret.yaml

@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-tracking-config
+data:
+  POSTGRES_DB: "tracker_db"
