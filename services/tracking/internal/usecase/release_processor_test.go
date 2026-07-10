@@ -57,7 +57,9 @@ func setupTransactorOK(f releaseProcessorMockFields) {
 			if !ok {
 				panic("unexpected argument type in WithinTransaction mock")
 			}
-			_ = fn(context.Background())
+			if err := fn(context.Background()); err != nil {
+				return
+			}
 		}).
 		Return(nil).Once()
 }
@@ -69,7 +71,9 @@ func setupTransactorFail(f releaseProcessorMockFields, txErr error) {
 			if !ok {
 				panic("unexpected argument type in WithinTransaction mock")
 			}
-			_ = fn(context.Background())
+			if err := fn(context.Background()); err != nil {
+				return
+			}
 		}).
 		Return(txErr).Once()
 }
