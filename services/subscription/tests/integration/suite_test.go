@@ -13,6 +13,7 @@ import (
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/http/handlers"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,12 +28,17 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	subAdapter "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/adapter"
+	subOutbox "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/outbox"
 	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
+	amqp "github.com/rabbitmq/amqp091-go"
+	tcrabbitmq "github.com/testcontainers/testcontainers-go/modules/rabbitmq"
 )
+
+const outboxRelayInterval = 100 * time.Millisecond
 
 const testAPIKey = "test-api-key"
 
@@ -68,6 +74,9 @@ type APITestSuite struct {
 	pgContainer *postgres.PostgresContainer
 	router      *gin.Engine
 
+	rabbitConn      *sharedRabbitmq.Connection
+	rabbitContainer *tcrabbitmq.RabbitMQContainer
+
 	mockTracking *mockTrackingClient
 }
 
@@ -100,17 +109,47 @@ func (s *APITestSuite) SetupSuite() {
 	pool, err := pgxpool.New(s.ctx, connStr)
 	s.Require().NoError(err, "failed to create pgxpool")
 	s.dbPool = pool
+
+	rabbitContainer, err := tcrabbitmq.Run(s.ctx, "rabbitmq:4.2-management-alpine")
+	s.Require().NoError(err, "failed to start RabbitMQ container")
+	s.rabbitContainer = rabbitContainer
+
+	amqpURL, err := rabbitContainer.AmqpURL(s.ctx)
+	s.Require().NoError(err)
+
+	rabbitConn, _, err := sharedRabbitmq.NewConnection(amqpURL)
+	s.Require().NoError(err, "failed to connect to RabbitMQ")
+	s.rabbitConn = rabbitConn
+}
+
+func (s *APITestSuite) startOutboxRelay(publisher subOutbox.Publisher, interval time.Duration) {
+	s.T().Helper()
+	outboxRepo := subPostgres.NewOutboxRepository(s.dbPool)
+	transactor := sharedPostgres.NewTransactor(s.dbPool)
+	relay := subOutbox.NewRelayWithPublisher(outboxRepo, publisher, interval, transactor)
+
+	ctx, cancel := context.WithCancel(s.ctx)
+	s.T().Cleanup(cancel)
+
+	go func() {
+		if err := relay.Run(ctx); err != nil {
+			s.T().Logf("outbox relay stopped: %v", err)
+		}
+	}()
 }
 
 func (s *APITestSuite) TearDownSuite() {
+	if s.cancel != nil {
+		s.cancel()
+	}
 	if s.dbPool != nil {
 		s.dbPool.Close()
 	}
 	if s.pgContainer != nil {
-		s.NoError(s.pgContainer.Terminate(s.ctx))
+		s.NoError(s.pgContainer.Terminate(context.Background()))
 	}
-	if s.cancel != nil {
-		s.cancel()
+	if s.rabbitContainer != nil {
+		s.NoError(s.rabbitContainer.Terminate(context.Background()))
 	}
 }
 
@@ -167,6 +206,8 @@ func (s *APITestSuite) truncateTables() {
 		"subscriptions",
 		"users",
 		"repositories",
+		"outbox_messages",
+		"subscription_sagas",
 	}
 
 	for _, t := range tables {
@@ -226,6 +267,44 @@ func (s *APITestSuite) doRequestWithKey(method, path string, body io.Reader, key
 	}
 	s.router.ServeHTTP(w, req)
 	return w
+}
+
+func (s *APITestSuite) declareAndPurgeQueue(queue string) *amqp.Channel {
+	s.T().Helper()
+	ch, err := s.rabbitConn.Channel()
+	s.Require().NoError(err)
+	_, err = ch.QueueDeclare(queue, true, false, false, false, nil)
+	s.Require().NoError(err)
+	_, err = ch.QueuePurge(queue, false)
+	s.Require().NoError(err)
+	return ch
+}
+
+func (s *APITestSuite) consume(ch *amqp.Channel, queue string) <-chan amqp.Delivery {
+	s.T().Helper()
+	msgs, err := ch.Consume(queue, "", true, false, false, false, nil)
+	s.Require().NoError(err)
+	return msgs
+}
+
+func (s *APITestSuite) awaitDelivery(msgs <-chan amqp.Delivery, timeout time.Duration) amqp.Delivery {
+	s.T().Helper()
+	select {
+	case d := <-msgs:
+		return d
+	case <-time.After(timeout):
+		s.T().Fatal("timed out waiting for a message")
+		return amqp.Delivery{}
+	}
+}
+
+func (s *APITestSuite) assertNoMoreDeliveries(msgs <-chan amqp.Delivery, wait time.Duration) {
+	s.T().Helper()
+	select {
+	case d := <-msgs:
+		s.T().Fatalf("unexpected extra message: %s", string(d.Body))
+	case <-time.After(wait):
+	}
 }
 
 func (s *APITestSuite) seedSubscription(email, repoName, tag string, confirmed bool) string {

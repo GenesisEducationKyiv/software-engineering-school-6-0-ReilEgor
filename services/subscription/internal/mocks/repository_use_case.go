@@ -5,7 +5,6 @@ package mocks
 import (
 	context "context"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -14,34 +13,22 @@ type RepositoryUseCase struct {
 	mock.Mock
 }
 
-// GetOrCreate provides a mock function with given fields: ctx, repoName
-func (_m *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (*model.RepositoryRef, error) {
-	ret := _m.Called(ctx, repoName)
+// UpdateTag provides a mock function with given fields: ctx, fullName, tag
+func (_m *RepositoryUseCase) UpdateTag(ctx context.Context, fullName string, tag string) error {
+	ret := _m.Called(ctx, fullName, tag)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetOrCreate")
+		panic("no return value specified for UpdateTag")
 	}
 
-	var r0 *model.RepositoryRef
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.RepositoryRef, error)); ok {
-		return rf(ctx, repoName)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *model.RepositoryRef); ok {
-		r0 = rf(ctx, repoName)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, fullName, tag)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.RepositoryRef)
-		}
+		r0 = ret.Error(0)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, repoName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // NewRepositoryUseCase creates a new instance of RepositoryUseCase. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

@@ -18,14 +18,14 @@ const (
 	defaultMaxAttempts = 5
 )
 
-type rawPublisher interface {
+type Publisher interface {
 	Publish(ctx context.Context, queue string, body []byte) error
 }
 
 type Relay struct {
 	outboxRepo  repository.OutboxRepository
 	transactor  repository.Transactor
-	publisher   rawPublisher
+	publisher   Publisher
 	interval    time.Duration
 	batchSize   int
 	maxAttempts int
@@ -38,10 +38,19 @@ func NewRelay(
 	interval time.Duration,
 	transactor repository.Transactor,
 ) *Relay {
+	return NewRelayWithPublisher(outboxRepo, NewRabbitPublisher(conn), interval, transactor)
+}
+
+func NewRelayWithPublisher(
+	outboxRepo repository.OutboxRepository,
+	publisher Publisher,
+	interval time.Duration,
+	transactor repository.Transactor,
+) *Relay {
 	return &Relay{
 		outboxRepo:  outboxRepo,
 		transactor:  transactor,
-		publisher:   &rabbitPublisher{conn: conn},
+		publisher:   publisher,
 		interval:    interval,
 		batchSize:   defaultBatchSize,
 		maxAttempts: defaultMaxAttempts,
@@ -104,6 +113,10 @@ func (r *Relay) processMessage(ctx context.Context, msg sharedModel.OutboxMessag
 
 type rabbitPublisher struct {
 	conn *sharedRabbitmq.Connection
+}
+
+func NewRabbitPublisher(conn *sharedRabbitmq.Connection) Publisher {
+	return &rabbitPublisher{conn: conn}
 }
 
 func (p *rabbitPublisher) Publish(ctx context.Context, queue string, body []byte) error {
