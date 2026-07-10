@@ -19,6 +19,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/repository"
 )
 
+//go:generate mockery --name TrackingRepository --output ../mocks --case underscore --outpkg mocks
 type TrackingRepository interface {
 	GetOrCreate(ctx context.Context, repoName string) (*model.RepositoryRef, error)
 }

@@ -17,7 +17,7 @@ import (
 type userMockFields struct {
 	subsRepo   *mocks.SubscriptionRepository
 	userRepo   *mocks.UserRepository
-	repoUC     *mocks.RepositoryUseCase
+	repoUC     *mocks.TrackingRepository
 	sagaRepo   *mocks.SagaRepository
 	outboxRepo *mocks.OutboxRepository
 	transactor *mocks.Transactor
@@ -28,7 +28,7 @@ func newUserMockFields(t *testing.T) userMockFields {
 	return userMockFields{
 		subsRepo:   mocks.NewSubscriptionRepository(t),
 		userRepo:   mocks.NewUserRepository(t),
-		repoUC:     mocks.NewRepositoryUseCase(t),
+		repoUC:     mocks.NewTrackingRepository(t),
 		sagaRepo:   mocks.NewSagaRepository(t),
 		outboxRepo: mocks.NewOutboxRepository(t),
 		transactor: mocks.NewTransactor(t),
