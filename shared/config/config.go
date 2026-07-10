@@ -17,6 +17,7 @@ type Config struct {
 type SubscriptionDBConfig struct {
 	DSN               string        `env:"SUBSCRIPTION_DB_SOURCE"`
 	MaxOpenConns      int32         `env:"SUBSCRIPTION_DB_MAX_OPEN_CONNS"`
+	MinConns          int32         `env:"SUBSCRIPTION_DB_MIN_CONNS"`
 	MaxConnIdleTime   time.Duration `env:"SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME"`
 	HealthCheckPeriod time.Duration `env:"SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD"`
 }
@@ -24,6 +25,7 @@ type SubscriptionDBConfig struct {
 type TrackingDBConfig struct {
 	DSN               string        `env:"TRACKING_DB_SOURCE"`
 	MaxOpenConns      int32         `env:"TRACKING_DB_MAX_OPEN_CONNS"`
+	MinConns          int32         `env:"TRACKING_DB_MIN_CONNS"`
 	MaxConnIdleTime   time.Duration `env:"TRACKING_DB_MAX_CONN_IDLE_TIME"`
 	HealthCheckPeriod time.Duration `env:"TRACKING_DB_HEALTH_CHECK_PERIOD"`
 }
@@ -77,6 +79,22 @@ type AppConfig struct {
 
 type RabbitMQConfig struct {
 	URL string `env:"RABBITMQ_URL"`
+}
+
+type SubscriptionClientConfig struct {
+	SubscriptionGRPCAddr string `env:"SUBSCRIPTION_GRPC_ADDR"`
+	SubscriptionHTTPAddr string `env:"SUBSCRIPTION_HTTP_ADDR"`
+	APIKey               string `env:"APP_API_KEY"`
+	TagPublisherType     string `env:"TAG_PUBLISHER_TYPE"` // "grpc" (default) or "http"
+}
+
+type TrackingClientConfig struct {
+	TrackingGRPCAddr string `env:"TRACKING_GRPC_ADDR"`
+	APIKey           string `env:"APP_API_KEY"`
+}
+
+type TrackingGRPCConfig struct {
+	Port string `env:"TRACKING_GRPC_PORT"`
 }
 
 type SenderConfig struct {

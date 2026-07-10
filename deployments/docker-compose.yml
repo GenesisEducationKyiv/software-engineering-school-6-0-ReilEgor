@@ -51,7 +51,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ../migrations/subscription:/migrations
+      - ../services/subscription/migrations:/migrations
     command: [
       "-path", "/migrations",
       "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${SUBSCRIPTION_POSTGRES_DB}?sslmode=disable",
@@ -65,7 +65,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ../migrations/tracker:/migrations
+      - ../services/tracking/migrations:/migrations
     command: [
       "-path", "/migrations",
       "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${TRACKER_POSTGRES_DB}?sslmode=disable",
@@ -96,39 +96,11 @@ services:
   repo-notifier-service:
     build:
       context: ..
-      dockerfile: deployments/Dockerfile.api
+      dockerfile: services/subscription/Dockerfile
     container_name: repo-notifier-service
     restart: always
-    environment:
-      # Database
-      SUBSCRIPTION_DB_SOURCE: ${SUBSCRIPTION_DB_SOURCE}
-      SUBSCRIPTION_DB_MAX_OPEN_CONNS: ${SUBSCRIPTION_DB_MAX_OPEN_CONNS}
-      SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME: ${SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME}
-      SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD: ${SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD}
-      # Application
-      APP_HTTP_PORT: ${APP_HTTP_PORT}
-      APP_GRPC_PORT: ${APP_GRPC_PORT}
-      APP_BASE_URL: ${APP_BASE_URL}
-      APP_API_KEY: ${APP_API_KEY}
-      # HTTP
-      HTTP_SHUTDOWN_TIMEOUT: ${HTTP_SHUTDOWN_TIMEOUT}
-      HTTP_REQUEST_TIMEOUT: ${HTTP_REQUEST_TIMEOUT}
-      # Redis
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_DB: ${REDIS_DB}
-      # Rate limiting
-      RATE_LIMIT: ${RATE_LIMIT}
-      # GitHub
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
-      GITHUB_HTTP_TIMEOUT: ${GITHUB_HTTP_TIMEOUT}
-      GITHUB_CB_MAX_REQUESTS: ${GITHUB_CB_MAX_REQUESTS}
-      GITHUB_CB_INTERVAL: ${GITHUB_CB_INTERVAL}
-      GITHUB_CB_TIMEOUT: ${GITHUB_CB_TIMEOUT}
-      GITHUB_CB_FAILURE_THRESHOLD: ${GITHUB_CB_FAILURE_THRESHOLD}
-      # RabbitMQ
-      RABBITMQ_URL: ${RABBITMQ_URL}
+    env_file:
+      - ./env/subscription.env
     ports:
       - "${APP_HTTP_PORT}:${APP_HTTP_PORT}"
       - "${APP_GRPC_PORT}:${APP_GRPC_PORT}"
@@ -157,35 +129,11 @@ services:
   notification-worker:
     build:
       context: ..
-      dockerfile: deployments/Dockerfile.notification-worker
+      dockerfile: services/tracking/Dockerfile
     container_name: notification-worker
     restart: always
-    environment:
-      # Database
-      TRACKING_DB_SOURCE: ${TRACKING_DB_SOURCE}
-      TRACKING_DB_MAX_OPEN_CONNS: ${TRACKING_DB_MAX_OPEN_CONNS}
-      TRACKING_DB_MAX_CONN_IDLE_TIME: ${TRACKING_DB_MAX_CONN_IDLE_TIME}
-      TRACKING_DB_HEALTH_CHECK_PERIOD: ${TRACKING_DB_HEALTH_CHECK_PERIOD}
-      # Application
-      APP_BASE_URL: ${APP_BASE_URL}
-      # Redis
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_DB: ${REDIS_DB}
-      # GitHub
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
-      GITHUB_HTTP_TIMEOUT: ${GITHUB_HTTP_TIMEOUT}
-      GITHUB_CB_MAX_REQUESTS: ${GITHUB_CB_MAX_REQUESTS}
-      GITHUB_CB_INTERVAL: ${GITHUB_CB_INTERVAL}
-      GITHUB_CB_TIMEOUT: ${GITHUB_CB_TIMEOUT}
-      GITHUB_CB_FAILURE_THRESHOLD: ${GITHUB_CB_FAILURE_THRESHOLD}
-      # Worker
-      NOTIFICATION_INTERVAL: ${NOTIFICATION_INTERVAL}
-      WORKER_MAX_SEND_WORKERS: ${WORKER_MAX_SEND_WORKERS}
-      WORKER_HEALTH_PORT: ${WORKER_HEALTH_PORT}
-      # RabbitMQ
-      RABBITMQ_URL: ${RABBITMQ_URL}
+    env_file:
+      - ./env/tracking.env
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${WORKER_HEALTH_PORT}/health || exit 1"]
       interval: 30s
@@ -199,6 +147,8 @@ services:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+      repo-notifier-service:
+        condition: service_healthy
     networks:
       - internal
       - monitoring
@@ -211,23 +161,11 @@ services:
   notification-sender:
     build:
       context: ..
-      dockerfile: deployments/Dockerfile.notification-sender
+      dockerfile: services/notification/Dockerfile
     container_name: notification-sender
     restart: always
-    environment:
-      # Application
-      APP_BASE_URL: ${APP_BASE_URL}
-      # Email
-      EMAIL_HOST: ${EMAIL_HOST}
-      EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      EMAIL_FROM: ${EMAIL_FROM}
-      # Sender
-      SENDER_HEALTH_PORT: ${SENDER_HEALTH_PORT}
-      WORKER_SEND_TIMEOUT: ${WORKER_SEND_TIMEOUT}
-      # RabbitMQ
-      RABBITMQ_URL: ${RABBITMQ_URL}
+    env_file:
+      - ./env/notification.env
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${SENDER_HEALTH_PORT}/health || exit 1"]
       interval: 30s

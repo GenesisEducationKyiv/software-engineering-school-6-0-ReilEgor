@@ -1,0 +1,181 @@
+package github
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog"
+	"github.com/sony/gobreaker"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/tracking/internal/domain/service"
+)
+
+const (
+	cbName = "GitHubAPI"
+
+	githubAPIBase    = "https://api.github.com"
+	githubAPIVersion = "2026-03-10"
+	userAgent        = "RepoNotifier/1.0"
+
+	componentGithubClient = "GithubClient"
+)
+
+var ErrUnexpectedStatus = errors.New("unexpected github api status")
+
+type GitHubClient struct {
+	httpClient *http.Client
+	cb         *gobreaker.CircuitBreaker
+	apiBase    string
+	token      string
+}
+
+func NewGitHubClient(cfg config.GitHubConfig) *GitHubClient {
+	settings := gobreaker.Settings{
+		Name:        cbName,
+		MaxRequests: cfg.CBMaxRequests,
+		Interval:    cfg.CBInterval,
+		Timeout:     cfg.CBTimeout,
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			return counts.ConsecutiveFailures >= cfg.CBFailureThreshold
+		},
+		OnStateChange: func(name string, from, to gobreaker.State) {
+			slog.Warn("circuit breaker state changed",
+				slog.String("component", componentGithubClient),
+				slog.String("breaker", name),
+				slog.String("from", from.String()),
+				slog.String("to", to.String()),
+			)
+		},
+	}
+	return &GitHubClient{
+		httpClient: &http.Client{Timeout: cfg.HTTPTimeout},
+		cb:         gobreaker.NewCircuitBreaker(settings),
+		apiBase:    githubAPIBase,
+		token:      cfg.Token,
+	}
+}
+
+func (c *GitHubClient) log(ctx context.Context) *slog.Logger {
+	return ctxlog.FromCtx(ctx).With(slog.String("component", componentGithubClient))
+}
+
+func (c *GitHubClient) RepoExists(ctx context.Context, fullName string) (bool, error) {
+	const op = "GitHubClient.RepoExists"
+	c.log(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName))
+
+	result, err := c.cb.Execute(func() (any, error) {
+		return c.repoExistsRequest(ctx, fullName)
+	})
+	if err != nil {
+		return false, c.handleCBError(ctx, op, err)
+	}
+
+	exists, ok := result.(bool)
+	if !ok {
+		return false, fmt.Errorf("%s: unexpected result type: %T", op, result)
+	}
+	return exists, nil
+}
+
+func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*model.ReleaseInfo, error) {
+	const op = "GitHubClient.GetLatestRelease"
+	c.log(ctx).DebugContext(ctx, "called", slog.String("op", op), slog.String("repo", fullName))
+
+	result, err := c.cb.Execute(func() (any, error) {
+		return c.latestReleaseRequest(ctx, fullName)
+	})
+	if err != nil {
+		return nil, c.handleCBError(ctx, op, err)
+	}
+
+	info, ok := result.(*model.ReleaseInfo)
+	if !ok {
+		return nil, fmt.Errorf("%s: unexpected result type: %T", op, result)
+	}
+	return info, nil
+}
+
+func (c *GitHubClient) handleCBError(ctx context.Context, op string, err error) error {
+	if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
+		c.log(ctx).WarnContext(ctx, "circuit breaker open", slog.String("op", op))
+		return model.ErrGitHubUnavailable
+	}
+	return fmt.Errorf("%s: %w", op, err)
+}
+
+func (c *GitHubClient) repoExistsRequest(ctx context.Context, fullName string) (bool, error) {
+	url := fmt.Sprintf("%s/repos/%s", c.apiBase, fullName)
+	resp, err := c.doRequest(ctx, http.MethodHead, url)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.log(ctx).WarnContext(ctx, "failed to close response body", slog.String("error", closeErr.Error()))
+		}
+	}()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	case http.StatusForbidden:
+		c.log(ctx).WarnContext(ctx, "github rate limit exceeded", slog.String("repo", fullName))
+		return false, model.ErrRateLimitExceeded
+	default:
+		return false, fmt.Errorf("%w: %s", ErrUnexpectedStatus, resp.Status)
+	}
+}
+
+func (c *GitHubClient) latestReleaseRequest(ctx context.Context, fullName string) (*model.ReleaseInfo, error) {
+	url := fmt.Sprintf("%s/repos/%s/releases/latest", c.apiBase, fullName)
+	resp, err := c.doRequest(ctx, http.MethodGet, url)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.log(ctx).WarnContext(ctx, "failed to close response body", slog.String("error", closeErr.Error()))
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, service.ErrReleaseNotFound
+		}
+		return nil, fmt.Errorf("%w: %s", ErrUnexpectedStatus, resp.Status)
+	}
+
+	var info model.ReleaseInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	return &info, nil
+}
+
+func (c *GitHubClient) doRequest(ctx context.Context, method, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", githubAPIVersion)
+	req.Header.Set("User-Agent", userAgent)
+	if c.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("do request: %w", err)
+	}
+	return resp, nil
+}

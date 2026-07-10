@@ -1,0 +1,131 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/caarlos0/env/v11"
+	"golang.org/x/sync/errgroup"
+
+	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+)
+
+type Config struct {
+	SubscriptionDB sharedConfig.SubscriptionDBConfig
+	HTTP           sharedConfig.HTTPConfig
+	GRPC           sharedConfig.GRPCConfig
+	Redis          sharedConfig.RedisConfig
+	App            sharedConfig.AppConfig
+	RabbitMQ       sharedConfig.RabbitMQConfig
+	TrackingClient sharedConfig.TrackingClientConfig
+}
+
+// Swagger Metadata for API Documentation
+//
+//	@title						RepoNotifier API
+//	@version					1.0    	      1.0
+//	@description				Service for tracking GitHub releases.
+//	@securityDefinitions.apiKey	ApiKeyAuth
+//	@in							header
+//	@name						X-API-Key
+//
+//	@host						localhost:8080
+//	@BasePath					/api/v1.
+func main() {
+	myLogger := setupLogger()
+	cfg, err := loadConfig(myLogger)
+	if err != nil {
+		os.Exit(1)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	app, cleanup, err := InitializeApp(ctx, cfg)
+	if err != nil {
+		myLogger.Error("application initialization failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
+		myLogger.Info("HTTP server starting", slog.String("addr", addr))
+		return startHTTPServer(ctx, app, cfg, myLogger)
+	})
+
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
+		myLogger.Info("gRPC server starting", slog.String("addr", addr))
+		return startGRPCServer(ctx, app, cfg, myLogger)
+	})
+
+	g.Go(func() error {
+		myLogger.Info("saga result consumer starting")
+		return app.SagaResultConsumer.Start(ctx)
+	})
+
+	g.Go(func() error {
+		myLogger.Info("outbox relay starting")
+		return app.OutboxRelay.Run(ctx)
+	})
+
+	if err := g.Wait(); err != nil {
+		myLogger.Error("server stopped", slog.Any("error", err))
+	}
+}
+
+func setupLogger() *slog.Logger {
+	myLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})).
+		With(slog.String("service", "subscription"))
+	slog.SetDefault(myLogger)
+	return myLogger
+}
+
+func loadConfig(l *slog.Logger) (Config, error) {
+	var cfg Config
+	if err := env.Parse(&cfg); err != nil {
+		wrapErr := fmt.Errorf("failed to parse environment variables: %w", err)
+		l.Error("config load error", slog.Any("error", wrapErr))
+		return cfg, wrapErr
+	}
+	return cfg, nil
+}
+
+func startHTTPServer(ctx context.Context, app *App, cfg Config, l *slog.Logger) error {
+	addr := fmt.Sprintf(":%s", cfg.HTTP.Port)
+	l.Info("HTTP server starting", slog.String("addr", addr))
+	if err := app.HTTPServer.Run(ctx, addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("http server error: %w", err)
+	}
+	return nil
+}
+
+func startGRPCServer(ctx context.Context, app *App, cfg Config, l *slog.Logger) error {
+	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
+	lc := net.ListenConfig{}
+	lis, err := lc.Listen(ctx, "tcp", addr)
+	if err != nil {
+		return fmt.Errorf("gRPC listen error: %w", err)
+	}
+	go func() {
+		<-ctx.Done()
+		l.Info("gRPC server shutting down")
+		app.GrpcServer.GracefulStop()
+	}()
+
+	l.Info("gRPC server starting", slog.String("addr", addr))
+	if err := app.GrpcServer.Serve(lis); err != nil {
+		return fmt.Errorf("gRPC server error: %w", err)
+	}
+	return nil
+}
