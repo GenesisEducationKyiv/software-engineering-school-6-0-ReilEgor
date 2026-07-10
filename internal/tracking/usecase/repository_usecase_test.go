@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
-	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/mocks"
 )
 
 type repoMockFields struct {
@@ -178,8 +178,6 @@ func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 					}),
 					"golang/go",
 				).Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-				f.repoRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Repository")).
-					Return(nil).Once()
 			},
 			wantRepo: &model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 		},
@@ -189,8 +187,6 @@ func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
 					Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-				f.repoRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Repository")).
-					Return(nil).Once()
 			},
 			wantRepo: &model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.22.0"},
 		},
@@ -218,17 +214,6 @@ func TestRepositoryUseCase_CheckForUpdates(t *testing.T) {
 			setup: func(f repoMockFields) {
 				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
 					Return(nil, errors.New("api error")).Once()
-			},
-			expectErr: true,
-		},
-		{
-			name: "error - Update in DB fails",
-			repo: model2.Repository{ID: 1, FullName: "golang/go", LastSeenTag: "v1.21.0"},
-			setup: func(f repoMockFields) {
-				f.ghClient.On("GetLatestRelease", mock.Anything, "golang/go").
-					Return(&model2.ReleaseInfo{TagName: "v1.22.0"}, nil).Once()
-				f.repoRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Repository")).
-					Return(errors.New("db error")).Once()
 			},
 			expectErr: true,
 		},

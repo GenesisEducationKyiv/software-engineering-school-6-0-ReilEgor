@@ -5,11 +5,14 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/wire"
 	"google.golang.org/grpc"
 
 	subscriptionPort "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/port"
+	subRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/outbox"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
@@ -27,9 +30,16 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*sharedRabbitmq.Conne
 	return sharedRabbitmq.NewConnection(cfg.URL)
 }
 
+func ProvideOutboxInterval() time.Duration {
+	return 5 * time.Second
+}
+
 type App struct {
-	HTTPServer *http.GinServer
-	GrpcServer *grpc.Server
+	HTTPServer         *http.GinServer
+	GrpcServer         *grpc.Server
+	SagaResultConsumer *subRabbitmq.SagaResultConsumer
+	TagUpdatedConsumer *subRabbitmq.TagUpdatedConsumer
+	OutboxRelay        *outbox.Relay
 }
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
@@ -40,6 +50,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		ProvideHTTPConfig,
 		ProvideAppConfig,
 		ProvideRabbitMQConfig,
+		ProvideOutboxInterval,
 		SharedSet,
 		CacheSet,
 		GitHubSet,
@@ -49,6 +60,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		SubscriptionUseCaseSet,
 		BrokerSet,
 		GrpcSet,
+		outbox.NewRelay,
 		http.NewGinServer,
 		wire.Bind(new(subscriptionPort.RepositoryUseCase), new(*trackingUsecase.RepositoryUseCase)),
 		wire.Struct(new(App), "*"),

@@ -16,10 +16,10 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 )
 
-func newTestConsumer(t *testing.T) (*Consumer, *notificationmocks.NotificationUseCase) {
+func newTestConsumer(t *testing.T) (*NotificationConsumer, *notificationmocks.NotificationUseCase) {
 	t.Helper()
 	uc := notificationmocks.NewNotificationUseCase(t)
-	return NewConsumer(nil, uc, time.Second), uc
+	return NewNotificationConsumer(nil, uc, time.Second), uc
 }
 
 func TestConsumer_handle(t *testing.T) {

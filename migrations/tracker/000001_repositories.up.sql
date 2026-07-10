@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS repositories (
+    id            BIGSERIAL PRIMARY KEY,
+    full_name     VARCHAR(255) UNIQUE NOT NULL,
+    last_seen_tag VARCHAR(100),
+    updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);

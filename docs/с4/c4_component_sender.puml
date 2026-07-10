@@ -1,0 +1,48 @@
+@startuml C4_Component_Sender
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title RepoNotifier — Notification Sender Components (C4 Level 3)
+
+ContainerQueue(rabbitmq, "RabbitMQ", "", "")
+System_Ext(smtp, "SMTP Server", "Gmail / Mailtrap / SendGrid")
+
+Container_Boundary(sender, "Notification Sender") {
+
+    ' ── Consumers ───────────────────────────────────────────
+    Component(notification_consumer, "NotificationConsumer", "AMQP consumer", "Consumes SendNotificationCommand\nfrom 'notifications' queue.\nConcurrent workers: WORKER_MAX_SEND_WORKERS.")
+
+    Component(confirmation_consumer, "ConfirmationConsumer", "AMQP consumer", "Consumes SendConfirmationCommand\nfrom 'confirmations' queue.")
+
+    ' ── Use Case ────────────────────────────────────────────
+    Component(notification_usecase, "NotificationUseCase", "Go", "SendNotification — builds and sends\nrelease email to subscriber.\nSendConfirmation — builds and sends\nconfirmation email, then publishes result.")
+
+    ' ── Email Infrastructure ────────────────────────────────
+    Component(email_service, "EmailService", "Go", "Composes HTML/text email bodies\nfrom templates:\n• release notification\n• subscription confirmation")
+
+    Component(smtp_client, "SMTPClient", "Go net/smtp", "Authenticates with SMTP server\nand transmits email messages\nover TLS.")
+
+    ' ── Publisher ───────────────────────────────────────────
+    Component(saga_result_producer, "SagaResultProducer", "AMQP client", "Publishes ConfirmationResultEvent\nto 'saga.confirmation.results' queue\nafter confirmation email is sent.")
+}
+
+' Consumers → Use Case
+Rel(notification_consumer, rabbitmq, "Consume SendNotificationCommand", "AMQP")
+Rel(notification_consumer, notification_usecase, "SendNotification(command)")
+
+Rel(confirmation_consumer, rabbitmq, "Consume SendConfirmationCommand", "AMQP")
+Rel(confirmation_consumer, notification_usecase, "SendConfirmation(command)")
+
+' Use Case → Email infrastructure
+Rel(notification_usecase, email_service, "Build email body from template")
+Rel(notification_usecase, smtp_client, "Send composed email")
+Rel(notification_usecase, saga_result_producer, "Publish result\nafter confirmation sent")
+
+' Email → External
+Rel(smtp_client, smtp, "SMTP AUTH + DATA", "SMTP / TLS")
+
+' Publisher → Broker
+Rel(saga_result_producer, rabbitmq, "Publish ConfirmationResultEvent", "AMQP")
+
+@enduml

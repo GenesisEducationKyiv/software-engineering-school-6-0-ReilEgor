@@ -13,17 +13,17 @@ type ConfirmationSender struct {
 	mock.Mock
 }
 
-// SendConfirmation provides a mock function with given fields: ctx, to, repoName, token
-func (_m *ConfirmationSender) SendConfirmation(ctx context.Context, to string, repoName string, token string) error {
-	ret := _m.Called(ctx, to, repoName, token)
+// SendConfirmation provides a mock function with given fields: ctx, to, repoName, token, sagaID, subscriptionID
+func (_m *ConfirmationSender) SendConfirmation(ctx context.Context, to string, repoName string, token string, sagaID int64, subscriptionID int64) error {
+	ret := _m.Called(ctx, to, repoName, token, sagaID, subscriptionID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SendConfirmation")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
-		r0 = rf(ctx, to, repoName, token)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int64, int64) error); ok {
+		r0 = rf(ctx, to, repoName, token, sagaID, subscriptionID)
 	} else {
 		r0 = ret.Error(0)
 	}

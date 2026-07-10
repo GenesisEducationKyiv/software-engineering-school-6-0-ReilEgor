@@ -35,7 +35,7 @@ var NotificationsProcessedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 var NotificationProcessingDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name:    "app_notification_processing_duration_seconds",
 	Help:    "Duration of full notification batch processing in seconds.",
-	Buckets: prometheus.DefBuckets,
+	Buckets: []float64{1, 5, 15, 30, 60, 120, 300},
 })
 
 var NotificationEmailsSentTotal = promauto.NewCounterVec(prometheus.CounterOpts{

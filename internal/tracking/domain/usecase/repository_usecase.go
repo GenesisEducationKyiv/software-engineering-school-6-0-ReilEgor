@@ -10,6 +10,8 @@ import (
 type RepositoryUseCase interface {
 	GetOrCreate(ctx context.Context, repoName string) (*model.Repository, error)
 	CheckForUpdates(ctx context.Context, repo model.Repository) (*model.Repository, error)
+	UpdateRepo(ctx context.Context, repo *model.Repository) error
+	Delete(ctx context.Context, repoName string) error
 }
 
 type ReleaseProcessorUseCase interface {

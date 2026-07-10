@@ -3,39 +3,83 @@ package usecase
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
+	subMocks "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/mocks"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
 
 type userMockFields struct {
-	subsRepo     *mocks2.SubscriptionRepository
-	userRepo     *mocks2.UserRepository
-	repoUC       *mocks2.RepositoryUseCase
-	emailService *mocks2.ConfirmationSender
+	subsRepo   *subMocks.SubscriptionRepository
+	userRepo   *mocks2.UserRepository
+	repoUC     *mocks2.RepositoryUseCase
+	sagaRepo   *subMocks.SagaRepository
+	outboxRepo *subMocks.OutboxRepository
+	transactor *subMocks.Transactor
 }
 
 func newUserMockFields(t *testing.T) userMockFields {
 	t.Helper()
 	return userMockFields{
-		subsRepo:     mocks2.NewSubscriptionRepository(t),
-		userRepo:     mocks2.NewUserRepository(t),
-		repoUC:       mocks2.NewRepositoryUseCase(t),
-		emailService: mocks2.NewConfirmationSender(t),
+		subsRepo:   subMocks.NewSubscriptionRepository(t),
+		userRepo:   mocks2.NewUserRepository(t),
+		repoUC:     mocks2.NewRepositoryUseCase(t),
+		sagaRepo:   subMocks.NewSagaRepository(t),
+		outboxRepo: subMocks.NewOutboxRepository(t),
+		transactor: subMocks.NewTransactor(t),
 	}
 }
 
 func newUserUC(f userMockFields) *UserUseCase {
-	newUseUsecase, _ := NewUserUseCase(context.Background(), f.subsRepo, f.userRepo, f.repoUC, f.emailService)
+	orchestrator := saga.NewOrchestrator(f.sagaRepo, f.subsRepo, f.outboxRepo, f.transactor)
+	newUseUsecase, _ := NewUserUseCase(
+		context.Background(),
+		f.subsRepo,
+		f.userRepo,
+		f.repoUC,
+		orchestrator,
+		f.transactor,
+		f.outboxRepo,
+	)
 	return newUseUsecase
+}
+
+// executes the callback directly, simulating a successful transaction.
+func setupTransactorOK(f userMockFields) {
+	f.transactor.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
+		Run(func(args mock.Arguments) {
+			fn, ok := args.Get(1).(func(context.Context) error)
+			if !ok {
+				panic("unexpected argument type in WithinTransaction mock")
+			}
+			if err := fn(context.Background()); err != nil {
+				return
+			}
+		}).
+		Return(nil).Once()
+}
+
+// simulates a transaction that rolls back and returns an error.
+func setupTransactorFail(f userMockFields, txErr error) {
+	f.transactor.On("WithinTransaction", mock.Anything, mock.AnythingOfType("func(context.Context) error")).
+		Run(func(args mock.Arguments) {
+			fn, ok := args.Get(1).(func(context.Context) error)
+			if !ok {
+				panic("unexpected argument type in WithinTransaction mock")
+			}
+			if err := fn(context.Background()); err != nil {
+				return
+			}
+		}).
+		Return(txErr).Once()
 }
 
 func TestUserUseCase_Subscribe(t *testing.T) {
@@ -55,11 +99,13 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
-				f.emailService.On("SendConfirmation", mock.Anything, "user@example.com", "golang/go", mock.AnythingOfType("string")).
-					Return(nil).
-					Maybe()
+				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
+					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
+					Return(nil).Once()
 			},
 		},
 		{
@@ -79,11 +125,13 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 						}
 						u.ID = 99
 					}).Return(nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
 					Return(nil).Once()
-				f.emailService.On("SendConfirmation", mock.Anything, "new@example.com", "golang/go", mock.AnythingOfType("string")).
-					Return(nil).
-					Maybe()
+				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
+					Return(&sharedModel.SubscriptionSaga{ID: 1}, nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
+					Return(nil).Once()
 			},
 		},
 		{
@@ -123,7 +171,7 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:     "error - Save subscription fails",
+			name:     "error - Save subscription fails, transaction rolled back",
 			email:    "user@example.com",
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
@@ -131,8 +179,28 @@ func TestUserUseCase_Subscribe(t *testing.T) {
 					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				saveErr := errors.New("save error")
+				setupTransactorFail(f, saveErr)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
-					Return(errors.New("save error")).Once()
+					Return(saveErr).Once()
+			},
+			expectErr: true,
+		},
+		{
+			name:     "error - Create saga fails, subscription rolled back",
+			email:    "user@example.com",
+			repoName: "golang/go",
+			setup: func(f userMockFields) {
+				f.repoUC.On("GetOrCreate", mock.Anything, "golang/go").
+					Return(&trackingModel.Repository{ID: 1, FullName: "golang/go"}, nil).Once()
+				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
+					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				sagaErr := errors.New("saga create error")
+				setupTransactorFail(f, sagaErr)
+				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
+					Return(nil).Once()
+				f.sagaRepo.On("Create", mock.Anything, mock.AnythingOfType("int64")).
+					Return((*sharedModel.SubscriptionSaga)(nil), sagaErr).Once()
 			},
 			expectErr: true,
 		},
@@ -170,7 +238,10 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			setup: func(f userMockFields) {
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Delete", mock.Anything, int64(10), "golang/go").
+					Return(nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
 		},
@@ -198,10 +269,12 @@ func TestUserUseCase_Unsubscribe(t *testing.T) {
 			email:    "user@example.com",
 			repoName: "golang/go",
 			setup: func(f userMockFields) {
+				deleteErr := errors.New("delete error")
 				f.userRepo.On("GetByEmail", mock.Anything, "user@example.com").
 					Return(subModel.User{ID: 10, Email: "user@example.com"}, nil).Once()
+				setupTransactorFail(f, deleteErr)
 				f.subsRepo.On("Delete", mock.Anything, int64(10), "golang/go").
-					Return(errors.New("delete error")).Once()
+					Return(deleteErr).Once()
 			},
 			expectErr: true,
 		},
@@ -300,15 +373,19 @@ func TestUserUseCase_Confirm(t *testing.T) {
 			setup: func(f userMockFields) {
 				sub := &subModel.Subscription{
 					UserID:         1,
+					Email:          "user@example.com",
 					RepositoryName: "golang/go",
 					Token:          "valid-token",
 					Confirmed:      false,
 				}
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
 					Return(sub, nil).Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Save", mock.Anything, mock.MatchedBy(func(s *subModel.Subscription) bool {
 					return s.Confirmed == true
 				})).Return(nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
+					Return(nil).Once()
 			},
 		},
 		{
@@ -330,16 +407,19 @@ func TestUserUseCase_Confirm(t *testing.T) {
 			name:  "error - Save fails after confirm",
 			token: "valid-token",
 			setup: func(f userMockFields) {
+				saveErr := errors.New("db error")
 				sub := &subModel.Subscription{
 					UserID:         1,
+					Email:          "user@example.com",
 					RepositoryName: "golang/go",
 					Token:          "valid-token",
 					Confirmed:      false,
 				}
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
 					Return(sub, nil).Once()
+				setupTransactorFail(f, saveErr)
 				f.subsRepo.On("Save", mock.Anything, mock.AnythingOfType("*model.Subscription")).
-					Return(errors.New("db error")).Once()
+					Return(saveErr).Once()
 			},
 			expectErr: true,
 		},
@@ -378,9 +458,12 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			token: "valid-token",
 			setup: func(f userMockFields) {
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
-					Return(&subModel.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
+					Return(&subModel.Subscription{UserID: 5, Email: "user@example.com", RepositoryName: "golang/go", Token: "valid-token"}, nil).
 					Once()
+				setupTransactorOK(f)
 				f.subsRepo.On("Delete", mock.Anything, int64(5), "golang/go").
+					Return(nil).Once()
+				f.outboxRepo.On("Insert", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).
 					Return(nil).Once()
 			},
 		},
@@ -403,11 +486,13 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			name:  "error - Delete fails",
 			token: "valid-token",
 			setup: func(f userMockFields) {
+				deleteErr := errors.New("delete error")
 				f.subsRepo.On("GetByToken", mock.Anything, "valid-token").
-					Return(&subModel.Subscription{UserID: 5, RepositoryName: "golang/go", Token: "valid-token"}, nil).
+					Return(&subModel.Subscription{UserID: 5, Email: "user@example.com", RepositoryName: "golang/go", Token: "valid-token"}, nil).
 					Once()
+				setupTransactorFail(f, deleteErr)
 				f.subsRepo.On("Delete", mock.Anything, int64(5), "golang/go").
-					Return(errors.New("delete error")).Once()
+					Return(deleteErr).Once()
 			},
 			expectErr: true,
 		},
@@ -429,53 +514,6 @@ func TestUserUseCase_UnsubscribeByToken(t *testing.T) {
 			default:
 				require.NoError(t, err)
 			}
-		})
-	}
-}
-
-func TestUserUseCase_sendConfirmationEmail(t *testing.T) {
-	tests := []struct {
-		name          string
-		mockErr       error
-		expectedCalls int
-	}{
-		{
-			name:          "send fails - error branch entered",
-			mockErr:       errors.New("smtp error"),
-			expectedCalls: 1,
-		},
-		{
-			name:          "send succeeds - no error branch",
-			mockErr:       nil,
-			expectedCalls: 1,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := newUserMockFields(t)
-
-			var callCount atomic.Int32
-
-			f.emailService.On("SendConfirmation",
-				mock.MatchedBy(func(ctx context.Context) bool {
-					deadline, hasDeadline := ctx.Deadline()
-					if !hasDeadline {
-						return false
-					}
-					remaining := time.Until(deadline)
-					return remaining > (sendConfirmationEmailctxTimeout-1)*time.Second &&
-						remaining <= sendConfirmationEmailctxTimeout*time.Second
-				}),
-				"user@example.com", "golang/go", "tok-123",
-			).Run(func(_ mock.Arguments) {
-				callCount.Add(1)
-			}).Return(tt.mockErr).Once()
-
-			uc := newUserUC(f)
-			uc.sendConfirmationEmail("user@example.com", "golang/go", "tok-123")
-			assert.Equal(t, int32(tt.expectedCalls), callCount.Load())
-			f.emailService.AssertExpectations(t)
 		})
 	}
 }

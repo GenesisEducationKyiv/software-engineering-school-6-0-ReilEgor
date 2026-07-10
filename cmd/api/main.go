@@ -70,6 +70,21 @@ func main() {
 		return startGRPCServer(ctx, app, cfg, myLogger)
 	})
 
+	g.Go(func() error {
+		myLogger.Info("saga result consumer starting")
+		return app.SagaResultConsumer.Start(ctx)
+	})
+
+	g.Go(func() error {
+		myLogger.Info("tag updated consumer starting")
+		return app.TagUpdatedConsumer.Start(ctx)
+	})
+
+	g.Go(func() error {
+		myLogger.Info("outbox relay starting")
+		return app.OutboxRelay.Run(ctx)
+	})
+
 	if err := g.Wait(); err != nil {
 		myLogger.Error("server stopped", slog.Any("error", err))
 	}

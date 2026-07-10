@@ -26,6 +26,7 @@ import (
 	redisClient "github.com/redis/go-redis/v9"
 
 	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/handlers"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
 	servicesRealizationGitHub "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
@@ -33,6 +34,7 @@ import (
 	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
 	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
 	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
+	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
 const testAPIKey = "test-api-key"
@@ -82,7 +84,7 @@ func (s *APITestSuite) SetupSuite() {
 
 	connStr, err := pgContainer.ConnectionString(s.ctx, "sslmode=disable")
 	s.Require().NoError(err)
-	s.Require().NoError(runMigrations(connStr, "../../migrations"))
+	s.Require().NoError(runMigrations(connStr, "../../migrations/subscription"))
 
 	pool, err := pgxpool.New(s.ctx, connStr)
 	s.Require().NoError(err, "failed to create pgxpool")
@@ -151,7 +153,19 @@ func (s *APITestSuite) buildRouter() {
 	subsRepo := subPostgres.NewSubscriptionRepository(s.dbPool)
 
 	repoUseCase := trackingUsecase.NewRepositoryUseCase(repoRepo, cachedGitHub)
-	userUseCase, _ := usecase.NewUserUseCase(context.Background(), subsRepo, userRepo, repoUseCase, s.mockSMTP)
+	sagaRepo := subPostgres.NewSagaRepository(s.dbPool)
+	outboxRepo := subPostgres.NewOutboxRepository(s.dbPool)
+	transactor := sharedPostgres.NewTransactor(s.dbPool)
+	orchestrator := saga.NewOrchestrator(sagaRepo, subsRepo, outboxRepo, transactor)
+	userUseCase, _ := usecase.NewUserUseCase(
+		context.Background(),
+		subsRepo,
+		userRepo,
+		repoUseCase,
+		orchestrator,
+		transactor,
+		outboxRepo,
+	)
 
 	handler := handlers.NewHandler(userUseCase, testAPIKey)
 

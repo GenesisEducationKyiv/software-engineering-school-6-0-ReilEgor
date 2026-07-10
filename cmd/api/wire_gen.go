@@ -9,7 +9,9 @@ package main
 import (
 	"context"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/infrastructure/outbox"
 	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/grpc"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http"
 	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
@@ -21,6 +23,7 @@ import (
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 	grpc2 "google.golang.org/grpc"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -46,27 +49,34 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
-	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
-	connection, cleanup2, err := ProvideRabbitMQConnection(rabbitMQConfig)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
-	publisher, err := rabbitmq.NewPublisher(connection)
-	if err != nil {
-		cleanup2()
-		cleanup()
-		return nil, nil, err
-	}
-	userUseCase, cleanup3 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, publisher)
+	sagaRepository := postgres2.NewSagaRepository(pool)
+	outboxRepository := postgres2.NewOutboxRepository(pool)
+	transactor := postgres.NewTransactor(pool)
+	orchestrator := saga.NewOrchestrator(sagaRepository, subscriptionRepository, outboxRepository, transactor)
+	userUseCase, cleanup2 := usecase2.NewUserUseCase(ctx, subscriptionRepository, userRepository, repositoryUseCase, orchestrator, transactor, outboxRepository)
 	httpConfig := ProvideHTTPConfig(cfg)
 	appConfig := ProvideAppConfig(cfg)
 	ginServer := http.NewGinServer(userUseCase, client, httpConfig, appConfig)
 	subscriptionHandler := grpc.NewSubscriptionHandler(userUseCase)
 	server := grpc.NewGrpcServer(subscriptionHandler, appConfig)
+	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
+	connection, cleanup3, err := ProvideRabbitMQConnection(rabbitMQConfig)
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, orchestrator)
+	postgresRepositoryRepository := postgres2.NewRepositoryRepository(pool)
+	tagUpdatedConsumer := rabbitmq.NewTagUpdatedConsumer(connection, postgresRepositoryRepository)
+	duration := ProvideOutboxInterval()
+	relay := outbox.NewRelay(outboxRepository, connection, duration)
 	app := &App{
-		HTTPServer: ginServer,
-		GrpcServer: server,
+		HTTPServer:         ginServer,
+		GrpcServer:         server,
+		SagaResultConsumer: sagaResultConsumer,
+		TagUpdatedConsumer: tagUpdatedConsumer,
+		OutboxRelay:        relay,
 	}
 	return app, func() {
 		cleanup3()
@@ -93,7 +103,14 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection
 	return rabbitmq2.NewConnection(cfg.URL)
 }
 
+func ProvideOutboxInterval() time.Duration {
+	return 5 * time.Second
+}
+
 type App struct {
-	HTTPServer *http.GinServer
-	GrpcServer *grpc2.Server
+	HTTPServer         *http.GinServer
+	GrpcServer         *grpc2.Server
+	SagaResultConsumer *rabbitmq.SagaResultConsumer
+	TagUpdatedConsumer *rabbitmq.TagUpdatedConsumer
+	OutboxRelay        *outbox.Relay
 }

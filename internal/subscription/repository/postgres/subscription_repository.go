@@ -30,7 +30,7 @@ func NewSubscriptionRepository(db sharedPostgres.PgxInterface) *SubscriptionRepo
 }
 
 const deleteSubscriptionQuery = `
-	DELETE FROM subscriptions 
+	DELETE FROM subscriptions
 	WHERE user_id = $1 AND repository_id = (SELECT id FROM repositories WHERE full_name = $2)
 `
 
@@ -38,7 +38,7 @@ func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repoN
 	const op = "SubscriptionRepository.Delete"
 	log := r.logger.With(slog.String("op", op))
 
-	res, err := r.db.Exec(ctx, deleteSubscriptionQuery, userID, repoName)
+	res, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, deleteSubscriptionQuery, userID, repoName)
 	if err != nil {
 		log.ErrorContext(ctx, "failed to delete subscription",
 			slog.Int64("user_id", userID),
@@ -56,10 +56,28 @@ func (r *SubscriptionRepository) Delete(ctx context.Context, userID int64, repoN
 	return nil
 }
 
+const deleteSubscriptionByIDQuery = `DELETE FROM subscriptions WHERE id = $1`
+
+func (r *SubscriptionRepository) DeleteByID(ctx context.Context, subscriptionID int64) error {
+	const op = "SubscriptionRepository.DeleteByID"
+
+	res, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, deleteSubscriptionByIDQuery, subscriptionID)
+	if err != nil {
+		return fmt.Errorf("%s: exec: %w", op, err)
+	}
+
+	r.logger.DebugContext(ctx, "subscription deleted by id",
+		slog.Int64("subscription_id", subscriptionID),
+		slog.Int64("affected", res.RowsAffected()),
+	)
+	return nil
+}
+
 const getByTokenQuery = `
-	SELECT s.id, s.user_id, s.repository_id, r.full_name, s.token, s.is_confirmed, s.created_at
+	SELECT s.id, s.user_id, u.email, s.repository_id, r.full_name, s.token, s.is_confirmed, s.created_at
 	FROM subscriptions s
 	JOIN repositories r ON s.repository_id = r.id
+	JOIN users u ON s.user_id = u.id
 	WHERE s.token = $1
 `
 
@@ -70,6 +88,7 @@ func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (
 	err := r.db.QueryRow(ctx, getByTokenQuery, token).Scan(
 		&sub.ID,
 		&sub.UserID,
+		&sub.Email,
 		&sub.RepositoryID,
 		&sub.RepositoryName,
 		&sub.Token,
@@ -179,7 +198,7 @@ const saveSubscriptionQuery = `
 func (r *SubscriptionRepository) Save(ctx context.Context, sub *subModel.Subscription) error {
 	const op = "SubscriptionRepository.Save"
 
-	err := r.db.QueryRow(
+	err := sharedPostgres.Extract(ctx, r.db).QueryRow(
 		ctx,
 		saveSubscriptionQuery,
 		sub.UserID,

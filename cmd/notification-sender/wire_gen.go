@@ -29,10 +29,15 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	notificationUseCase := usecase.NewNotificationUseCase(emailService)
 	senderConfig := ProvideSenderConfig(cfg)
 	duration := ProvideSendTimeout(senderConfig)
-	consumer := rabbitmq.NewConsumer(connection, notificationUseCase, duration)
-	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, emailService, duration)
+	notificationConsumer := rabbitmq.NewNotificationConsumer(connection, notificationUseCase, duration)
+	sagaResultPublisher, err := rabbitmq.NewSagaResultPublisher(connection)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, emailService, duration, sagaResultPublisher)
 	app := &App{
-		NotificationConsumer: consumer,
+		NotificationConsumer: notificationConsumer,
 		ConfirmationConsumer: confirmationConsumer,
 	}
 	return app, func() {
@@ -53,6 +58,6 @@ func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection
 }
 
 type App struct {
-	NotificationConsumer *rabbitmq.Consumer
+	NotificationConsumer *rabbitmq.NotificationConsumer
 	ConfirmationConsumer *rabbitmq.ConfirmationConsumer
 }

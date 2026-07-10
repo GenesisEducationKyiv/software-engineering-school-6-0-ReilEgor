@@ -75,12 +75,11 @@ Email notification dispatched to all subscribers
 
 ### C4 Model
 
-<img width="4524" height="1768" src="https://github.com/user-attachments/assets/15231bf2-ac06-43d8-b861-b3b8e1e63163" />
+![component_worker.png](docs/%D1%814/component_worker.png)
+![container.png](docs/%D1%814/container.png)
+![component_api.png](docs/%D1%814/component_api.png)
+![component_sender.png](docs/%D1%814/component_sender.png)<img width="4524" height="1768" src="https://github.com/user-attachments/assets/15231bf2-ac06-43d8-b861-b3b8e1e63163" />
 <img width="1837" height="849" alt="image" src="https://github.com/user-attachments/assets/a45bff06-2bcd-4f16-9b7a-f9ba8a153202" />
-
-### Database Schema
-
-<img width="617" height="671" alt="image" src="https://github.com/user-attachments/assets/f7fd9d6b-6119-4cc7-82bf-0edf38f16ba9" />
 
 ---
  

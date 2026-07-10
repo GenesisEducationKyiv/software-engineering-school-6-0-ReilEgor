@@ -35,11 +35,17 @@ func NewPublisher(conn *rabbitmq2.Connection) (*Publisher, error) {
 	return &Publisher{conn: conn}, nil
 }
 
-func (p *Publisher) SendConfirmation(ctx context.Context, to, repoName, token string) error {
+func (p *Publisher) SendConfirmation(
+	ctx context.Context,
+	to, repoName, token string,
+	sagaID, subscriptionID int64,
+) error {
 	return p.Publish(ctx, sharedModel.SendConfirmationCommand{
-		Email:    to,
-		RepoName: repoName,
-		Token:    token,
+		Email:          to,
+		RepoName:       repoName,
+		Token:          token,
+		SagaID:         sagaID,
+		SubscriptionID: subscriptionID,
 	})
 }
 
