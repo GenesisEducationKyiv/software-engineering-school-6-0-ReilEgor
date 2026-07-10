@@ -17,11 +17,15 @@ import (
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/saga"
 )
 
 type TrackingRepository interface {
 	GetOrCreate(ctx context.Context, repoName string) (*model.RepositoryRef, error)
+}
+
+//go:generate mockery --name SagaOrchestrator --output ../mocks --case underscore --outpkg mocks
+type SagaOrchestrator interface {
+	Start(ctx context.Context, subscriptionID int64, email, repoName, token string) error
 }
 
 const componentUserUseCase = "UserUseCase"
@@ -34,7 +38,7 @@ type UserUseCase struct {
 	subsRepo     repository.SubscriptionRepository
 	userRepo     repository.UserRepository
 	repoUC       TrackingRepository
-	orchestrator *saga.Orchestrator
+	orchestrator SagaOrchestrator
 	transactor   repository.Transactor
 	outBox       repository.OutboxRepository
 }
@@ -48,7 +52,7 @@ func NewUserUseCase(
 	sr repository.SubscriptionRepository,
 	ur repository.UserRepository,
 	ru TrackingRepository,
-	orchestrator *saga.Orchestrator,
+	orchestrator SagaOrchestrator,
 	transactor repository.Transactor,
 	outBox repository.OutboxRepository,
 ) (*UserUseCase, func()) {
