@@ -1,0 +1,74 @@
+@startuml C4_Component_Worker
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title RepoNotifier — Notification Worker Components (C4 Level 3)
+
+ContainerDb(tracker_db, "Tracker DB", "PostgreSQL", "")
+ContainerDb(redis, "Redis Cache", "", "")
+ContainerQueue(rabbitmq, "RabbitMQ", "", "")
+System_Ext(github, "GitHub API", "")
+
+Container_Boundary(worker, "Notification Worker") {
+
+    ' ── Scheduler ───────────────────────────────────────────
+    Component(release_processor, "ReleaseProcessor", "Go scheduler", "Runs every NOTIFICATION_INTERVAL.\nIterates all tracked repos, detects\nnew releases, writes outbox entries.")
+
+    ' ── Use Cases ───────────────────────────────────────────
+    Component(repo_usecase, "RepositoryUseCase", "Go", "CheckForUpdates — compares\nlast_seen_tag with GitHub latest.\nUpdateRepo — persists new tag.\nGetOrCreate — registers new repo.")
+
+    ' ── Repositories ────────────────────────────────────────
+    Component(tracker_repo, "RepositoryRepository", "PGX", "CRUD for tracked repositories\nand last_seen_tag in Tracker DB")
+
+    Component(subscriber_repo, "TrackerSubscriptionRepository", "PGX", "Read/write denormalized subscriptions\ntable inside Tracker DB.\nUpsert on activation, delete on unsubscription.")
+
+    Component(outbox_repo, "OutboxRepository (tracker)", "PGX", "Insert SendNotificationCommand\nand TagUpdatedEvent into tracker\noutbox_messages table")
+
+    ' ── Infrastructure ──────────────────────────────────────
+    Component(cached_github, "Cached GitHub Client", "Redis wrapper", "Redis-backed cache for release data.\nCache miss → delegates to GitHub client.\nPrevents duplicate API calls per interval.")
+
+    Component(github_client, "GitHub Client", "HTTP + gobreaker", "GET /repos/{owner}/{repo}/releases/latest.\nProtected by circuit breaker:\nmax failures, interval, timeout.")
+
+    Component(outbox_relay, "Outbox Relay", "Go goroutine", "Polls tracker outbox_messages,\npublishes pending rows to RabbitMQ,\nmarks rows as sent.")
+
+    Component(broker_producer, "Broker Producer", "AMQP client", "Publishes to queues:\nnotifications\nrepository.tag_updated")
+
+    ' ── Consumers ───────────────────────────────────────────
+    Component(sub_consumer, "SubscriptionActivatedConsumer", "AMQP consumer", "Consumes subscription.activated.\nRegisters new repository in Tracker DB\nif not already tracked.")
+
+    Component(unsub_consumer, "UnsubscriptionActivatedConsumer", "AMQP consumer", "Consumes unsubscription.activated.\nRemoves tracking entry from Tracker DB.")
+}
+
+' Scheduler → Use Case
+Rel(release_processor, repo_usecase, "CheckForUpdates per tracked repo")
+
+' Use Case → Repositories & Infrastructure
+Rel(repo_usecase, tracker_repo, "Read all repos;\nupdate last_seen_tag")
+Rel(repo_usecase, subscriber_repo, "Get subscribers for repo")
+Rel(repo_usecase, outbox_repo, "Insert notification events\n(transactional with tag update)")
+Rel(repo_usecase, cached_github, "Get latest release")
+
+' GitHub chain
+Rel(cached_github, redis, "GET / SET release data", "Redis protocol")
+Rel(cached_github, github_client, "Cache miss → fetch from GitHub")
+Rel(github_client, github, "GET /repos/{o}/{r}/releases/latest", "HTTPS")
+
+' Outbox relay
+Rel(outbox_relay, outbox_repo, "Poll pending messages")
+Rel(outbox_relay, broker_producer, "Forward to broker")
+Rel(broker_producer, rabbitmq, "Publish events", "AMQP")
+
+' Consumers → RabbitMQ
+Rel(sub_consumer, rabbitmq, "Consume subscription.activated", "AMQP")
+Rel(sub_consumer, tracker_repo, "GetOrCreate tracked repo")
+Rel(sub_consumer, subscriber_repo, "Upsert denormalized subscription")
+Rel(unsub_consumer, rabbitmq, "Consume unsubscription.activated", "AMQP")
+Rel(unsub_consumer, subscriber_repo, "Delete denormalized subscription")
+
+' Repositories → DB (all use the single Tracker DB pool)
+Rel(tracker_repo, tracker_db, "SQL queries", "PGX / TCP")
+Rel(outbox_repo, tracker_db, "SQL queries", "PGX / TCP")
+Rel(subscriber_repo, tracker_db, "SQL queries", "PGX / TCP")
+
+@enduml

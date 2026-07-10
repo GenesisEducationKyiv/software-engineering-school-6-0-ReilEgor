@@ -1,0 +1,331 @@
+services:
+# ============================
+# MESSAGE BROKER
+# ============================
+  rabbitmq:
+    image: rabbitmq:4.2-management-alpine
+    container_name: rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+# ============================
+# DATABASES
+# ============================
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${SUBSCRIPTION_POSTGRES_DB}
+    ports:
+      - "${SUBSCRIPTION_POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_subscription_data:/var/lib/postgresql/data
+      - ./scripts/init.sh:/docker-entrypoint-initdb.d/init.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${SUBSCRIPTION_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+  migrate-subscription:
+    image: migrate/migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../services/subscription/migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${SUBSCRIPTION_POSTGRES_DB}?sslmode=disable",
+      "up"
+    ]
+    networks:
+      - internal
+  migrate-tracker:
+    image: migrate/migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../services/tracking/migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${TRACKER_POSTGRES_DB}?sslmode=disable",
+      "up"
+    ]
+    networks:
+      - internal
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - internal
+
+# ============================
+# BUSINESS SERVICES
+# ============================
+  repo-notifier-service:
+    build:
+      context: ..
+      dockerfile: services/subscription/Dockerfile
+    container_name: repo-notifier-service
+    restart: always
+    env_file:
+      - ./env/subscription.env
+    ports:
+      - "${APP_HTTP_PORT}:${APP_HTTP_PORT}"
+      - "${APP_GRPC_PORT}:${APP_GRPC_PORT}"
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate-subscription:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${APP_HTTP_PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  tracking-service:
+    build:
+      context: ..
+      dockerfile: services/tracking/Dockerfile
+    container_name: tracking-service
+    restart: always
+    env_file:
+      - ./env/tracking.env
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${WORKER_HEALTH_PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate-tracker:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      repo-notifier-service:
+        condition: service_healthy
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notification-sender:
+    build:
+      context: ..
+      dockerfile: services/notification/Dockerfile
+    container_name: notification-sender
+    restart: always
+    env_file:
+      - ./env/notification.env
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${SENDER_HEALTH_PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================
+# MONITORING STACK
+# ============================
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    restart: always
+    profiles: [observability]
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring
+
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    platform: linux/amd64
+    container_name: fluent-bit
+    restart: always
+    profiles: [observability]
+    user: root
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./monitoring/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+    depends_on:
+      - elasticsearch
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:10.1.0
+    restart: always
+    profiles: [observability]
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - ./monitoring/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    restart: always
+    profiles: [observability]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - monitoring
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    container_name: kibana
+    restart: always
+    profiles: [observability]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status | grep -q available"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - monitoring
+
+  kibana-init:
+    image: curlimages/curl:8.6.0
+    container_name: kibana-init
+    restart: on-failure
+    profiles: [observability]
+    depends_on:
+      kibana:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - |
+        curl -sf -X POST "http://kibana:5601/api/data_views/data_view" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"data_view":{"title":"repo-notifier-logs*","timeFieldName":"@timestamp","name":"RepoNotifier Logs"}}' || true
+        echo "Kibana data view provisioned."
+    networks:
+      - monitoring
+    
+  # ============================
+  # DOCS / SWAGGER
+  # ============================
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.32.2
+    container_name: swagger-ui
+    restart: always
+    profiles: [docs]
+    ports:
+      - "${SWAGGER_PORT}:8080"
+    volumes:
+      - ../docs/api/swagger.json:/usr/share/nginx/html/docs/swagger.json:ro
+    environment:
+      URLS: '[{ "url": "/docs/swagger.json", "name": "RepoNotifier-service" }]'
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+  monitoring:
+    driver: bridge
+
+volumes:
+  postgres_subscription_data:
+  redis_data:
+  rabbitmq_data:
+  grafana_data:
+  prometheus_data:
+  elasticsearch_data:
+  postgres_tracker_data:

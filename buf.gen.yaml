@@ -1,0 +1,11 @@
+version: v2
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: .
+    opt:
+      - module=github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor
+  - remote: buf.build/grpc/go
+    out: .
+    opt:
+      - module=github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor
+      - require_unimplemented_servers=false

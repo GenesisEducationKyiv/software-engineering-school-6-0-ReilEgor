@@ -1,0 +1,235 @@
+definitions:
+  ? github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.CreateSubscriptionRequest
+  : properties:
+      email:
+        description: User email address for notifications.
+        example: user@example.com
+        type: string
+      repository:
+        description: GitHub repository full name (owner/repo).
+        example: golang/go
+        type: string
+    required:
+    - email
+    - repository
+    type: object
+  ? github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.CreateSubscriptionResponse
+  : properties:
+      message:
+        description: Status message indicating the result of the subscription creation.
+        example: Confirmation email sent
+        type: string
+    type: object
+  ? github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse
+  : properties:
+      error:
+        description: Human-readable error message.
+        example: invalid request body
+        type: string
+    type: object
+  ? github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ListSubscriptionsResponse
+  : properties:
+      subscriptions:
+        description: List of the user's subscriptions.
+        items:
+          $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.SubscriptionResponse'
+        type: array
+      total:
+        description: Good practice to return count.
+        example: 2
+        type: integer
+    type: object
+  ? github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.MessageResponse
+  : properties:
+      message:
+        description: Human-readable status message.
+        example: subscription confirmed successfully
+        type: string
+    type: object
+  ? github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.SubscriptionResponse
+  : properties:
+      confirmed:
+        description: Indicates whether the subscription has been confirmed by the
+          user.
+        type: boolean
+      created_at:
+        description: Timestamp when the subscription was created.
+        example: "2026-04-08T18:00:00Z"
+        type: string
+      email:
+        description: Subscriber's email address.
+        example: user@example.com
+        type: string
+      id:
+        description: Unique identifier of the subscription.
+        example: 1
+        type: integer
+      last_seen_tag:
+        description: The latest tag seen for this subscription, useful for tracking
+          updates.
+        type: string
+      repository_name:
+        description: The name of the repository (extracted from FullName).
+        example: golang/go
+        type: string
+    type: object
+  ? github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ValidationErrorResponse
+  : properties:
+      errors:
+        description: List of validation failure messages.
+        example:
+        - invalid email format
+        - invalid repository format (expected 'owner/repo')
+        items:
+          type: string
+        type: array
+    type: object
+info:
+  contact: {}
+  description: 'Subscription service: manages email subscriptions to GitHub repositories
+    and notifies subscribers about new releases.'
+  title: RepoNotifier API
+  version: "1.0"
+paths:
+  /confirm/{token}:
+    get:
+      description: Confirm a pending subscription using the token sent via email.
+        This route is public (no API key) since it is reached from an email link.
+      parameters:
+      - description: Confirmation token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: subscription confirmed successfully
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.MessageResponse'
+        "400":
+          description: Token is required
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+        "404":
+          description: Invalid or expired token
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+      summary: Confirm email subscription
+      tags:
+      - subscriptions
+  /subscribe:
+    post:
+      consumes:
+      - application/json
+      description: Create a pending subscription and send a confirmation email. Requires
+        an API key.
+      parameters:
+      - description: Subscription details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.CreateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.CreateSubscriptionResponse'
+        "400":
+          description: Malformed JSON body, or email/repository failed validation
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ValidationErrorResponse'
+        "404":
+          description: Repository not found on GitHub
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+        "500":
+          description: Unexpected internal error
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+        "503":
+          description: GitHub API is currently unavailable
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Subscribe to a repository
+      tags:
+      - subscriptions
+  /subscriptions:
+    get:
+      description: Retrieve a list of all subscriptions (confirmed and pending) for
+        a given email. Requires an API key.
+      parameters:
+      - description: User email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ListSubscriptionsResponse'
+        "400":
+          description: Email query param is missing or not a valid email address
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get all subscriptions by email
+      tags:
+      - subscriptions
+  /unsubscribe/{token}:
+    get:
+      description: Remove a subscription using the one-time token from the unsubscribe
+        link. This route is public (no API key) since it is reached from an email
+        link.
+      parameters:
+      - description: Unsubscribe token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: You have been successfully unsubscribed
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.MessageResponse'
+        "400":
+          description: Token is required
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+        "404":
+          description: Invalid or expired token
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_GenesisEducationKyiv_software-engineering-school-6-0-ReilEgor_services_subscription_internal_transport_http_dto.ErrorResponse'
+      summary: Unsubscribe via token
+      tags:
+      - subscriptions
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: X-API-Key
+    type: apiKey
+swagger: "2.0"

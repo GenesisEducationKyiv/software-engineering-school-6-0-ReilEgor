@@ -1,0 +1,71 @@
+version: 3
+workdir: ./
+
+allow:
+  depOnAnyVendor: false
+  deepScan: false
+  ignoreNotFoundComponents: false
+
+exclude:
+  - internal/mocks
+
+excludeFiles:
+  - '_test\.go$'
+
+vendors:
+  shared-common:
+    in:
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/metrics
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/metrics/**
+  shared-model:
+    in:
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/**
+  shared-infra:
+    in:
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/cache/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/**
+
+commonVendors:
+  - shared-common
+
+components:
+  model:            { in: internal/domain/model/** }
+  repository-iface: { in: internal/domain/repository/** }
+  service-iface:    { in: internal/domain/service/** }
+  usecase-iface:    { in: internal/domain/usecase/** }
+  usecase-impl:     { in: internal/usecase/** }
+  repository-impl:  { in: internal/repository/** }
+  infrastructure:   { in: internal/infrastructure/** }
+  transport:        { in: internal/transport/** }
+  cmd:              { in: cmd/** }
+
+deps:
+  repository-iface:
+    mayDependOn: [model]
+    canUse: [shared-model]
+  service-iface:
+    mayDependOn: [model]
+  usecase-iface:
+    mayDependOn: [model]
+  usecase-impl:
+    mayDependOn: [model, repository-iface, service-iface, usecase-iface]
+  repository-impl:
+    mayDependOn: [model, repository-iface]
+    anyVendorDeps: true
+  infrastructure:
+    mayDependOn: [model, repository-iface, service-iface]
+    anyVendorDeps: true
+  transport:
+    mayDependOn: [model, usecase-iface, transport]
+    anyVendorDeps: true
+  cmd:
+    anyProjectDeps: true
+    anyVendorDeps: true

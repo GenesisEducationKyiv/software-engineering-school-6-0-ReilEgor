@@ -1,0 +1,148 @@
+name: Playwright Tests
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+jobs:
+  e2e-test:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create env files
+        working-directory: ./deployments
+        run: |
+          cat <<EOF > .env
+          POSTGRES_USER=test_user
+          POSTGRES_PASSWORD=test_pass
+          SUBSCRIPTION_POSTGRES_DB=test_db
+          SUBSCRIPTION_POSTGRES_PORT=5432
+          TRACKER_POSTGRES_DB=tracker_db
+
+          APP_HTTP_PORT=8080
+          APP_GRPC_PORT=9091
+          TRACKING_GRPC_PORT=50051
+
+          REDIS_PORT=6379
+          REDIS_PASSWORD=test_redis_pass
+
+          RABBITMQ_USER=test_rabbit_user
+          RABBITMQ_PASSWORD=test_rabbit_pass
+          RABBITMQ_PORT=5672
+          RABBITMQ_MGMT_PORT=15672
+
+          WORKER_HEALTH_PORT=8081
+          SENDER_HEALTH_PORT=8082
+
+          PROMETHEUS_PORT=9090
+          GRAFANA_PORT=3000
+          SWAGGER_PORT=9080
+          EOF
+
+          mkdir -p env
+          cat <<EOF > env/subscription.env
+          SUBSCRIPTION_DB_SOURCE=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
+          SUBSCRIPTION_DB_MAX_OPEN_CONNS=10
+          SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME=30m
+          SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD=1m
+
+          APP_HTTP_PORT=\${APP_HTTP_PORT}
+          APP_GRPC_PORT=\${APP_GRPC_PORT}
+          APP_BASE_URL=http://localhost:8080
+          APP_API_KEY=my-super-secret-token-123
+
+          HTTP_SHUTDOWN_TIMEOUT=5s
+          HTTP_REQUEST_TIMEOUT=5s
+          RATE_LIMIT=100-S
+
+          REDIS_HOST=redis
+          REDIS_PORT=\${REDIS_PORT}
+          REDIS_PASSWORD=\${REDIS_PASSWORD}
+          REDIS_DB=0
+
+          RABBITMQ_URL=amqp://test_rabbit_user:test_rabbit_pass@rabbitmq:5672/
+
+          TRACKING_GRPC_ADDR=tracking-service:\${TRACKING_GRPC_PORT}
+          EOF
+
+          cat <<EOF > env/tracking.env
+          TRACKING_DB_SOURCE=postgres://test_user:test_pass@postgres:5432/test_db?sslmode=disable
+          TRACKING_DB_MAX_OPEN_CONNS=10
+          TRACKING_DB_MAX_CONN_IDLE_TIME=30m
+          TRACKING_DB_HEALTH_CHECK_PERIOD=1m
+          TRACKING_GRPC_PORT=\${TRACKING_GRPC_PORT}
+          TAG_PUBLISHER_TYPE=grpc
+
+          APP_BASE_URL=http://localhost:8080
+          APP_API_KEY=my-super-secret-token-123
+
+          REDIS_HOST=redis
+          REDIS_PORT=\${REDIS_PORT}
+          REDIS_PASSWORD=\${REDIS_PASSWORD}
+          REDIS_DB=0
+
+          GITHUB_TOKEN=
+          GITHUB_HTTP_TIMEOUT=10s
+          GITHUB_CB_MAX_REQUESTS=3
+          GITHUB_CB_INTERVAL=5s
+          GITHUB_CB_TIMEOUT=30s
+          GITHUB_CB_FAILURE_THRESHOLD=3
+
+          NOTIFICATION_INTERVAL=1m
+          WORKER_MAX_SEND_WORKERS=10
+          WORKER_SEND_TIMEOUT=5s
+          WORKER_HEALTH_PORT=\${WORKER_HEALTH_PORT}
+
+          RABBITMQ_URL=amqp://test_rabbit_user:test_rabbit_pass@rabbitmq:5672/
+
+          SUBSCRIPTION_GRPC_ADDR=repo-notifier-service:\${APP_GRPC_PORT}
+          EOF
+
+          cat <<EOF > env/notification.env
+          APP_BASE_URL=http://localhost:8080
+
+          EMAIL_HOST=smtp.mailtrap.io
+          EMAIL_PORT=2525
+          EMAIL_USER=test_user
+          EMAIL_PASSWORD=test_pass
+          EMAIL_FROM=noreply@example.com
+
+          WORKER_SEND_TIMEOUT=5s
+          SENDER_HEALTH_PORT=\${SENDER_HEALTH_PORT}
+
+          RABBITMQ_URL=amqp://test_rabbit_user:test_rabbit_pass@rabbitmq:5672/
+          EOF
+
+      - name: Start Application Stack
+        working-directory: ./deployments
+        run: docker compose up -d --build
+      - name: Wait for backend to be ready
+        run: |
+          echo "Waiting for subscription service..."
+          timeout 120 bash -c 'until curl -s -f http://localhost:8080/health > /dev/null; do sleep 2; done'
+          echo "Waiting for tracking service..."
+          timeout 120 bash -c 'until docker inspect --format="{{.State.Health.Status}}" tracking-service 2>/dev/null | grep -q healthy; do sleep 2; done'
+          echo "All services ready!"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: ./tests/e2e
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: ./tests/e2e
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npx --prefix tests/e2e playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: ./tests/e2e/playwright-report/
+          retention-days: 30

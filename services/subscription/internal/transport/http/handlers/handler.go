@@ -1,0 +1,57 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/http/middleware"
+)
+
+type Handler struct {
+	userUC usecase.UserUseCase
+	repoUC usecase.RepositoryUseCase
+	apiKey string
+}
+
+func NewHandler(userUC usecase.UserUseCase, repoUC usecase.RepositoryUseCase, apiKey string) *Handler {
+	return &Handler{
+		userUC: userUC,
+		repoUC: repoUC,
+		apiKey: apiKey,
+	}
+}
+
+func (h *Handler) InitRoutes(router *gin.Engine) {
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.StaticFile("/", "./static/index.html")
+
+	api := router.Group("/api/v1")
+	{
+		api.GET("/confirm/:token", h.Confirm)
+		api.GET("/unsubscribe/:token", h.UnsubscribeByToken)
+
+		protected := api.Group("")
+		protected.Use(middleware.AuthMiddleware(h.apiKey))
+		{
+			protected.POST("/subscribe", h.Subscribe)
+			protected.GET("/subscriptions", h.ListSubscriptions)
+		}
+	}
+
+	internal := router.Group("/internal")
+	internal.Use(middleware.AuthMiddleware(h.apiKey))
+	{
+		internal.POST("/repositories/tag", h.UpdateTag)
+	}
+}

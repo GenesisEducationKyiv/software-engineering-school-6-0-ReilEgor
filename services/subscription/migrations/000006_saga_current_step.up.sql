@@ -1,0 +1,2 @@
+ALTER TABLE subscription_sagas
+    ADD COLUMN current_step VARCHAR(50) NOT NULL DEFAULT 'SEND_CONFIRMATION';
