@@ -78,7 +78,7 @@ func setupTransactorFail(f releaseProcessorMockFields, txErr error) {
 		Return(txErr).Once()
 }
 
-func notificationPayloadMatcher(sub model.Subscriber, repo *model.Repository) interface{} {
+func notificationPayloadMatcher(sub model.Subscriber, repo *model.Repository) any {
 	return mock.MatchedBy(func(payload []byte) bool {
 		var cmd contracts.SendNotificationCommand
 		if err := json.Unmarshal(payload, &cmd); err != nil {
