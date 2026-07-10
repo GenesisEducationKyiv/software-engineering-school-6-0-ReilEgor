@@ -13,15 +13,14 @@ import (
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/saga"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/transport/http/handlers"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	tcrabbitmq "github.com/testcontainers/testcontainers-go/modules/rabbitmq"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/grpc"
 
@@ -31,11 +30,12 @@ import (
 	subAdapter "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/adapter"
 	subOutbox "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/infrastructure/outbox"
 	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/repository/postgres"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/usecase"
 	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	pb "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/proto/v1"
 	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/postgres"
+	amqp "github.com/rabbitmq/amqp091-go"
+	tcrabbitmq "github.com/testcontainers/testcontainers-go/modules/rabbitmq"
 )
 
 const outboxRelayInterval = 100 * time.Millisecond
@@ -277,17 +277,30 @@ func (s *APITestSuite) declareAndPurgeQueue(queue string) *amqp.Channel {
 	return ch
 }
 
-func (s *APITestSuite) consumeOne(ch *amqp.Channel, queue string, timeout time.Duration) amqp.Delivery {
+func (s *APITestSuite) consume(ch *amqp.Channel, queue string) <-chan amqp.Delivery {
 	s.T().Helper()
 	msgs, err := ch.Consume(queue, "", true, false, false, false, nil)
 	s.Require().NoError(err)
+	return msgs
+}
 
+func (s *APITestSuite) awaitDelivery(msgs <-chan amqp.Delivery, timeout time.Duration) amqp.Delivery {
+	s.T().Helper()
 	select {
 	case d := <-msgs:
 		return d
 	case <-time.After(timeout):
-		s.T().Fatalf("timed out waiting for a message on queue %q", queue)
+		s.T().Fatal("timed out waiting for a message")
 		return amqp.Delivery{}
+	}
+}
+
+func (s *APITestSuite) assertNoMoreDeliveries(msgs <-chan amqp.Delivery, wait time.Duration) {
+	s.T().Helper()
+	select {
+	case d := <-msgs:
+		s.T().Fatalf("unexpected extra message: %s", string(d.Body))
+	case <-time.After(wait):
 	}
 }
 
