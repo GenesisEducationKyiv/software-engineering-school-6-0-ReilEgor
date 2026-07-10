@@ -1,0 +1,22 @@
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache git ca-certificates
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd/notification-sender/ ./cmd/notification-sender/
+COPY shared/ ./shared/
+COPY internal/notification/ ./internal/notification/
+
+RUN go build -o bin/notification_sender ./cmd/notification-sender/
+
+
+FROM alpine:3.18
+
+WORKDIR /app
+COPY --from=builder /app/bin/notification_sender .
+
+CMD ["./notification_sender"]

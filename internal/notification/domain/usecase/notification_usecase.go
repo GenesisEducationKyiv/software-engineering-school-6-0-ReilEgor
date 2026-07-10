@@ -1,8 +1,12 @@
 package usecase
 
-import "context"
+import (
+	"context"
+
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
+)
 
 //go:generate mockery --name NotificationUseCase --output ../../mocks --case underscore --outpkg mocks
 type NotificationUseCase interface {
-	ProcessNotifications(ctx context.Context) error
+	Send(ctx context.Context, cmd model.SendNotificationCommand) error
 }

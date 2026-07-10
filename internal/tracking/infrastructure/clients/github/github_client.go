@@ -10,9 +10,9 @@ import (
 
 	"github.com/sony/gobreaker"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
 const (
@@ -99,7 +99,7 @@ func (c *GitHubClient) GetLatestRelease(ctx context.Context, fullName string) (*
 func (c *GitHubClient) handleCBError(ctx context.Context, op string, err error) error {
 	if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
 		c.logger.WarnContext(ctx, "circuit breaker open", slog.String("op", op))
-		return service.ErrGitHubUnavailable
+		return model.ErrGitHubUnavailable
 	}
 	return fmt.Errorf("%s: %w", op, err)
 }
@@ -123,7 +123,7 @@ func (c *GitHubClient) repoExistsRequest(ctx context.Context, fullName string) (
 		return false, nil
 	case http.StatusForbidden:
 		c.logger.WarnContext(ctx, "github rate limit exceeded", slog.String("repo", fullName))
-		return false, service.ErrRateLimitExceeded
+		return false, model.ErrRateLimitExceeded
 	default:
 		return false, fmt.Errorf("%w: %s", ErrUnexpectedStatus, resp.Status)
 	}

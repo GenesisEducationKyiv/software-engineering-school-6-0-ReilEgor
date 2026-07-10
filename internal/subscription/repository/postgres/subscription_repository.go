@@ -8,8 +8,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
+	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
+	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
 const (
@@ -17,11 +18,11 @@ const (
 )
 
 type SubscriptionRepository struct {
-	db     postgres2.PgxInterface
+	db     sharedPostgres.PgxInterface
 	logger *slog.Logger
 }
 
-func NewSubscriptionRepository(db postgres2.PgxInterface) *SubscriptionRepository {
+func NewSubscriptionRepository(db sharedPostgres.PgxInterface) *SubscriptionRepository {
 	return &SubscriptionRepository{
 		db:     db,
 		logger: slog.With(slog.String("component", componentSubscriptionRepository)),
@@ -62,10 +63,10 @@ const getByTokenQuery = `
 	WHERE s.token = $1
 `
 
-func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (*model.Subscription, error) {
+func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (*subModel.Subscription, error) {
 	const op = "SubscriptionRepository.GetByToken"
 
-	var sub model.Subscription
+	var sub subModel.Subscription
 	err := r.db.QueryRow(ctx, getByTokenQuery, token).Scan(
 		&sub.ID,
 		&sub.UserID,
@@ -77,7 +78,7 @@ func (r *SubscriptionRepository) GetByToken(ctx context.Context, token string) (
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("%s: %w", op, model.ErrInvalidToken)
+			return nil, fmt.Errorf("%s: %w", op, subModel.ErrInvalidToken)
 		}
 		return nil, fmt.Errorf("%s: query: %w", op, err)
 	}
@@ -92,7 +93,7 @@ const getSubscribersQuery = `
 	WHERE s.repository_id = $1 AND s.is_confirmed = TRUE
 `
 
-func (r *SubscriptionRepository) GetByRepoID(ctx context.Context, repoID int64) ([]model.Subscriber, error) {
+func (r *SubscriptionRepository) GetByRepoID(ctx context.Context, repoID int64) ([]trackingModel.Subscriber, error) {
 	const op = "SubscriptionRepository.GetByRepoID"
 
 	rows, err := r.db.Query(ctx, getSubscribersQuery, repoID)
@@ -101,9 +102,9 @@ func (r *SubscriptionRepository) GetByRepoID(ctx context.Context, repoID int64) 
 	}
 	defer rows.Close()
 
-	var subscribers []model.Subscriber
+	var subscribers []trackingModel.Subscriber
 	for rows.Next() {
-		var sub model.Subscriber
+		var sub trackingModel.Subscriber
 		if err := rows.Scan(&sub.Email, &sub.Token); err != nil {
 			return nil, fmt.Errorf("%s: scan: %w", op, err)
 		}
@@ -129,7 +130,7 @@ const listByEmailQuery = `
 	ORDER BY s.created_at DESC
 `
 
-func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) ([]model.Subscription, error) {
+func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) ([]subModel.Subscription, error) {
 	const op = "SubscriptionRepository.GetByEmail"
 
 	rows, err := r.db.Query(ctx, listByEmailQuery, email)
@@ -138,9 +139,9 @@ func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) (
 	}
 	defer rows.Close()
 
-	var subs []model.Subscription
+	var subs []subModel.Subscription
 	for rows.Next() {
-		var s model.Subscription
+		var s subModel.Subscription
 		err = rows.Scan(
 			&s.ID,
 			&s.RepositoryID,
@@ -161,7 +162,7 @@ func (r *SubscriptionRepository) GetByEmail(ctx context.Context, email string) (
 	}
 
 	if subs == nil {
-		return []model.Subscription{}, nil
+		return []subModel.Subscription{}, nil
 	}
 
 	return subs, nil
@@ -175,7 +176,7 @@ const saveSubscriptionQuery = `
 	RETURNING id
 `
 
-func (r *SubscriptionRepository) Save(ctx context.Context, sub *model.Subscription) error {
+func (r *SubscriptionRepository) Save(ctx context.Context, sub *subModel.Subscription) error {
 	const op = "SubscriptionRepository.Save"
 
 	err := r.db.QueryRow(

@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	sharedcache "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/cache"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
 
 const (
@@ -68,7 +68,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 			name: "cache miss: client returns true, stores 'true' in cache",
 			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
-					Return(nil, service.ErrCacheMiss).Once()
+					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
 					Return(true, nil).Once()
 				mCache.On("Set", mock.Anything, repoExistsKey, []byte("true"), cacheTTL).
@@ -80,7 +80,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 			name: "cache miss: client returns false, stores 'false' in cache",
 			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
-					Return(nil, service.ErrCacheMiss).Once()
+					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
 					Return(false, nil).Once()
 				mCache.On("Set", mock.Anything, repoExistsKey, []byte("false"), cacheTTL).
@@ -104,7 +104,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 			name: "client error: wrapped and propagated",
 			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
-					Return(nil, service.ErrCacheMiss).Once()
+					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
 					Return(false, ErrClient).Once()
 			},
@@ -117,7 +117,7 @@ func TestCachedGitHubClient_RepoExists(t *testing.T) {
 			name: "cache set error: wrapped and propagated after client success",
 			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, repoExistsKey).
-					Return(nil, service.ErrCacheMiss).Once()
+					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("RepoExists", mock.Anything, testRepo).
 					Return(true, nil).Once()
 				mCache.On("Set", mock.Anything, repoExistsKey, []byte("true"), cacheTTL).
@@ -216,7 +216,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 			name: "cache miss: client called and result stored in cache",
 			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
-					Return(nil, service.ErrCacheMiss).Once()
+					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
 					Return(baseRelease, nil).Once()
 				mCache.On("Set", mock.Anything, latestReleaseKey,
@@ -245,7 +245,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 			name: "client error: wrapped and propagated",
 			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
-					Return(nil, service.ErrCacheMiss).Once()
+					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
 					Return(nil, ErrClient).Once()
 			},
@@ -257,7 +257,7 @@ func TestCachedGitHubClient_GetLatestRelease(t *testing.T) {
 			name: "cache set error: wrapped and propagated after client success",
 			setupMock: func(mClient *mocks2.GitHubClient, mCache *mocks2.Cache) {
 				mCache.On("Get", mock.Anything, latestReleaseKey).
-					Return(nil, service.ErrCacheMiss).Once()
+					Return(nil, sharedcache.ErrCacheMiss).Once()
 				mClient.On("GetLatestRelease", mock.Anything, testRepo).
 					Return(baseRelease, nil).Once()
 				mCache.On("Set", mock.Anything, latestReleaseKey,

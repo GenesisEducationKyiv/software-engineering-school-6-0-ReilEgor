@@ -13,7 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	subModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/model"
+	trackingModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 )
 
 func newSubRepo(t *testing.T) (*SubscriptionRepository, pgxmock.PgxPoolIface) {
@@ -34,7 +35,7 @@ func TestSubscriptionRepository_GetByToken(t *testing.T) {
 		mockSetup   func(mock pgxmock.PgxPoolIface, token string)
 		expectError bool
 		expectErr   error
-		checkResult func(t *testing.T, sub *model.Subscription)
+		checkResult func(t *testing.T, sub *subModel.Subscription)
 	}{
 		{
 			name:  "success",
@@ -46,7 +47,7 @@ func TestSubscriptionRepository_GetByToken(t *testing.T) {
 						AddRow(int64(1), int64(10), int64(100), "golang/go", token, true, time.Now()))
 			},
 			expectError: false,
-			checkResult: func(t *testing.T, sub *model.Subscription) {
+			checkResult: func(t *testing.T, sub *subModel.Subscription) {
 				assert.Equal(t, int64(1), sub.ID)
 				assert.Equal(t, "golang/go", sub.RepositoryName)
 				assert.True(t, sub.Confirmed)
@@ -61,7 +62,7 @@ func TestSubscriptionRepository_GetByToken(t *testing.T) {
 					WillReturnError(pgx.ErrNoRows)
 			},
 			expectError: true,
-			expectErr:   model.ErrInvalidToken,
+			expectErr:   subModel.ErrInvalidToken,
 		},
 	}
 
@@ -97,7 +98,7 @@ func TestSubscriptionRepository_GetByRepoID(t *testing.T) {
 		mockSetup   func(mock pgxmock.PgxPoolIface)
 		expectError bool
 		checkErrMsg string
-		checkResult func(t *testing.T, subs []model.Subscriber)
+		checkResult func(t *testing.T, subs []trackingModel.Subscriber)
 	}{
 		{
 			name: "success with multiple subscribers",
@@ -108,7 +109,7 @@ func TestSubscriptionRepository_GetByRepoID(t *testing.T) {
 						AddRow("user1@mail.com", "token1").
 						AddRow("user2@mail.com", "token2"))
 			},
-			checkResult: func(t *testing.T, subs []model.Subscriber) {
+			checkResult: func(t *testing.T, subs []trackingModel.Subscriber) {
 				assert.Len(t, subs, 2)
 				assert.Equal(t, "user1@mail.com", subs[0].Email)
 				assert.Equal(t, "token1", subs[0].Token)
@@ -123,7 +124,7 @@ func TestSubscriptionRepository_GetByRepoID(t *testing.T) {
 					WithArgs(repoID).
 					WillReturnRows(pgxmock.NewRows([]string{"email", "token"}))
 			},
-			checkResult: func(t *testing.T, subs []model.Subscriber) {
+			checkResult: func(t *testing.T, subs []trackingModel.Subscriber) {
 				assert.Nil(t, subs)
 			},
 		},
@@ -172,7 +173,7 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 		mockSetup   func(mock pgxmock.PgxPoolIface)
 		expectError bool
 		checkErrMsg string
-		checkResult func(t *testing.T, subs []model.Subscription)
+		checkResult func(t *testing.T, subs []subModel.Subscription)
 	}{
 		{
 			name: "success with multiple subscriptions",
@@ -183,7 +184,7 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 						AddRow(int64(1), int64(101), "golang/go", "token1", true, "v1.25.0", now).
 						AddRow(int64(2), int64(102), "google/uuid", "token2", false, "v1.6.0", now))
 			},
-			checkResult: func(t *testing.T, subs []model.Subscription) {
+			checkResult: func(t *testing.T, subs []subModel.Subscription) {
 				assert.Len(t, subs, 2)
 				assert.Equal(t, "golang/go", subs[0].RepositoryName)
 				assert.True(t, subs[0].Confirmed)
@@ -198,7 +199,7 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 					WithArgs(email).
 					WillReturnRows(pgxmock.NewRows(cols))
 			},
-			checkResult: func(t *testing.T, subs []model.Subscription) {
+			checkResult: func(t *testing.T, subs []subModel.Subscription) {
 				assert.NotNil(t, subs)
 				assert.Empty(t, subs)
 			},
@@ -233,19 +234,19 @@ func TestSubscriptionRepository_GetByEmail(t *testing.T) {
 func TestSubscriptionRepository_Save(t *testing.T) {
 	tests := []struct {
 		name        string
-		inputSub    *model.Subscription
-		mockSetup   func(mock pgxmock.PgxPoolIface, sub *model.Subscription)
+		inputSub    *subModel.Subscription
+		mockSetup   func(mock pgxmock.PgxPoolIface, sub *subModel.Subscription)
 		expectError bool
 	}{
 		{
 			name: "success save",
-			inputSub: &model.Subscription{
+			inputSub: &subModel.Subscription{
 				UserID:       10,
 				RepositoryID: 20,
 				Token:        "token-123",
 				Confirmed:    true,
 			},
-			mockSetup: func(mock pgxmock.PgxPoolIface, sub *model.Subscription) {
+			mockSetup: func(mock pgxmock.PgxPoolIface, sub *subModel.Subscription) {
 				mock.ExpectQuery("^INSERT INTO subscriptions").
 					WithArgs(sub.UserID, sub.RepositoryID, sub.Token, sub.Confirmed).
 					WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(int64(99)))
@@ -254,12 +255,12 @@ func TestSubscriptionRepository_Save(t *testing.T) {
 		},
 		{
 			name: "save error",
-			inputSub: &model.Subscription{
+			inputSub: &subModel.Subscription{
 				UserID:       10,
 				RepositoryID: 20,
 				Token:        "token-123",
 			},
-			mockSetup: func(mock pgxmock.PgxPoolIface, sub *model.Subscription) {
+			mockSetup: func(mock pgxmock.PgxPoolIface, sub *subModel.Subscription) {
 				mock.ExpectQuery("^INSERT INTO subscriptions").
 					WithArgs(sub.UserID, sub.RepositoryID, sub.Token, sub.Confirmed).
 					WillReturnError(fmt.Errorf("db error"))

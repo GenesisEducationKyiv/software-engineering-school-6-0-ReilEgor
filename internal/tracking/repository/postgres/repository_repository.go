@@ -8,8 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	sharedPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
 const (
@@ -17,11 +17,11 @@ const (
 )
 
 type RepositoryRepository struct {
-	db     postgres2.PgxInterface
+	db     sharedPostgres.PgxInterface
 	logger *slog.Logger
 }
 
-func NewRepositoryRepository(db postgres2.PgxInterface) *RepositoryRepository {
+func NewRepositoryRepository(db sharedPostgres.PgxInterface) *RepositoryRepository {
 	return &RepositoryRepository{
 		db:     db,
 		logger: slog.With(slog.String("component", componentRepositoryRepository)),

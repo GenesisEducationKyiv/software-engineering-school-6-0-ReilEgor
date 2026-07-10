@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/dto"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 )
 
 func (s *APITestSuite) TestSubscribe_Success() {
@@ -76,12 +76,12 @@ func (s *APITestSuite) TestSubscribe_RepoNotFoundOnGitHub() {
 
 func (s *APITestSuite) TestSubscribe_GitHubUnavailable() {
 	s.mockGitHub.On("RepoExists", mock.Anything, testRepo).
-		Return(false, fmt.Errorf("wrapped: %w", model2.ErrRepositoryNotFound))
+		Return(false, fmt.Errorf("wrapped: %w", model2.ErrGitHubUnavailable))
 
 	w := s.doRequest(http.MethodPost, "/api/v1/subscribe",
 		strings.NewReader(`{"email":"test@example.com","repository":"golang/go"}`))
 
-	s.GreaterOrEqual(w.Code, http.StatusBadRequest)
+	s.Equal(http.StatusServiceUnavailable, w.Code)
 }
 
 func (s *APITestSuite) TestSubscribe_NoAPIKey() {

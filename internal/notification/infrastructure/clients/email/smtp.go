@@ -7,9 +7,9 @@ import (
 	"net/smtp"
 	"strings"
 
+	notifModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
 const componentEmailClient = "EmailClient"
@@ -34,7 +34,7 @@ func NewSMTPClient(cfg config.EmailConfig) *SMTPClient {
 	}
 }
 
-func (c *SMTPClient) Send(ctx context.Context, msg model.EmailMessage) error {
+func (c *SMTPClient) Send(ctx context.Context, msg notifModel.EmailMessage) error {
 	addr := fmt.Sprintf("%s:%s", c.host, c.port)
 
 	rawMsg := []byte(fmt.Sprintf(

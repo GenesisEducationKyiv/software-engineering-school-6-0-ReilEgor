@@ -8,36 +8,28 @@ package main
 
 import (
 	"context"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/port"
-	service2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/service"
-	usecase4 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/domain/usecase"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/infrastructure/clients/email"
-	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/notification/usecase"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/storage/postgres"
-	repository2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/domain/repository"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
-	usecase3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
+	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/usecase"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/broker/rabbitmq"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
-	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
+	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
-	"github.com/google/wire"
-	"github.com/jackc/pgx/v5/pgxpool"
+	rabbitmq2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/broker/rabbitmq"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/storage/postgres"
 )
 
 // Injectors from wire.go:
 
 func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
-	dbConfig := ProvideDBConfig(cfg)
-	pool, cleanup, err := postgres.New(ctx, dbConfig)
+	trackingDBConfig := ProvideTrackingDBConfig(cfg)
+	poolConfig := ProvideTrackingPoolConfig(trackingDBConfig)
+	pool, cleanup, err := postgres.New(ctx, poolConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	subscriptionRepository := postgres2.NewSubscriptionRepository(pool)
-	repositoryRepository := postgres3.NewRepositoryRepository(pool)
+	repositoryRepository := postgres2.NewRepositoryRepository(pool)
 	gitHubConfig := ProvideGitHubConfig(cfg)
 	gitHubClient := github.NewGitHubClient(gitHubConfig)
 	redisConfig := ProvideRedisConfig(cfg)
@@ -49,54 +41,43 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	cache := redis.NewCache(client)
 	serviceGitHubClient := ProvideCachedClient(gitHubClient, cache)
 	repositoryUseCase := usecase.NewRepositoryUseCase(repositoryRepository, serviceGitHubClient)
-	emailConfig := ProvideEmailConfig(cfg)
-	smtpClient := email.NewSMTPClient(emailConfig)
-	appConfig := ProvideAppConfig(cfg)
-	string2 := ProvideBaseURL(appConfig)
-	emailManager := email.NewEmailManager(smtpClient, string2)
-	workerConfig := ProvideWorkerConfig(cfg)
-	notificationUseCase := usecase2.NewNotificationUseCase(subscriptionRepository, repositoryRepository, repositoryUseCase, emailManager, workerConfig)
+	subscriptionRepository := postgres3.NewSubscriptionRepository(pool)
+	rabbitMQConfig := ProvideRabbitMQConfig(cfg)
+	connection, cleanup2, err := ProvideRabbitMQConnection(rabbitMQConfig)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	publisher, err := rabbitmq.NewPublisher(connection)
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	releaseProcessor := usecase.NewReleaseProcessor(repositoryRepository, repositoryUseCase, subscriptionRepository, publisher)
 	app := &App{
-		NotificationUseCase: notificationUseCase,
+		ReleaseProcessor: releaseProcessor,
 	}
 	return app, func() {
+		cleanup2()
 		cleanup()
 	}, nil
 }
 
 // wire.go:
 
-func ProvideDBConfig(cfg Config) config.DBConfig { return cfg.DB }
+func ProvideTrackingDBConfig(cfg Config) config.TrackingDBConfig { return cfg.TrackingDB }
 
 func ProvideRedisConfig(cfg Config) config.RedisConfig { return cfg.Redis }
 
-func ProvideEmailConfig(cfg Config) config.EmailConfig { return cfg.Email }
-
 func ProvideGitHubConfig(cfg Config) config.GitHubConfig { return cfg.GitHub }
 
-func ProvideAppConfig(cfg Config) config.AppConfig { return cfg.App }
+func ProvideRabbitMQConfig(cfg Config) config.RabbitMQConfig { return cfg.RabbitMQ }
 
-func ProvideWorkerConfig(cfg Config) config.WorkerConfig { return cfg.Worker }
-
-func ProvideBaseURL(cfg config.AppConfig) string { return cfg.BaseURL }
-
-var UseCaseSet = wire.NewSet(usecase.NewRepositoryUseCase, usecase2.NewNotificationUseCase, wire.Bind(new(usecase3.RepositoryUseCase), new(*usecase.RepositoryUseCase)), wire.Bind(new(usecase4.NotificationUseCase), new(*usecase2.NotificationUseCase)), wire.Bind(new(port.UpdateChecker), new(*usecase.RepositoryUseCase)))
-
-var RepositorySet = wire.NewSet(postgres.New, postgres3.NewRepositoryRepository, postgres2.NewSubscriptionRepository, wire.Bind(new(postgres.PgxInterface), new(*pgxpool.Pool)), wire.Bind(new(repository.RepositoryRepository), new(*postgres3.RepositoryRepository)), wire.Bind(new(repository2.SubscriptionRepository), new(*postgres2.SubscriptionRepository)), wire.Bind(new(port.RepositoryReader), new(*postgres3.RepositoryRepository)), wire.Bind(new(port.SubscriberReader), new(*postgres2.SubscriptionRepository)))
-
-func ProvideCachedClient(
-	c *github.GitHubClient,
-	cache service.Cache,
-) service.GitHubClient {
-	return github.NewCachedGitHubClient(c, cache)
+func ProvideRabbitMQConnection(cfg config.RabbitMQConfig) (*rabbitmq2.Connection, func(), error) {
+	return rabbitmq2.NewConnection(cfg.URL)
 }
 
-var GitHubSet = wire.NewSet(github.NewGitHubClient, ProvideCachedClient)
-
-var CacheSet = wire.NewSet(redis.NewRedisClient, redis.NewCache, wire.Bind(new(service.Cache), new(*redis.Cache)))
-
-var EmailSet = wire.NewSet(email.NewSMTPClient, email.NewEmailManager, wire.Bind(new(service2.EmailService), new(*email.EmailManager)), wire.Bind(new(service2.EmailSender), new(*email.SMTPClient)))
-
 type App struct {
-	NotificationUseCase usecase4.NotificationUseCase
+	ReleaseProcessor usecase2.ReleaseProcessorUseCase
 }

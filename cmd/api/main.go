@@ -14,17 +14,18 @@ import (
 	"github.com/caarlos0/env/v11"
 	"golang.org/x/sync/errgroup"
 
-	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/config"
+	sharedConfig "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config"
 )
 
 type Config struct {
-	DB     sharedConfig.DBConfig
-	HTTP   sharedConfig.HTTPConfig
-	GRPC   sharedConfig.GRPCConfig
-	Redis  sharedConfig.RedisConfig
-	Email  sharedConfig.EmailConfig
-	GitHub sharedConfig.GitHubConfig
-	App    sharedConfig.AppConfig
+	SubscriptionDB sharedConfig.SubscriptionDBConfig
+	TrackingDB     sharedConfig.TrackingDBConfig
+	HTTP           sharedConfig.HTTPConfig
+	GRPC           sharedConfig.GRPCConfig
+	Redis          sharedConfig.RedisConfig
+	GitHub         sharedConfig.GitHubConfig
+	App            sharedConfig.AppConfig
+	RabbitMQ       sharedConfig.RabbitMQConfig
 }
 
 // Swagger Metadata for API Documentation

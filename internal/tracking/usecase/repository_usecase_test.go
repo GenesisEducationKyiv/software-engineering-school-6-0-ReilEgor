@@ -10,9 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
+	model2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
 
 type repoMockFields struct {
@@ -80,7 +79,7 @@ func TestRepositoryUseCase_GetOrCreate(t *testing.T) {
 				f.ghClient.On("RepoExists", mock.Anything, "unknown/repo").
 					Return(false, nil).Once()
 			},
-			wantErr: service.ErrRepositoryNotFound,
+			wantErr: model2.ErrRepositoryNotFound,
 		},
 		{
 			name:     "error - GetByName unexpected DB error",

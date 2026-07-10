@@ -25,14 +25,14 @@ import (
 
 	redisClient "github.com/redis/go-redis/v9"
 
-	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/cache/redis"
-	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/mocks"
-	postgres3 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
+	subPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/repository/postgres"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/transport/http/handlers"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/subscription/usecase"
 	servicesRealizationGitHub "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/infrastructure/clients/github"
-	postgres2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
-	usecase2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
+	trackingPostgres "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/repository/postgres"
+	trackingUsecase "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/usecase"
+	cacheRealization "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/cache/redis"
+	mocks2 "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/mocks"
 )
 
 const testAPIKey = "test-api-key"
@@ -146,11 +146,11 @@ func (s *APITestSuite) buildRouter() {
 	cache := cacheRealization.NewCache(s.redisClient)
 	cachedGitHub := servicesRealizationGitHub.NewCachedGitHubClient(s.mockGitHub, cache)
 
-	repoRepo := postgres2.NewRepositoryRepository(s.dbPool)
-	userRepo := postgres3.NewUserRepository(s.dbPool)
-	subsRepo := postgres3.NewSubscriptionRepository(s.dbPool)
+	repoRepo := trackingPostgres.NewRepositoryRepository(s.dbPool)
+	userRepo := subPostgres.NewUserRepository(s.dbPool)
+	subsRepo := subPostgres.NewSubscriptionRepository(s.dbPool)
 
-	repoUseCase := usecase2.NewRepositoryUseCase(repoRepo, cachedGitHub)
+	repoUseCase := trackingUsecase.NewRepositoryUseCase(repoRepo, cachedGitHub)
 	userUseCase, _ := usecase.NewUserUseCase(context.Background(), subsRepo, userRepo, repoUseCase, s.mockSMTP)
 
 	handler := handlers.NewHandler(userUseCase, testAPIKey)

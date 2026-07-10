@@ -13,6 +13,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/pashagolub/pgxmock/v3 v3.4.0
 	github.com/prometheus/client_golang v1.22.0
+	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
@@ -69,6 +70,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/goforj/wire v1.2.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect

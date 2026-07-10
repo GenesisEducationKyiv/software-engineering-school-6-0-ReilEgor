@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/domain/model"
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/shared/metrics"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/model"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/repository"
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/internal/tracking/domain/service"
+	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/metrics"
 )
 
 const (
@@ -29,7 +29,7 @@ func NewRepositoryUseCase(
 	ghClient service.GitHubClient,
 ) *RepositoryUseCase {
 	return &RepositoryUseCase{
-		logger:   slog.With(slog.String("useCase", componentRepositoryUseCase)),
+		logger:   slog.With(slog.String("component", componentRepositoryUseCase)),
 		repoRepo: repoRepo,
 		ghClient: ghClient,
 	}
@@ -77,7 +77,7 @@ func (uc *RepositoryUseCase) GetOrCreate(ctx context.Context, repoName string) (
 	}
 	if !exists {
 		log.WarnContext(ctx, "repository does not exist on GitHub")
-		return nil, service.ErrRepositoryNotFound
+		return nil, model.ErrRepositoryNotFound
 	}
 
 	release, err := uc.ghClient.GetLatestRelease(ctx, repoName)

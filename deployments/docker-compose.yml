@@ -1,5 +1,28 @@
 services:
 # ============================
+# MESSAGE BROKER
+# ============================
+  rabbitmq:
+    image: rabbitmq:4.2-management-alpine
+    container_name: rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+# ============================
 # DATABASES
 # ============================
   postgres:
@@ -64,10 +87,14 @@ services:
     restart: always
     environment:
       # Database
-      DB_SOURCE: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS}
-      DB_MAX_CONN_IDLE_TIME: ${DB_MAX_CONN_IDLE_TIME}
-      DB_HEALTH_CHECK_PERIOD: ${DB_HEALTH_CHECK_PERIOD}
+      SUBSCRIPTION_DB_SOURCE: ${SUBSCRIPTION_DB_SOURCE}
+      SUBSCRIPTION_DB_MAX_OPEN_CONNS: ${SUBSCRIPTION_DB_MAX_OPEN_CONNS}
+      SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME: ${SUBSCRIPTION_DB_MAX_CONN_IDLE_TIME}
+      SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD: ${SUBSCRIPTION_DB_HEALTH_CHECK_PERIOD}
+      TRACKING_DB_SOURCE: ${TRACKING_DB_SOURCE}
+      TRACKING_DB_MAX_OPEN_CONNS: ${TRACKING_DB_MAX_OPEN_CONNS}
+      TRACKING_DB_MAX_CONN_IDLE_TIME: ${TRACKING_DB_MAX_CONN_IDLE_TIME}
+      TRACKING_DB_HEALTH_CHECK_PERIOD: ${TRACKING_DB_HEALTH_CHECK_PERIOD}
       # Application
       APP_HTTP_PORT: ${APP_HTTP_PORT}
       APP_GRPC_PORT: ${APP_GRPC_PORT}
@@ -83,12 +110,6 @@ services:
       REDIS_DB: ${REDIS_DB}
       # Rate limiting
       RATE_LIMIT: ${RATE_LIMIT}
-      # Email
-      EMAIL_HOST: ${EMAIL_HOST}
-      EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      EMAIL_FROM: ${EMAIL_FROM}
       # GitHub
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_HTTP_TIMEOUT: ${GITHUB_HTTP_TIMEOUT}
@@ -96,6 +117,8 @@ services:
       GITHUB_CB_INTERVAL: ${GITHUB_CB_INTERVAL}
       GITHUB_CB_TIMEOUT: ${GITHUB_CB_TIMEOUT}
       GITHUB_CB_FAILURE_THRESHOLD: ${GITHUB_CB_FAILURE_THRESHOLD}
+      # RabbitMQ
+      RABBITMQ_URL: ${RABBITMQ_URL}
     ports:
       - "${APP_HTTP_PORT}:${APP_HTTP_PORT}"
       - "${APP_GRPC_PORT}:${APP_GRPC_PORT}"
@@ -104,6 +127,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${APP_HTTP_PORT}/health || exit 1"]
       interval: 30s
@@ -127,10 +152,10 @@ services:
     restart: always
     environment:
       # Database
-      DB_SOURCE: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS}
-      DB_MAX_CONN_IDLE_TIME: ${DB_MAX_CONN_IDLE_TIME}
-      DB_HEALTH_CHECK_PERIOD: ${DB_HEALTH_CHECK_PERIOD}
+      TRACKING_DB_SOURCE: ${TRACKING_DB_SOURCE}
+      TRACKING_DB_MAX_OPEN_CONNS: ${TRACKING_DB_MAX_OPEN_CONNS}
+      TRACKING_DB_MAX_CONN_IDLE_TIME: ${TRACKING_DB_MAX_CONN_IDLE_TIME}
+      TRACKING_DB_HEALTH_CHECK_PERIOD: ${TRACKING_DB_HEALTH_CHECK_PERIOD}
       # Application
       APP_BASE_URL: ${APP_BASE_URL}
       # Redis
@@ -138,12 +163,6 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: ${REDIS_DB}
-      # Email
-      EMAIL_HOST: ${EMAIL_HOST}
-      EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      EMAIL_FROM: ${EMAIL_FROM}
       # GitHub
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_HTTP_TIMEOUT: ${GITHUB_HTTP_TIMEOUT}
@@ -154,10 +173,11 @@ services:
       # Worker
       NOTIFICATION_INTERVAL: ${NOTIFICATION_INTERVAL}
       WORKER_MAX_SEND_WORKERS: ${WORKER_MAX_SEND_WORKERS}
-      WORKER_SEND_TIMEOUT: ${WORKER_SEND_TIMEOUT}
       WORKER_HEALTH_PORT: ${WORKER_HEALTH_PORT}
+      # RabbitMQ
+      RABBITMQ_URL: ${RABBITMQ_URL}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:${WORKER_HEALTH_PORT}/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${WORKER_HEALTH_PORT}/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -167,6 +187,46 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notification-sender:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.notification-sender
+    container_name: notification-sender
+    restart: always
+    environment:
+      # Application
+      APP_BASE_URL: ${APP_BASE_URL}
+      # Email
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      # Sender
+      SENDER_HEALTH_PORT: ${SENDER_HEALTH_PORT}
+      WORKER_SEND_TIMEOUT: ${WORKER_SEND_TIMEOUT}
+      # RabbitMQ
+      RABBITMQ_URL: ${RABBITMQ_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${SENDER_HEALTH_PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - internal
       - monitoring
@@ -316,6 +376,7 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq_data:
   grafana_data:
   prometheus_data:
   elasticsearch_data:
