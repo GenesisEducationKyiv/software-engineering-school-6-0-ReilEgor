@@ -120,17 +120,19 @@ func (s *APITestSuite) SetupSuite() {
 	rabbitConn, _, err := sharedRabbitmq.NewConnection(amqpURL)
 	s.Require().NoError(err, "failed to connect to RabbitMQ")
 	s.rabbitConn = rabbitConn
-
-	s.startOutboxRelay()
 }
 
-func (s *APITestSuite) startOutboxRelay() {
+func (s *APITestSuite) startOutboxRelay(publisher subOutbox.Publisher, interval time.Duration) {
+	s.T().Helper()
 	outboxRepo := subPostgres.NewOutboxRepository(s.dbPool)
 	transactor := sharedPostgres.NewTransactor(s.dbPool)
-	relay := subOutbox.NewRelay(outboxRepo, s.rabbitConn, outboxRelayInterval, transactor)
+	relay := subOutbox.NewRelayWithPublisher(outboxRepo, publisher, interval, transactor)
+
+	ctx, cancel := context.WithCancel(s.ctx)
+	s.T().Cleanup(cancel)
 
 	go func() {
-		if err := relay.Run(s.ctx); err != nil {
+		if err := relay.Run(ctx); err != nil {
 			s.T().Logf("outbox relay stopped: %v", err)
 		}
 	}()
