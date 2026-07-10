@@ -207,6 +207,7 @@ func (s *APITestSuite) truncateTables() {
 		"users",
 		"repositories",
 		"outbox_messages",
+		"subscription_sagas",
 	}
 
 	for _, t := range tables {
