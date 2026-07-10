@@ -29,12 +29,14 @@ func (r *OutboxRepository) Insert(ctx context.Context, queue string, payload []b
 const fetchPendingQuery = `
 	SELECT id, queue, payload
 	FROM outbox_messages
+	WHERE status = 'PENDING'
 	ORDER BY id ASC
 	LIMIT $1
+	FOR UPDATE SKIP LOCKED
 `
 
 func (r *OutboxRepository) FetchPending(ctx context.Context, limit int) ([]sharedModel.OutboxMessage, error) {
-	rows, err := r.db.Query(ctx, fetchPendingQuery, limit)
+	rows, err := sharedPostgres.Extract(ctx, r.db).Query(ctx, fetchPendingQuery, limit)
 	if err != nil {
 		return nil, fmt.Errorf("OutboxRepository.FetchPending: %w", err)
 	}
@@ -57,9 +59,25 @@ func (r *OutboxRepository) FetchPending(ctx context.Context, limit int) ([]share
 const deleteOutboxQuery = `DELETE FROM outbox_messages WHERE id = $1`
 
 func (r *OutboxRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.db.Exec(ctx, deleteOutboxQuery, id)
+	_, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, deleteOutboxQuery, id)
 	if err != nil {
 		return fmt.Errorf("OutboxRepository.Delete: %w", err)
+	}
+	return nil
+}
+
+const failOutboxQuery = `
+	UPDATE outbox_messages
+	SET attempts   = attempts + 1,
+	    last_error = $3,
+	    status     = CASE WHEN attempts + 1 >= $2 THEN 'FAILED' ELSE 'PENDING' END
+	WHERE id = $1
+`
+
+func (r *OutboxRepository) Fail(ctx context.Context, id int64, maxAttempts int, lastErr string) error {
+	_, err := sharedPostgres.Extract(ctx, r.db).Exec(ctx, failOutboxQuery, id, maxAttempts, lastErr)
+	if err != nil {
+		return fmt.Errorf("OutboxRepository.Fail: %w", err)
 	}
 	return nil
 }
