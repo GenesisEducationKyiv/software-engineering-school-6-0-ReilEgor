@@ -6,33 +6,46 @@ import (
 	"log/slog"
 	"time"
 
+	sharedModel "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/model"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/domain/repository"
 )
 
-const defaultBatchSize = 100
+const (
+	defaultBatchSize   = 100
+	defaultMaxAttempts = 5
+)
 
 type rawPublisher interface {
 	Publish(ctx context.Context, queue string, body []byte) error
 }
 
 type Relay struct {
-	outboxRepo repository.OutboxRepository
-	publisher  rawPublisher
-	interval   time.Duration
-	batchSize  int
-	logger     *slog.Logger
+	outboxRepo  repository.OutboxRepository
+	transactor  repository.Transactor
+	publisher   rawPublisher
+	interval    time.Duration
+	batchSize   int
+	maxAttempts int
+	logger      *slog.Logger
 }
 
-func NewRelay(outboxRepo repository.OutboxRepository, conn *sharedRabbitmq.Connection, interval time.Duration) *Relay {
+func NewRelay(
+	outboxRepo repository.OutboxRepository,
+	conn *sharedRabbitmq.Connection,
+	interval time.Duration,
+	transactor repository.Transactor,
+) *Relay {
 	return &Relay{
-		outboxRepo: outboxRepo,
-		publisher:  &rabbitPublisher{conn: conn},
-		interval:   interval,
-		batchSize:  defaultBatchSize,
-		logger:     slog.With(slog.String("component", "OutboxRelay")),
+		outboxRepo:  outboxRepo,
+		transactor:  transactor,
+		publisher:   &rabbitPublisher{conn: conn},
+		interval:    interval,
+		batchSize:   defaultBatchSize,
+		maxAttempts: defaultMaxAttempts,
+		logger:      slog.With(slog.String("component", "OutboxRelay")),
 	}
 }
 
@@ -50,27 +63,42 @@ func (r *Relay) Run(ctx context.Context) error {
 }
 
 func (r *Relay) process(ctx context.Context) {
-	msgs, err := r.outboxRepo.FetchPending(ctx, r.batchSize)
+	err := r.transactor.WithinTransaction(ctx, func(txCtx context.Context) error {
+		msgs, err := r.outboxRepo.FetchPending(txCtx, r.batchSize)
+		if err != nil {
+			return fmt.Errorf("fetch pending: %w", err)
+		}
+
+		for _, msg := range msgs {
+			r.processMessage(txCtx, msg)
+		}
+		return nil
+	})
 	if err != nil {
-		r.logger.Error("outbox: fetch pending", slog.Any("error", err))
+		r.logger.Error("outbox: process batch failed", slog.Any("error", err))
+	}
+}
+
+func (r *Relay) processMessage(ctx context.Context, msg sharedModel.OutboxMessage) {
+	if err := r.publisher.Publish(ctx, msg.Queue, msg.Payload); err != nil {
+		r.logger.Error("outbox: publish failed",
+			slog.String("queue", msg.Queue),
+			slog.Int64("id", msg.ID),
+			slog.Any("error", err),
+		)
+		if failErr := r.outboxRepo.Fail(ctx, msg.ID, r.maxAttempts, err.Error()); failErr != nil {
+			r.logger.Error("outbox: mark failed",
+				slog.Int64("id", msg.ID),
+				slog.Any("error", failErr),
+			)
+		}
 		return
 	}
-
-	for _, msg := range msgs {
-		if err := r.publisher.Publish(ctx, msg.Queue, msg.Payload); err != nil {
-			r.logger.Error("outbox: publish failed",
-				slog.String("queue", msg.Queue),
-				slog.Int64("id", msg.ID),
-				slog.Any("error", err),
-			)
-			continue
-		}
-		if err := r.outboxRepo.Delete(ctx, msg.ID); err != nil {
-			r.logger.Error("outbox: delete after publish failed",
-				slog.Int64("id", msg.ID),
-				slog.Any("error", err),
-			)
-		}
+	if err := r.outboxRepo.Delete(ctx, msg.ID); err != nil {
+		r.logger.Error("outbox: delete after publish failed",
+			slog.Int64("id", msg.ID),
+			slog.Any("error", err),
+		)
 	}
 }
 

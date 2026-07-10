@@ -12,19 +12,22 @@ import (
 	contracts "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts"
 	sharedRabbitmq "github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
-
-	"github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/services/subscription/internal/saga"
 )
+
+//go:generate mockery --name SagaResultHandler --output ../../../mocks --case underscore --outpkg mocks
+type SagaResultHandler interface {
+	HandleConfirmationReply(ctx context.Context, reply contracts.ConfirmationResultEvent) error
+}
 
 type SagaResultConsumer struct {
 	conn         *sharedRabbitmq.Connection
-	orchestrator *saga.Orchestrator
+	orchestrator SagaResultHandler
 	logger       *slog.Logger
 }
 
 func NewSagaResultConsumer(
 	conn *sharedRabbitmq.Connection,
-	orchestrator *saga.Orchestrator,
+	orchestrator SagaResultHandler,
 ) *SagaResultConsumer {
 	return &SagaResultConsumer{
 		conn:         conn,

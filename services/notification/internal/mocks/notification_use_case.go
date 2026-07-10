@@ -32,6 +32,24 @@ func (_m *NotificationUseCase) Send(ctx context.Context, cmd contracts.SendNotif
 	return r0
 }
 
+// SendConfirmation provides a mock function with given fields: ctx, cmd
+func (_m *NotificationUseCase) SendConfirmation(ctx context.Context, cmd contracts.SendConfirmationCommand) error {
+	ret := _m.Called(ctx, cmd)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SendConfirmation")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, contracts.SendConfirmationCommand) error); ok {
+		r0 = rf(ctx, cmd)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewNotificationUseCase creates a new instance of NotificationUseCase. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewNotificationUseCase(t interface {

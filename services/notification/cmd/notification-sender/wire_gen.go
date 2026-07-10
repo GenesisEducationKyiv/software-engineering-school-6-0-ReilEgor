@@ -36,7 +36,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
-	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, emailService, duration, sagaResultPublisher)
+	confirmationConsumer := rabbitmq.NewConfirmationConsumer(connection, notificationUseCase, duration, sagaResultPublisher)
 	app := &App{
 		NotificationConsumer: notificationConsumer,
 		ConfirmationConsumer: confirmationConsumer,

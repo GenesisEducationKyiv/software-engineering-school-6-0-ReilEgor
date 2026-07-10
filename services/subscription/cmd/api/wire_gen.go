@@ -76,7 +76,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	}
 	sagaResultConsumer := rabbitmq.NewSagaResultConsumer(connection, orchestrator)
 	duration := ProvideOutboxInterval()
-	relay := outbox.NewRelay(outboxRepository, connection, duration)
+	relay := outbox.NewRelay(outboxRepository, connection, duration, transactor)
 	app := &App{
 		HTTPServer:         ginServer,
 		GrpcServer:         server,

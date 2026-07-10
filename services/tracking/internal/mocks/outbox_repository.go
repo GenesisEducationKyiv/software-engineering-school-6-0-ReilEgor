@@ -32,6 +32,24 @@ func (_m *OutboxRepository) Delete(ctx context.Context, id int64) error {
 	return r0
 }
 
+// Fail provides a mock function with given fields: ctx, id, maxAttempts, lastErr
+func (_m *OutboxRepository) Fail(ctx context.Context, id int64, maxAttempts int, lastErr string) error {
+	ret := _m.Called(ctx, id, maxAttempts, lastErr)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Fail")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, string) error); ok {
+		r0 = rf(ctx, id, maxAttempts, lastErr)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // FetchPending provides a mock function with given fields: ctx, limit
 func (_m *OutboxRepository) FetchPending(ctx context.Context, limit int) ([]model.OutboxMessage, error) {
 	ret := _m.Called(ctx, limit)

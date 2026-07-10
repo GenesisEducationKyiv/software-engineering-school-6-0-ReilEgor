@@ -81,7 +81,7 @@ func InitializeApp(ctx context.Context, cfg Config) (*App, func(), error) {
 	subscriptionActivatedConsumer := rabbitmq2.NewSubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
 	unsubscriptionActivatedConsumer := rabbitmq2.NewUnsubscriptionActivatedConsumer(connection, repositoryUseCase, subscriptionRepository)
 	duration := ProvideOutboxInterval()
-	relay := outbox.NewRelay(outboxRepository, connection, duration)
+	relay := outbox.NewRelay(outboxRepository, connection, duration, transactor)
 	app := &App{
 		GrpcServer:                      server,
 		ReleaseProcessor:                releaseProcessor,

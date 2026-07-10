@@ -37,6 +37,7 @@ var SubscriptionUseCaseSet = wire.NewSet(
 	usecase.NewRepositoryUseCase,
 	wire.Bind(new(subscriptionDomainUsecase.UserUseCase), new(*usecase.UserUseCase)),
 	wire.Bind(new(subscriptionDomainUsecase.RepositoryUseCase), new(*usecase.RepositoryUseCase)),
+	wire.Bind(new(subRabbitmq.SagaResultHandler), new(*saga.Orchestrator)),
 )
 
 var BrokerSet = wire.NewSet(

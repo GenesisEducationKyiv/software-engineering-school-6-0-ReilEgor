@@ -1,0 +1,85 @@
+version: 3
+workdir: ./
+
+allow:
+  depOnAnyVendor: false
+  deepScan: false
+  ignoreNotFoundComponents: false
+
+exclude:
+  - internal/mocks
+  - docs
+
+excludeFiles:
+  - '_test\.go$'
+
+vendors:
+  shared-common:
+    in:
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/ctxlog/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/contracts/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/metrics
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/metrics/**
+  shared-model:
+    in:
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/domain/**
+  shared-infra:
+    in:
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/config/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/broker/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/cache/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/storage/**
+      - github.com/GenesisEducationKyiv/software-engineering-school-6-0-ReilEgor/shared/infrastructure/grpc/**
+  uuid:
+    in:
+      - github.com/google/uuid
+
+commonVendors:
+  - shared-common
+
+components:
+  model:             { in: internal/domain/model/** }
+  repository-iface:  { in: internal/domain/repository/** }
+  usecase-iface:     { in: internal/domain/usecase/** }
+  usecase-impl:      { in: internal/usecase/** }
+  saga:              { in: internal/saga/** }
+  repository-impl:   { in: internal/repository/** }
+  infrastructure:    { in: internal/infrastructure/** }
+  transport:         { in: internal/transport/** }
+  cmd:               { in: cmd/** }
+
+deps:
+  repository-iface:
+    mayDependOn: [model]
+    canUse: [shared-model]
+
+  usecase-iface:
+    mayDependOn: [model]
+    anyVendorDeps: false
+
+  usecase-impl:
+    mayDependOn: [model, repository-iface, usecase-iface, saga]
+    canUse: [uuid]
+
+  saga:
+    mayDependOn: [model, repository-iface]
+    anyVendorDeps: false
+
+  repository-impl:
+    mayDependOn: [model, repository-iface]
+    anyVendorDeps: true
+
+  infrastructure:
+    mayDependOn: [model, repository-iface, usecase-iface]
+    anyVendorDeps: true
+
+  transport:
+    mayDependOn: [model, usecase-iface, transport]
+    anyVendorDeps: true
+
+  cmd:
+    anyProjectDeps: true
+    anyVendorDeps: true
